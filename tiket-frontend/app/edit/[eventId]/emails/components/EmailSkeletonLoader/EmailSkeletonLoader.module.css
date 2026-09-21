@@ -1,0 +1,171 @@
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.skeletonPulse {
+  animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+/* Category Types Selector Skeleton */
+.selectorSkeleton {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+  width: 100%;
+}
+
+.tabPillSkeleton {
+  height: 48px;
+  min-width: 150px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+/* Editor Section Skeleton */
+.editorCardSkeleton {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.topBarSkeleton {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.titleBoxSkeleton {
+  width: 240px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.deviceControlsSkeleton {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.controlPillSkeleton {
+  width: 80px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.subjectBoxSkeleton {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+}
+
+.subjectLabelSkeleton {
+  width: 60px;
+  height: 20px;
+}
+
+.subjectInputSkeleton {
+  flex: 1;
+  height: 24px;
+}
+
+.editorBodySkeleton {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 1.5rem;
+  min-height: 460px;
+}
+
+@media (max-width: 900px) {
+  .editorBodySkeleton {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidebarSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.sidebarItemSkeleton {
+  height: 38px;
+  width: 100%;
+  border-radius: 8px;
+}
+
+.paperCanvasSkeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: rgba(255, 255, 255, 0.015);
+  border-radius: 12px;
+  padding: 2.5rem 1.5rem;
+  gap: 1.25rem;
+}
+
+.paperSheetSkeleton {
+  width: 100%;
+  max-width: 580px;
+  height: 380px;
+  border-radius: 10px;
+}
+
+.footerSkeleton {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.footerBtnSkeleton {
+  width: 110px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+/* Logs Table Skeleton */
+.logsCardSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.logsHeaderSkeleton {
+  width: 180px;
+  height: 28px;
+}
+
+.logRowSkeleton {
+  height: 44px;
+  width: 100%;
+  border-radius: 8px;
+}

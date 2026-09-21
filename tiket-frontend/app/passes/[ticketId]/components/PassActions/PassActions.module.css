@@ -1,0 +1,27 @@
+.actionsRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 310px;
+}
+
+.btnDownload {
+  width: 100%;
+  background: var(--btn-primary-bg, #ffffff);
+  color: var(--btn-primary-text, #000000);
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: opacity 0.2s ease;
+}
+
+.btnDownload:hover {
+  opacity: 0.9;
+}

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mem0-mcp": {
+      "command": "uvx",
+      "args": ["mem0-mcp-server"],
+      "env": {
+        "MEM0_API_KEY": "m0-5juIVtzxKX4tgqpAF3ZRCB7tUthysbnUvgDIQSg9"
+      }
+    }
+  }
+}

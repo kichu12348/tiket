@@ -1,0 +1,169 @@
+.phoneContainer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-radius: var(--radius-sm, 8px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+  overflow: hidden;
+}
+
+.phoneContainer:focus-within {
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.3));
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.inputError {
+  border-color: var(--status-danger, rgba(255, 80, 80, 1)) !important;
+}
+
+.countryTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.75rem;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  border-right: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #ffffff);
+  font-size: 0.88rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.countryTrigger:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.flagImg {
+  width: 20px;
+  height: 14px;
+  object-fit: cover;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.dialCode {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text-primary, #ffffff);
+}
+
+.chevronIcon {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+}
+
+.phoneInput {
+  flex: 1;
+  height: 40px;
+  padding: 0 0.85rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary, #ffffff);
+  font-size: 0.92rem;
+  font-family: inherit;
+}
+
+.phoneInput::placeholder {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+}
+
+/* Popover Content Styling */
+.popoverBox {
+  width: 280px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(18, 18, 22, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  padding: 0.5rem;
+  gap: 0.4rem;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.searchInput {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary, #ffffff);
+  font-size: 0.85rem;
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+}
+
+.countryList {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: 240px;
+  gap: 0.15rem;
+  scrollbar-color: var(--color-text-soft) transparent;
+}
+
+.countryOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #ffffff);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+  transition: background 0.15s ease;
+}
+
+.countryOption:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.countryOptionActive {
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 600;
+}
+
+.optionLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.optionName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.optionDial {
+  font-weight: 600;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}

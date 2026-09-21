@@ -1,0 +1,32 @@
+.triggerInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fontPreview {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text-soft);
+  line-height: 1;
+  width: 28px;
+  text-align: center;
+}
+
+.triggerLabel {
+  display: flex;
+  flex-direction: column;
+}
+
+.triggerLabel span:first-child {
+  font-size: 0.65rem;
+  color: var(--color-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.triggerLabel span:last-child {
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}

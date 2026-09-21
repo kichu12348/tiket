@@ -1,0 +1,116 @@
+.skeletonCard {
+  width: 100%;
+  max-width: 580px;
+  background: #ffffff;
+  border-radius: 4px 4px 0 0;
+  padding: 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr auto 160px;
+  gap: 1.25rem;
+  align-items: center;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #f3f4f6 25%,
+    #e5e7eb 37%,
+    #f3f4f6 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.mainSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.headerSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.badgeSkeleton {
+  width: 70px;
+  height: 18px;
+}
+
+.titleSkeleton {
+  width: 80%;
+  height: 24px;
+}
+
+.gridSkeleton {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.fullWidth {
+  grid-column: span 2;
+}
+
+.itemSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.labelSkeleton {
+  width: 50%;
+  height: 10px;
+}
+
+.valueSkeleton {
+  width: 85%;
+  height: 14px;
+}
+
+.perforationSkeleton {
+  height: 100%;
+  border-left: 2px dashed #e5e7eb;
+}
+
+.stubSkeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qrCodeBlock {
+  width: 115px;
+  height: 115px;
+  border-radius: 8px;
+}
+
+.subTextSkeleton {
+  width: 80px;
+  height: 10px;
+}
+
+.tornEdge {
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background-repeat: repeat-x;
+  background-size: 14px 10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 10'%3E%3Cpath fill='%23ffffff' d='M0 0 l7 10 l7 -10 z'/%3E%3C/svg%3E");
+}

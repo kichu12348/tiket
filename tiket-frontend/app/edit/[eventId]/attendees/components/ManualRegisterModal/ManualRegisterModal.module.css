@@ -1,0 +1,127 @@
+.modalContent {
+  padding: 0.2rem;
+  overflow: hidden;
+}
+
+.modalHeaderStyle {
+  padding: 1rem;
+  padding-bottom: 0;
+}
+
+.modalScrollWrapper {
+  padding: 0.8rem 1rem;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+}
+
+.modalScrollWrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modalScrollWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modalScrollWrapper::-webkit-scrollbar-thumb {
+  background-color: var(--color-text-soft, rgba(255, 255, 255, 0.2));
+  border-radius: 4px;
+}
+
+.modalScrollWrapper::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-primary, #ffffff);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.req {
+  color: var(--status-danger, rgba(255, 80, 80, 1));
+}
+
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-sm, 8px);
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #ffffff);
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.textarea:focus {
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.15));
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  margin-top: 0.3rem;
+}
+
+.btnPrimary {
+  background: var(--btn-primary-bg, #ffffff);
+  color: var(--btn-primary-text, #000000);
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.5rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: opacity 0.2s ease;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.btnSecondary:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #ffffff);
+}

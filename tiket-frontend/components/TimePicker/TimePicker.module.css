@@ -1,0 +1,85 @@
+.container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.triggerBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-soft);
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 90px;
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+  transition: background 0.15s;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.triggerBtn:hover {
+  background: var(--color-soft-bg);
+}
+
+.popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(var(--blur-md));
+  padding: 0.5rem 0.35rem;
+  width: 140px;
+  max-height: 250px;
+  z-index: 50;
+  border: 1px solid var(--color-border-light);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollArea {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-right: 0.25rem; /* Space for scrollbar */
+}
+
+/* Custom internal scrollbar for popovers */
+.scrollArea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.timeItem {
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-medium);
+}
+
+.timeItem:hover:not(.selectedItem) {
+  background: var(--color-item-hover);
+}
+
+.selectedItem {
+  background: var(--color-item-selected);
+  color: var(--color-text-primary);
+}

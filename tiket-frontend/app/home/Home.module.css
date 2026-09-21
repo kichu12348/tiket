@@ -1,0 +1,465 @@
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-base);
+}
+
+.background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: var(--glow-bottom-right), var(--glow-bottom-left);
+  background-attachment: fixed;
+  opacity: 0.5;
+  z-index: 1;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  z-index: 10;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 3rem;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  font-size: var(--font-size-logo);
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: baseline;
+  letter-spacing: -0.03em;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.dot {
+  color: var(--color-accent-orange);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Soft UI Buttons */
+.createEventBtn {
+  background: var(--color-soft-bg);
+  color: var(--color-text-primary);
+  padding: 0.6rem 1.25rem;
+  border-radius: 9999px; /* Pill shape */
+  font-weight: var(--font-weight-medium);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.createEventBtn:hover {
+  background: var(--color-soft-bg-hover);
+  transform: translateY(-1px);
+}
+
+.softIconBtn {
+  background: var(--color-soft-bg-subtle);
+  color: var(--color-text-secondary);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.softIconBtn:hover {
+  background: var(--color-soft-bg-active);
+  color: var(--color-text-primary);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-blue),
+    var(--color-accent-orange)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+}
+
+/* Main Content */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4rem 3rem;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.topSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3rem;
+}
+
+.pageTitle {
+  font-size: 2.5rem;
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.toggleGroup {
+  display: flex;
+  background-color: var(--color-soft-bg-subtle);
+  border-radius: 9999px;
+  padding: 0.3rem;
+}
+
+.toggleBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 0.5rem 1.5rem;
+  border-radius: 9999px;
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggleBtnActive {
+  background-color: var(--color-soft-bg-active);
+  color: var(--color-text-primary);
+}
+
+/* Timeline View */
+.timelineContainer {
+  display: flex;
+  flex-direction: column;
+  margin-top: 2rem;
+  padding-bottom: 4rem;
+}
+
+.timelineRow {
+  display: flex;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.timelineDate {
+  width: 80px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0.5rem;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-medium);
+}
+
+.timelineDay {
+  font-size: 1.5rem;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+}
+
+.timelineLine {
+  width: 30px;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.timelineLine::before {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  bottom: -2.5rem;
+  width: 1px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-left: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+/* Hide line extension on last item */
+.timelineRow:last-child .timelineLine::before {
+  bottom: 100%;
+  height: 0;
+  display: none;
+}
+
+.timelineDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-text-secondary);
+  position: relative;
+  top: 0.75rem;
+  z-index: 2;
+  box-shadow: 0 0 0 4px var(--color-bg-base);
+}
+
+.timelineContent {
+  flex: 1;
+  padding-left: 1rem;
+}
+
+.eventCard {
+  background: var(--color-soft-bg-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+  cursor: pointer;
+}
+
+.eventCard:hover {
+  background: var(--color-soft-bg);
+}
+
+.eventInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.eventTitle {
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.eventDescription {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1.2rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.eventMetaList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.eventMetaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.metaIcon {
+  color: rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.eventImage {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-md);
+  background-color: rgba(255, 255, 255, 0.03);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.imagePlaceholder {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-md);
+  background-color: rgba(255, 255, 255, 0.03);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.1);
+}
+
+/* Skeleton Loading */
+.skeletonCard {
+  background: var(--color-soft-bg-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.skeletonInfo {
+  flex: 1;
+}
+
+.skeletonLine {
+  height: 1rem;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.skeletonLine.short {
+  width: 60%;
+}
+
+.skeletonLine.shorter {
+  width: 40%;
+}
+
+.skeletonIconRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeletonIcon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.skeletonIconText {
+  height: 0.75rem;
+  width: 120px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  background: var(--color-soft-bg-subtle);
+  border-radius: var(--radius-lg);
+  padding: 4rem 2rem;
+  margin-top: 2rem;
+}
+
+.emptyIconWrapper {
+  margin-bottom: 1.5rem;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.emptyTitle {
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.emptySubtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem 1.5rem;
+  }
+
+  .main {
+    padding: 2rem 1.5rem;
+  }
+
+  .pageTitle {
+    font-size: 2rem;
+  }
+
+  .topSection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .createEventBtn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .headerRight {
+    gap: 0.5rem;
+  }
+
+  .createEventBtn span {
+    display: none; /* Hide text on very small screens, show icon only */
+  }
+}

@@ -1,0 +1,277 @@
+/* ── Full-page shell ── */
+.page {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  --card-padding: 1.5rem;
+}
+
+/* ── Top-left logo header (identical to landing) ── */
+.header {
+  position: absolute;
+  top: var(--layout-padding-y);
+  left: var(--layout-padding-x);
+  z-index: 10;
+}
+
+.logo {
+  font-size: var(--font-size-logo);
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: baseline;
+  letter-spacing: -0.03em;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.dot {
+  color: var(--color-accent-orange);
+}
+
+/* ── Centered content area ── */
+.main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Card ── */
+.card {
+  width: 400px;
+  background: var(--color-btn-signin-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--color-divider);
+  border-radius: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cardTop {
+  padding: var(--card-padding);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Ticket icon badge ── */
+.iconWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-icon-bg-hover);
+  border: 1px solid var(--color-divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-primary);
+  margin-bottom: 20px;
+}
+
+/* ── Heading ── */
+.title {
+  font-size: 1.3rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+  margin-bottom: 22px;
+}
+
+/* ── Error ── */
+.error {
+  font-size: var(--font-size-stat-label);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-error);
+  margin-bottom: 12px;
+}
+
+/* ── Form ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  height: 42px;
+  background: transparent;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  padding: 0 14px;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.input:focus {
+  border-color: var(--color-border-hover);
+}
+
+/* ── Password input with eye toggle ── */
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputWrap .input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+  line-height: 1;
+}
+
+.eyeBtn:hover {
+  color: var(--color-text-primary);
+}
+
+/* ── Primary CTA button ── */
+.primaryBtn {
+  width: 100%;
+  height: 42px;
+  background: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
+  margin-top: 2px;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: var(--color-btn-primary-hover);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── Password expand section ── */
+.passwordSection {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.25s ease,
+    opacity 0.2s ease;
+  overflow: hidden;
+}
+
+.passwordSection > * {
+  min-height: 0;
+}
+
+.passwordVisible {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* ── Password mode toggle (inline text link) ── */
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 2px;
+  transition: color 0.15s;
+  text-decoration: none;
+}
+
+.toggleBtn:hover {
+  color: var(--color-text-primary);
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: var(--color-divider);
+}
+
+/* ── Social buttons ── */
+.socialGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--card-padding);
+}
+
+.socialBtn {
+  width: 100%;
+  height: 42px;
+  background: var(--color-icon-bg-hover);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+
+.socialBtn:hover {
+  background: var(--color-btn-signin-hover);
+}
+
+@media screen and (max-width: 768px) {
+  .card {
+    width: 90vw;
+    border-radius: 1rem;
+  }
+}

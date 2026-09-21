@@ -1,0 +1,50 @@
+.pickersBox {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.datePickerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm, 8px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #ffffff);
+  font-size: 0.92rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  height: 40px;
+  flex: 1;
+  box-sizing: border-box;
+}
+
+.datePickerBtn:hover {
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.15));
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.icon {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+  flex-shrink: 0;
+}
+
+.placeholder {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+}
+
+.inputError {
+  border-color: var(--status-danger, rgba(255, 80, 80, 1)) !important;
+}
+
+@media (max-width: 480px) {
+  .pickersBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

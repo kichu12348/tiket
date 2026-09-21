@@ -1,0 +1,161 @@
+/* ═══════════════════════════════════════════════
+   EventList — Timeline + Sticky Date Headers
+   ═══════════════════════════════════════════════ */
+
+/* ── Outer wrapper ──────────────────────────── */
+
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding-bottom: 4rem;
+}
+
+
+
+/* ── Day group ──────────────────────────────── */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  position: relative; /* needed for the ::before rail segment */
+}
+
+/*
+  Draw the rail segment on every group except the last.
+  top: 1.25rem  → starts at this group's dot center.
+  bottom: -1.25rem → extends 1.25rem below this group's bottom edge,
+                     which lands exactly on the next group's dot center.
+  Last group gets no ::before → line stops at the last dot.
+*/
+.group:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 1.25rem;
+  bottom: -1.25rem;
+  left: 3px;
+  width: 2px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.08) 0px,
+    rgba(255, 255, 255, 0.08) 5px,
+    transparent 5px,
+    transparent 10px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Zero-height element watched by IntersectionObserver */
+.sentinel {
+  height: 0;
+}
+
+/* ── Sticky date header ─────────────────────── */
+
+.dateHeader {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
+
+  /* Layout */
+  display: flex;
+  align-items: center;
+  width: fit-content; /* shrinks to text width by default */
+  white-space: nowrap;
+
+  /* Spacing */
+  padding: 0.65rem 0;
+  margin-bottom: 0.75rem;
+
+  /* No background in normal flow — just text sitting in the document */
+  background: transparent;
+  border-radius: 0;
+
+  padding: 0.25rem 0.75rem 0.25rem 0.5rem;
+  transform: translateX(-0.56rem);
+
+  border-radius: 9999px;
+  /*--bg-opacity-0*/
+  border: 1px solid var(--bg-opacity-0);
+
+  transition:
+    background 0.18s ease,
+    border-radius 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+/*
+  Stuck state: narrow frosted-glass pill.
+  Appears when the sentinel has scrolled off the top of the viewport.
+*/
+.dateHeader.stuck {
+  background: var(--bg-opacity-60);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-color: var(--color-soft-bg);
+}
+
+/* ── Dot on the rail ────────────────────────── */
+
+.dot {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: #5c6370;
+  margin-right: 0.7rem;
+  transition: background-color 0.18s ease;
+}
+
+.dateHeader.stuck .dot {
+  background-color: #a1a7b3;
+}
+
+/* ── Date text ──────────────────────────────── */
+
+.dateLabel {
+  color: #ffffff;
+  font-size: 0.975rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-right: 0.4rem;
+}
+
+.weekday {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ── Cards ──────────────────────────────────── */
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding-left: calc(8px + 0.7rem); /* dot width + margin-right */
+  padding-bottom: 2rem;
+}
+
+/* ── Responsive ─────────────────────────────── */
+
+@media (max-width: 760px) {
+  .cards {
+    padding-left: calc(8px + 0.55rem);
+    padding-bottom: 1.5rem;
+  }
+
+  .dateLabel {
+    font-size: 0.925rem;
+  }
+
+  .weekday {
+    font-size: 0.875rem;
+  }
+}

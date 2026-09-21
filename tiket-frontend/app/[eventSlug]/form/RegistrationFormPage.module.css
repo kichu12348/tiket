@@ -1,0 +1,91 @@
+.pageWrapper {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-color: var(--color-bg-base);
+  scrollbar-color: var(--white-opacity-30) var(--color-bg-base);
+  scrollbar-width: thin;
+  position: relative;
+}
+
+.background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: var(--glow-bottom-right), var(--glow-bottom-left);
+  opacity: 0.5;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 3rem 2rem 5rem;
+  max-width: 680px;
+  margin: 0 auto;
+  color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  position: relative;
+  z-index: 10;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.35rem 0.65rem;
+  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  text-decoration: none;
+  border: none;
+  width: fit-content;
+  margin-bottom: 0.5rem;
+}
+
+.backBtn:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #ffffff);
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.eventTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--text-primary, #ffffff);
+}
+
+.eventSubtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 2rem 1.25rem 4rem;
+  }
+
+  .eventTitle {
+    font-size: 1.6rem;
+  }
+}

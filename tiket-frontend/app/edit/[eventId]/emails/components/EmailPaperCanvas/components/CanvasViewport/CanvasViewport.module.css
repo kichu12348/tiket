@@ -1,0 +1,202 @@
+.canvasOuterViewport {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-md, 12px);
+  padding: 2.5rem 1rem;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.paperDocumentCard {
+  width: 100%;
+  background-color: #ffffff;
+  color: #111827;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  padding: 2.5rem;
+  transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  position: relative;
+}
+
+.paperDocumentCard[data-device="desktop"] {
+  max-width: 720px;
+}
+
+.paperDocumentCard[data-device="mobile"] {
+  max-width: 375px;
+  padding: 1.5rem;
+}
+
+.paperBodyArea {
+  min-height: 380px;
+}
+
+/* Permanent Email Footer inside Paper Canvas */
+.emailPermanentFooter {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.footerQueryText {
+  margin: 0 0 0.5rem 0;
+  color: #6b7280;
+}
+
+.footerLink {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.footerBranding {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.previewRenderedBody {
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #111827;
+}
+
+/* Standalone Dark Code View Editor (No white canvas wrapper!) */
+.codeViewViewport {
+  width: 100%;
+  max-width: 760px;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.codeHeaderBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.codeHeaderTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: monospace;
+}
+
+.copyCodeBtn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.copyCodeBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.htmlCodeTextarea {
+  width: 100%;
+  min-height: 480px;
+  background: #18181b;
+  color: #9cdcfe;
+  font-family: "Fira Code", "Courier New", monospace;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  padding: 1.25rem;
+  border: none;
+  outline: none;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.tiptapEditor {
+  outline: none;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #111827;
+}
+
+.tiptapEditor :global(.ProseMirror) {
+  outline: none;
+  min-height: 340px;
+}
+
+/* Active node green focus box ring */
+.tiptapEditor :global(.ProseMirror .ProseMirror-selectednode),
+.tiptapEditor :global(.ProseMirror > *:focus),
+.tiptapEditor :global(.ProseMirror > *:hover) {
+  outline: 1.5px solid #10b981;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.tiptapEditor :global(.ProseMirror p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptapEditor :global(.ProseMirror h1) {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptapEditor :global(.ProseMirror h2) {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptapEditor :global(.ProseMirror blockquote) {
+  border-left: 3px solid #e5e7eb;
+  padding-left: 1rem;
+  color: #4b5563;
+  font-style: italic;
+  margin: 1.25rem 0;
+}
+
+.tiptapEditor :global(.ProseMirror ul),
+.tiptapEditor :global(.ProseMirror ol) {
+  padding-left: 1.25rem;
+  margin: 0.75rem 0;
+}
+
+.tiptapEditor :global(.ProseMirror hr) {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5rem 0;
+}

@@ -1,0 +1,138 @@
+.container {
+  position: relative;
+  display: inline-block;
+  height: 100%;
+}
+
+.triggerBtn {
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  justify-content: center;
+  cursor: pointer;
+  text-align: left;
+  height: 100%;
+  width: 140px;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.triggerBtn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.triggerBtn:hover:not(:disabled) {
+  background: var(--color-soft-bg-hover);
+}
+
+.tzInfo {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.25rem;
+}
+
+.tzText {
+  font-size: 0.95rem;
+  color: var(--color-text-soft);
+  font-weight: var(--font-weight-medium);
+}
+
+.tzSub {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: var(--color-bg-elevated);
+  backdrop-filter: blur(var(--blur-md));
+  border-radius: var(--radius-lg);
+  width: 320px;
+  max-height: 400px;
+  z-index: 50;
+  border: 1px solid var(--color-border-light);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.searchInput {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1rem 1.25rem;
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.header {
+  padding: 0.75rem 1.25rem 0.25rem;
+  font-size: 0.85rem;
+  color: var(--color-text-soft);
+  font-weight: var(--font-weight-medium);
+}
+
+.scrollArea {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  max-height: 250px;
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.tzItem {
+  background: transparent;
+  border: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.tzItem:hover {
+  background: var(--color-item-hover);
+}
+
+.tzLabel {
+  color: var(--color-text-soft);
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 1rem;
+}
+
+.tzOffset {
+  color: var(--color-text-soft);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}

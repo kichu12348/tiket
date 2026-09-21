@@ -1,0 +1,87 @@
+.container {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.tabsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: max-content;
+}
+
+.tabBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.04));
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  padding: 0.6rem 0.9rem;
+  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.tabBtn:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #ffffff);
+}
+
+.tabBtn[data-active="true"] {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary, #ffffff);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.labelCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.tabLabel {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tabDesc {
+  font-size: 0.72rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+  margin-top: 2px;
+}
+
+.badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 0.25rem;
+}
+
+.addCustomBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  padding: 0.6rem 0.9rem;
+  color: var(--text-primary, #ffffff);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.addCustomBtn:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
+}

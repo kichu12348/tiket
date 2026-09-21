@@ -1,0 +1,400 @@
+/* ── Type Selection Step ── */
+.modalContent {
+  padding: 1rem;
+}
+
+.modalSubtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-soft);
+  margin: 0;
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.typeBtn {
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.7rem;
+  color: var(--color-text-soft);
+  font-size: 0.95rem;
+  font-family: inherit;
+  font-weight: var(--font-weight-medium);
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.typeBtn:hover {
+  background: var(--color-soft-bg-hover);
+}
+
+.typeIcon {
+  color: var(--color-text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Details Step ── */
+.formBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Type summary card — full-width subtle bar */
+.selectedTypeCard {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+}
+
+.selectedTypeIcon {
+  color: var(--color-text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.selectedTypeText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.selectedTypeText h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.selectedTypeText p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-soft);
+}
+
+/* ── Form Groups ── */
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-soft);
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-opacity-100);
+  border: 1px solid var(--color-border-light);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: texfield;
+}
+
+.input:focus {
+  border-color: var(--color-border);
+}
+
+/* ── Segmented Control ── */
+.segmentedControl {
+  display: flex;
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem;
+}
+
+.segmentBtn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--color-text-soft);
+  font-weight: 500;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.segmentBtn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+}
+
+/* ── Required Row ── */
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.switchRow span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* ── Footer ── */
+.footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.submitBtn {
+  flex: 1;
+  background: var(--color-text-primary);
+  color: var(--color-background);
+  border: none;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.submitBtn:hover {
+  opacity: 0.9;
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.deleteBtn {
+  background: var(--color-soft-bg);
+  border: none;
+  color: var(--color-text-soft);
+  width: 44px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.deleteBtn:hover {
+  background: rgba(255, 80, 80, 0.15);
+  color: var(--status-danger);
+}
+
+/* ── Back Button ── */
+.backBtn {
+  background: var(--color-soft-bg);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.backBtn:hover {
+  background: var(--color-soft-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* ── Tag Input (Options field) ── */
+.tagInputWrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-light);
+  background-color: var(--bg-opacity-100);
+  min-height: 44px;
+  max-height: 150px;
+  overflow-y: auto;
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-text-soft) transparent;
+  cursor: text;
+  transition: border-color 0.2s;
+}
+
+.tagInputWrapper::-webkit-scrollbar {
+  width: 5px;
+}
+
+.tagInputWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tagInputWrapper::-webkit-scrollbar-thumb {
+  background-color: var(--color-text-soft);
+  border-radius: 5px;
+}
+
+.tagInputWrapper:focus-within {
+  border-color: var(--color-border);
+}
+
+.tag {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.removeTagBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-soft);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.removeTagBtn:hover {
+  color: var(--color-text-primary);
+}
+
+.tagInput {
+  flex: 1;
+  min-width: 80px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  padding: 0.15rem 0;
+}
+
+.tagInput::placeholder {
+  color: var(--color-text-soft);
+}
+
+.bulkAddBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: opacity 0.2s;
+}
+
+.bulkAddBtn:hover {
+  opacity: 0.8;
+}
+
+.fileDropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border-light);
+  background-color: var(--color-soft-bg);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.fileDropzone p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-soft);
+}
+
+.fileDropzone:hover {
+  border-color: var(--color-text-soft);
+  background-color: var(--color-soft-bg-hover);
+}
+
+.fileDropzone.dragOver {
+  border-color: var(--color-text-primary);
+  background-color: var(--color-soft-bg-hover);
+  background-image: radial-gradient(circle at center, rgba(118, 147, 184, 0.3) 0%, transparent 70%);
+}
+
+.uploadIcon {
+  color: var(--color-text-soft);
+  margin-bottom: 0.5rem;
+}
+
+/* ── Accordion Animations ── */
+.expandableContainer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+  will-change: grid-template-rows;
+}
+
+.expandableContainer.expanded {
+  grid-template-rows: 1fr;
+}
+
+.expandableInner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

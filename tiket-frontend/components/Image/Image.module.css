@@ -1,0 +1,40 @@
+.shimmer {
+  animation: shimmer 1.5s infinite linear;
+  background: linear-gradient(
+    90deg,
+    var(--color-soft-bg) 0%,
+    var(--color-soft-bg-hover) 50%,
+    var(--color-soft-bg) 100%
+  );
+  background-size: 200% 100%;
+  color: transparent;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-soft-bg);
+  color: var(--color-text-muted);
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  gap: var(--spacing-xs);
+  min-height: 100px;
+}
+
+.errorIcon {
+  width: 24px;
+  height: 24px;
+  opacity: 0.5;
+}

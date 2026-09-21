@@ -1,0 +1,128 @@
+.card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  border: none;
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  padding-bottom: 0.75rem;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary, #ffffff);
+}
+
+.icon {
+  color: var(--status-success, #28a745);
+}
+
+.title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+  margin: 0;
+}
+
+.emptyState {
+  padding: 2.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  color: var(--text-muted, rgba(255, 255, 255, 0.2));
+}
+
+.emptyText {
+  font-size: 0.88rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+  margin: 0;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.table th {
+  padding: 0.6rem 0.8rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.table td {
+  padding: 0.75rem 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  vertical-align: middle;
+}
+
+.recipientCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.recipientName {
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+}
+
+.recipientEmail {
+  font-size: 0.78rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+}
+
+.subjectText {
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+}
+
+.statusBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.statusBadge[data-status="sent"] {
+  background: var(--status-success-bg, rgba(40, 167, 69, 0.15));
+  color: var(--status-success, #28a745);
+}
+
+.statusBadge[data-status="failed"] {
+  background: var(--status-danger-bg, rgba(255, 80, 80, 0.15));
+  color: var(--status-danger, rgba(255, 80, 80, 1));
+}
+
+.timeText {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+  font-size: 0.78rem;
+}

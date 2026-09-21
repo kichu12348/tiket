@@ -1,0 +1,38 @@
+.container {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  width: 42px;
+  flex-shrink: 0;
+  touch-action: none;
+  border-radius: 9999px;
+  padding: 2px;
+  outline: none;
+  border: none;
+  cursor: pointer;
+  background-color: var(--color-soft-bg-hover);
+  transition:
+    background-color 0.2s ease-out,
+    border-color 0.2s ease-out;
+}
+
+.container[data-state="checked"] {
+  background-color: var(--color-text-primary);
+  border-color: transparent;
+}
+
+.knob {
+  display: block;
+  aspect-ratio: 1 / 1;
+  height: 100%;
+  border-radius: 9999px;
+  background-color: var(--color-text-soft);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease-out;
+  transform: translateX(0);
+}
+
+.container[data-state="checked"] .knob {
+  transform: translateX(18px);
+  background-color: #000;
+}

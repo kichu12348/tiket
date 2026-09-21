@@ -1,0 +1,224 @@
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.page {
+  padding: 2rem;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md, 8px);
+}
+
+/* --- Details Layout --- */
+.header {
+  margin-bottom: 2rem;
+}
+.backButton {
+  width: 120px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.detailsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .detailsContainer {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+.leftPane {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.rightPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+}
+
+.imageBlock {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg, 12px);
+}
+
+.fontPickerBlock {
+  width: 100%;
+  height: 60px;
+}
+
+.topToggles {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.toggleBlock {
+  width: 100px;
+  height: 36px;
+  border-radius: 20px;
+}
+
+.titleBlock {
+  width: 70%;
+  height: 48px;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  border-radius: var(--radius-sm, 6px);
+}
+
+.labelBlock {
+  width: 140px;
+  height: 16px;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.contentBlock {
+  width: 100%;
+  height: 80px;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-md, 8px);
+}
+
+.contentBlockLocation {
+  width: 100%;
+  height: 200px;
+  margin-bottom: 1rem;
+}
+
+.contentBlockDescription {
+  width: 100%;
+  height: 120px;
+  margin-bottom: 1rem;
+}
+
+.buttonBlock {
+  width: 150px;
+  height: 44px;
+  margin-top: 2rem;
+  border-radius: var(--radius-md, 8px);
+}
+
+/* --- Overview Layout --- */
+.overviewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.overviewTitle {
+  width: 300px;
+  height: 36px;
+  border-radius: var(--radius-sm, 6px);
+}
+
+.overviewBadge {
+  width: 80px;
+  height: 24px;
+  border-radius: 12px;
+}
+
+.headerRight {
+  display: flex;
+  gap: 1rem;
+}
+
+.overviewBtn {
+  width: 140px;
+  height: 40px;
+  border-radius: var(--radius-md, 8px);
+}
+
+.card {
+  background: var(--surface-base);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cardHeader {
+  width: 200px;
+  height: 24px;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.recapGrid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .recapGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.recapItem {
+  width: 100%;
+  height: 80px;
+  border-radius: var(--radius-md, 8px);
+}
+
+.glanceStats {
+  width: 100%;
+  height: 100px;
+  border-radius: var(--radius-md, 8px);
+}
+
+.emptyState {
+  width: 100%;
+  height: 140px;
+  border-radius: var(--radius-md, 8px);
+}

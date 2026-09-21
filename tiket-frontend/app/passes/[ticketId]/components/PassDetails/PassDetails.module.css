@@ -1,0 +1,51 @@
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 0.85rem;
+}
+
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.fullWidth {
+  grid-column: span 2;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #6b7280;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.icon {
+  color: #6b7280;
+}
+
+.value {
+  color: #111827;
+  font-size: 0.825rem;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.dateTimeWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.subValue {
+  color: #4b5563;
+  font-size: 0.76rem;
+  font-weight: 500;
+}

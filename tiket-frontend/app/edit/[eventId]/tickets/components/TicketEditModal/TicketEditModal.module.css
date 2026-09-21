@@ -1,0 +1,176 @@
+.formBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-opacity-100);
+  border: 1px solid var(--color-border-light);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.input:focus {
+  border-color: var(--color-border);
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.switchRow span {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.submitBtn {
+  flex: 1;
+  background: var(--color-text-primary);
+  color: var(--color-background);
+  border: none;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.submitBtn:hover {
+  opacity: 0.9;
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modalContent {
+  padding: 0.2rem;
+  overflow: hidden;
+}
+
+.modalHeaderStyle {
+  padding: 1rem;
+  padding-bottom: 0;
+}
+
+.modalScrollWrapper {
+  padding: 0.8rem;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+}
+
+.modalScrollWrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modalScrollWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modalScrollWrapper::-webkit-scrollbar-thumb {
+  background-color: var(--color-text-soft);
+  border-radius: 4px;
+}
+
+.modalScrollWrapper::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-primary);
+}
+
+.pickersBox {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pickersBox > button,
+.pickersBox > div {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pickersBox > button:last-child,
+.pickersBox > div:last-child {
+  border-right: none;
+}
+
+.datePickerBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  white-space: nowrap;
+}
+
+.datePickerBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+textarea.input::-webkit-scrollbar {
+  width: 6px;
+}
+
+textarea.input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+textarea.input::-webkit-scrollbar-thumb {
+  background-color: var(--color-text-soft);
+  border-radius: 4px;
+}
+
+textarea.input::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-primary);
+}

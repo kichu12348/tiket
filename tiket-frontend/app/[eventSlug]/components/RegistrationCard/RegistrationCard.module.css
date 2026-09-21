@@ -1,0 +1,138 @@
+.registrationCard {
+  background: var(--color-soft-bg-subtle);
+  border: 1px solid var(--color-divider);
+  border-radius: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(var(--blur-md));
+  overflow: hidden;
+}
+
+.regHeader {
+  font-size: 1.1rem;
+  font-weight: var(--font-weight-medium);
+  font-family: var(--event-font), serif;
+  color: var(--white-opacity-80);
+  background-color: var(--color-soft-bg);
+  border-bottom: 1px solid var(--color-divider);
+  padding: 0.5rem 1rem;
+}
+
+.approvalBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  color: var(--color-text-soft);
+  padding: 1rem 0.8rem;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.approvalIconWrapper {
+  padding: 0.3rem;
+  width: fit-content;
+  border-radius: var(--radius-sm);
+  background: var(--white-opacity-10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--white-opacity-50);
+}
+
+.bottomSection {
+  padding: 1rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.metaText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.metaPrimary {
+  font-weight: var(--font-weight-bold);
+  font-family: var(--event-font), serif;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.metaSecondary {
+  font-size: 0.85rem;
+  color: var(--color-text-soft);
+}
+
+.welcomeText {
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.userAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: #ecc94b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  font-size: 0.75rem;
+  color: #121316;
+  flex-shrink: 0;
+}
+
+.userDetails {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.userName {
+  font-weight: var(--font-weight-bold);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-primary);
+}
+
+.userEmail {
+  font-size: 0.9rem;
+  color: var(--color-text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.joinBtn {
+  background: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-text);
+  width: 100%;
+  padding: 0.65rem;
+  border-radius: 0.8rem;
+  font-weight: var(--font-weight-semibold);
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    background 0.2s ease;
+}
+
+.joinBtn:hover {
+  background: var(--color-btn-primary-hover);
+}
+
+.joinBtn:active {
+  transform: scale(0.98);
+}

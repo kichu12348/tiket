@@ -1,0 +1,293 @@
+.page {
+  min-height: 100vh;
+  /* Deeply dim the extracted color by mixing 15% of it with 85% of the base dark color */
+  background-color: var(--dynamic-bg);
+  transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 2rem;
+  color: var(--color-text-primary);
+  position: relative;
+}
+
+.header {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 2rem;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.5rem;
+  color: var(--color-text-soft);
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  text-decoration: none;
+}
+
+.backBtn:hover {
+  background: var(--color-soft-bg-hover);
+}
+
+.container {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 3rem;
+  max-width: 1000px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* Left Pane (Image Upload) */
+.leftPane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.imageUploadBlock {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--surface-hover);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.imageUploadBlock:hover {
+  background: var(--surface-elevated);
+  border-color: var(--text-muted);
+}
+
+.uploadedImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uploadIconWrapper {
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+/* Right Pane (Form Controls) */
+.rightPane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-bottom: 6rem;
+}
+
+.topToggles {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.togglePill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.titleInput {
+  font-size: 3.5rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 100%;
+  outline: none;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  transition: font-family 0.2s ease;
+}
+
+.titleInput::placeholder {
+  color: var(--text-muted);
+}
+
+/* Form Blocks */
+.formBlock {
+  background: var(--surface-hover);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding-left: 0.15rem;
+  margin-top: 0.75rem;
+}
+
+.iconCol {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+}
+
+.inputGroupCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mainInputLabel {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-medium);
+}
+
+.subInput {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+}
+
+.subInput:focus {
+  color: var(--text-primary);
+}
+
+/* Options */
+.optionsHeader {
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+}
+
+.optionRow {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.optionRow:last-child {
+  border-bottom: none;
+}
+
+.optionGroup {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.valueInput {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: right;
+  width: 100px;
+  font-family: inherit;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.valueInput::-webkit-outer-spin-button,
+.valueInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.valueInput:focus {
+  color: var(--text-primary);
+}
+
+.slugInput {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: right;
+  flex: 1;
+  font-family: inherit;
+}
+
+.slugInput:focus {
+  color: var(--text-primary);
+}
+
+/* Create Button */
+.createBtn {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  pointer-events: auto;
+}
+
+.createBtn:hover {
+  opacity: 0.9;
+}
+
+.createBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .titleInput {
+    font-size: 2.5rem;
+  }
+}

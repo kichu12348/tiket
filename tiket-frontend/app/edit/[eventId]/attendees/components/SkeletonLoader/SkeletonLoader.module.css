@@ -1,0 +1,94 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+.titleSkeleton,
+.subtitleSkeleton,
+.statCardSkeleton,
+.searchSkeleton,
+.selectSkeleton,
+.btnSkeleton,
+.rowSkeleton {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.05));
+  border-radius: var(--radius-md, 10px);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.titleSkeleton {
+  height: 2rem;
+  width: 220px;
+}
+
+.subtitleSkeleton {
+  height: 1rem;
+  width: 340px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+
+.statCardSkeleton {
+  height: 90px;
+  border-radius: var(--radius-lg, 16px);
+}
+
+.filtersSkeleton {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.searchSkeleton {
+  height: 42px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.selectSkeleton {
+  height: 42px;
+  width: 140px;
+}
+
+.btnSkeleton {
+  height: 42px;
+  width: 130px;
+}
+
+.tableCardSkeleton {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rowSkeleton {
+  height: 48px;
+  width: 100%;
+}
