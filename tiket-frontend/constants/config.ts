@@ -120,13 +120,23 @@ export interface ImageSrcOptions {
 }
 
 export const getImageUrl = (filename: string, options?: ImageSrcOptions) => {
+  if (!filename) return "";
+  if (filename.startsWith("http://") || filename.startsWith("https://")) {
+    return filename;
+  }
+  const base = (
+    process.env.NEXT_PUBLIC_CDN_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:5000"
+  ).replace(/\/$/, "");
+
   if (options?.width || options?.height || options?.ext || options?.filter) {
     const params: string[] = [];
     if (options?.width) params.push(`w=${options.width}`);
     if (options?.height) params.push(`h=${options.height}`);
     if (options?.ext) params.push(`ext=${options.ext}`);
     if (options?.filter) params.push(`filter=${options.filter}`);
-    return `${CDN_URL}/image/${filename}?${params.join("&")}`;
+    return `${base}/image/${filename}?${params.join("&")}`;
   }
-  return `${CDN_URL}/image/${filename}`;
+  return `${base}/image/${filename}`;
 };

@@ -1,0 +1,85 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dateTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-soft-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 38px;
+}
+
+.dateTrigger:hover {
+  background: var(--color-soft-bg-hover);
+  border-color: var(--border-strong);
+}
+
+.dateIcon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.timeTrigger {
+  /* min-width: 110px;
+  min-height: 38px; */
+  width: max-content;
+  gap: 0.5rem;
+  background: var(--color-soft-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.timeTrigger:hover {
+  background: var(--color-soft-bg-hover);
+  border-color: var(--border-strong);
+}
+
+.clearBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 38px;
+}
+
+.clearBtn:hover {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  border-color: transparent;
+}

@@ -25,10 +25,10 @@ function storage() {
     throw new HttpError(503, "Registration file storage is not configured.");
   return {
     client: new S3Client({
-        region: "auto",
-        forcePathStyle: true,
-        requestChecksumCalculation: "WHEN_REQUIRED",
-        responseChecksumValidation: "WHEN_REQUIRED",
+      region: "auto",
+      forcePathStyle: true,
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
       endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
       credentials: {
         accessKeyId: R2_ACCESS_KEY_ID,
@@ -41,7 +41,7 @@ function storage() {
 export async function presignUpload(
   key: string,
   contentType: string,
-  size: number,
+  size?: number,
 ) {
   const { client, bucket } = storage();
   return getSignedUrl(
@@ -50,9 +50,18 @@ export async function presignUpload(
       Bucket: bucket,
       Key: key,
       ContentType: contentType,
-      ContentLength: size,
+      ...(size !== undefined ? { ContentLength: size } : {}),
     }),
     { expiresIn: 300, signableHeaders: new Set(["content-type"]) },
+  );
+}
+export async function getImageObject(key: string) {
+  const { client, bucket } = storage();
+  return client.send(
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    }),
   );
 }
 export async function finalizeUpload(

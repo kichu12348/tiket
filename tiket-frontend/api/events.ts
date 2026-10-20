@@ -7,15 +7,41 @@ export const getSignedUrl = async (filename: string, contentType: string) => {
     filename,
     contentType,
   });
-  return response.data as { url: string; max_size: number };
+  return response.data as { url: string; max_size: number; filename?: string };
 };
 
 export const uploadToCDN = async (signedUrlPath: string, file: File) => {
+  const isDirectUrl =
+    signedUrlPath.startsWith("http://") || signedUrlPath.startsWith("https://");
+
+  if (isDirectUrl) {
+    const response = await fetch(signedUrlPath, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type,
+      },
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload image (${response.status})`);
+    }
+
+    const url = new URL(signedUrlPath);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const eventsIndex = segments.indexOf("events");
+    const filename =
+      eventsIndex !== -1
+        ? segments.slice(eventsIndex).join("/")
+        : segments[segments.length - 1];
+
+    return { filename };
+  }
+
   const formData = new FormData();
   formData.append("file", file);
 
-  // We use standard fetch here because the CDN might be on a different origin
-  // and we might not want to send our auth tokens to it via the axios interceptor
+  // Fallback for legacy proxy
   const response = await fetch(`${CDN_URL}${signedUrlPath}`, {
     method: "POST",
     body: formData,

@@ -1,0 +1,527 @@
+.card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: none;
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 240px;
+}
+
+.iconBox {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--color-soft-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.countBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+/* Metric Stats Grid */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.85rem;
+}
+
+.metricCard {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: background 0.2s ease;
+}
+
+.metricCard:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.metricHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.metricLabel {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metricIcon {
+  color: var(--text-muted);
+}
+
+.metricValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+
+.metricDesc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* Orders List Section */
+.ledgerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sectionTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ordersList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+/* Order Item Card */
+.orderCard {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: background 0.2s ease;
+}
+
+.orderCard:hover {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.orderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 1.15rem;
+  cursor: pointer;
+  gap: 1rem;
+  user-select: none;
+}
+
+.orderHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 220px;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-soft-bg-hover);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.attendeeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.attendeeName {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.attendeeEmail {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.orderIdPill {
+  font-size: 0.72rem;
+  font-family: monospace;
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.orderHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+.orderAmount {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.statusPill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.statusPill[data-status="success"],
+.statusPill[data-status="confirmed"],
+.statusPill[data-status="processed"] {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+}
+
+.statusPill[data-status="partially_refunded"],
+.statusPill[data-status="pending_approval"],
+.statusPill[data-status="pending"] {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+}
+
+.statusPill[data-status="refunded"],
+.statusPill[data-status="failed"],
+.statusPill[data-status="declined"],
+.statusPill[data-status="cancelled"] {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+
+.statusPill[data-status="checkout"],
+.statusPill[data-status="expired"] {
+  background: var(--color-soft-bg);
+  color: var(--text-muted);
+}
+
+.chevronIcon {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.chevronIcon[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+/* Expanded Order Details */
+.orderDetails {
+  border-top: 1px solid var(--border-subtle);
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.orderMetaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.itemsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.itemTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.itemRow {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.itemName {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.itemFormula {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.itemTotal {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Refund History */
+.refundHistory {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.refundRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.refundReason {
+  color: var(--text-secondary);
+}
+
+/* Refund Form Box */
+.refundFormBox {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border-left: 3px solid var(--status-warning);
+}
+
+.refundFormHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.refundFormTitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.refundableBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+}
+
+.refundNote {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.refundInputsGrid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.75rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inputLabel {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.input {
+  height: 38px;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-sm);
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--border-strong);
+}
+
+.refundError {
+  font-size: 0.82rem;
+  color: var(--status-danger);
+  margin: 0;
+}
+
+.refundSubmitBtn {
+  height: 38px;
+  align-self: flex-start;
+  padding: 0 1rem;
+  background: var(--color-soft-bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.2s ease;
+}
+
+.refundSubmitBtn:hover:not(:disabled) {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  border-color: transparent;
+}
+
+.refundSubmitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Empty State */
+.emptyState {
+  padding: 2.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+}
+
+.emptyIcon {
+  color: var(--text-muted);
+}
+
+.emptyTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.emptyDesc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .orderHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .orderHeaderRight {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .refundInputsGrid {
+    grid-template-columns: 1fr;
+  }
+}

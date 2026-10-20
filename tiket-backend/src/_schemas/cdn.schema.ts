@@ -7,7 +7,21 @@ export const cdnGenerateUrlSchema = {
         filename: { type: "string" },
         contentType: {
           type: "string",
-          enum: ["jpeg", "png", "webp", "svg", "ico", "avif", "jpg"],
+          enum: [
+            "jpeg",
+            "png",
+            "webp",
+            "svg",
+            "ico",
+            "avif",
+            "jpg",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/svg+xml",
+            "image/x-icon",
+            "image/avif",
+          ],
         },
       },
     },
@@ -17,6 +31,7 @@ export const cdnGenerateUrlSchema = {
         properties: {
           url: { type: "string" },
           max_size: { type: "number" },
+          filename: { type: "string" },
         },
       },
       400: {
