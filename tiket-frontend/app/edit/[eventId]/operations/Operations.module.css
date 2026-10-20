@@ -1,0 +1,20 @@
+.page { max-width: 1000px; margin: 0 auto; padding: 2.5rem 2rem; display: grid; gap: 2rem; color: var(--text-primary); }
+.page h1 { font-size: 2rem; font-weight: 700; }
+.page h2 { font-size: 1.25rem; font-weight: 600; }
+.card { background: var(--color-soft-bg); border: none; border-radius: var(--radius-lg); backdrop-filter: blur(var(--blur-md)); padding: 1.5rem; display: grid; gap: 1rem; }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 0; }
+.row + .row { border-top: 1px solid var(--border-subtle); }
+.muted { color: var(--text-secondary); font-size: .9rem; }
+.error { color: var(--status-danger); }
+.form { display: grid; gap: .8rem; }
+.form label { display: grid; gap: .4rem; font-size: .9rem; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem; }
+.breakdown { font-size: .85rem; display: grid; gap: .4rem; }
+.badge { background: var(--surface-elevated); color: var(--text-secondary); border-radius: var(--radius-sm); padding: .3rem .6rem; font-size: .8rem; }
+.list { max-height: 650px; overflow: auto; }
+.order { padding: .75rem 0; }
+.order + .order { border-top: 1px solid var(--border-subtle); }
+.order summary { cursor: pointer; }
+.form label.row { display: flex; align-items: center; }
+@media (max-width: 640px) { .page { padding: 1.5rem 1rem; } .card { padding: 1rem; } }

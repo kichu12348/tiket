@@ -27,9 +27,10 @@ export const scanTicketSchema = {
   schema: {
     body: {
       type: "object",
-      required: ["qrCode"],
+      required: ["qrCode", "eventId"],
       properties: {
-        qrCode: { type: "string" },
+        qrCode: { type: "string", minLength: 1, maxLength: 255 },
+        eventId: { type: "string", format: "uuid" },
       },
     },
     response: {

@@ -1,6 +1,8 @@
+import { getErrorMessage, getErrorStatus } from "@/lib/errors";
 import { useState } from "react";
-import axios, { AxiosError } from "axios";
-import { API_ENDPOINTS, TOKEN_KEY } from "@/constants/config";
+import type { AxiosError } from "axios";
+import axios from "axios";
+import { API_ENDPOINTS } from "@/constants/config";
 
 interface AuthErrorResponse {
   error?: string;
@@ -23,7 +25,7 @@ export function useAuth() {
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<AuthErrorResponse>;
-        setError(axiosError.response?.data?.error || "Invalid OTP. Try again.");
+        setError(getErrorMessage(axiosError) || "Invalid OTP. Try again.");
       } else {
         setError("An unexpected error occurred. Please try again.");
       }
@@ -46,13 +48,13 @@ export function useAuth() {
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<AuthErrorResponse>;
         if (
-          axiosError.response?.status === 404 &&
-          axiosError.response.data?.needsName
+          getErrorStatus(axiosError) === 404 &&
+          axiosError.response?.data?.needsName
         ) {
           return { success: false, needsName: true };
         }
         setError(
-          axiosError.response?.data?.error || "Failed to send OTP. Try again.",
+          getErrorMessage(axiosError) || "Failed to send OTP. Try again.",
         );
       } else {
         setError("An unexpected error occurred. Please try again.");
@@ -81,13 +83,13 @@ export function useAuth() {
       if (axios.isAxiosError(err)) {
         const axiosError = err as AxiosError<AuthErrorResponse>;
         if (
-          axiosError.response?.status === 404 &&
-          axiosError.response.data?.needsName
+          getErrorStatus(axiosError) === 404 &&
+          axiosError.response?.data?.needsName
         ) {
           return { success: false, needsName: true };
         }
         setError(
-          axiosError.response?.data?.error || "Invalid credentials. Try again.",
+          getErrorMessage(axiosError) || "Invalid credentials. Try again.",
         );
       } else {
         setError("An unexpected error occurred. Please try again.");

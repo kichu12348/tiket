@@ -1,6 +1,6 @@
 import React from "react";
 import QRCode from "react-qr-code";
-import { TicketStatus } from "@/types/ticket";
+import type { TicketStatus } from "@/types/ticket";
 import styles from "./PassQRCode.module.css";
 
 interface PassQRCodeProps {
@@ -33,7 +33,7 @@ export function PassQRCode({ ticketId, qrCode, status }: PassQRCodeProps) {
         )}
       </div>
 
-      <span className={styles.instructions}>Present this code at venue entrance</span>
+      <span className={styles.instructions}>{status === "active" ? "Present this code at venue entrance" : status === "pending_approval" ? "Awaiting organizer approval. Not valid for entry." : status === "pending" ? "Payment confirmation is pending. Not valid for entry." : status === "used" ? "Already checked in" : "This pass is not valid for entry."}</span>
     </div>
   );
 }

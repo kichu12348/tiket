@@ -1,4 +1,6 @@
 "use client";
+import { NodeSelection } from "@tiptap/pm/state";
+
 
 import React, { useState, useEffect } from "react";
 import { useEditor } from "@tiptap/react";
@@ -10,7 +12,7 @@ import { TextAlign } from "@tiptap/extension-text-align";
 import { Link } from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 
-import { EmailTemplate, AvailableVariables } from "@/types/email";
+import type { EmailTemplate, AvailableVariables } from "@/types/email";
 import { BlockStyleExtension, CustomImageExtension } from "./extensions";
 import TopControlBar from "./components/TopControlBar";
 import SubjectBox from "./components/SubjectBox";
@@ -68,7 +70,7 @@ const DEFAULT_EMAIL_BODY = `<table style="background-color: #ffffff;" role="pres
     </tbody>
   </table>`;
 
-export default function EmailPaperCanvas({
+function EmailPaperCanvasContent({
   template,
   variables,
   onSave,
@@ -136,11 +138,6 @@ export default function EmailPaperCanvas({
   });
 
   // Sync external template updates safely
-  useEffect(() => {
-    setName(template.name);
-    setSubject(template.subject || "");
-    setIsActive(template.isActive);
-  }, [template.name, template.subject, template.isActive]);
 
 
   useEffect(() => {
@@ -149,7 +146,7 @@ export default function EmailPaperCanvas({
         editor.commands.setContent(template.body);
       }
     }
-  }, [template.id, editor]);
+  }, [template.body, editor]);
 
   if (!editor) return null;
 
@@ -277,10 +274,7 @@ export default function EmailPaperCanvas({
   const currentPadding = editor.getAttributes("paragraph").padding || "0px";
 
   // Active Image & Link Getters
-  const isImageNodeSelected =
-    editor.state.selection &&
-    (editor.state.selection as any).node &&
-    (editor.state.selection as any).node.type.name === "image";
+  const isImageNodeSelected = editor.state.selection instanceof NodeSelection && editor.state.selection.node.type.name === "image";
 
   const isImageActive = editor.isActive("image") || isImageNodeSelected;
 
@@ -298,9 +292,7 @@ export default function EmailPaperCanvas({
     if (!editor) return null;
     const { selection } = editor.state;
     if (
-      selection &&
-      (selection as any).node &&
-      (selection as any).node.type.name === "image"
+      selection instanceof NodeSelection && selection.node.type.name === "image"
     ) {
       return selection.from;
     }
@@ -511,4 +503,8 @@ export default function EmailPaperCanvas({
       />
     </form>
   );
+}
+
+export default function EmailPaperCanvas(props: EmailPaperCanvasProps) {
+  return <EmailPaperCanvasContent key={props.template.id + props.template.updatedAt} {...props} />;
 }

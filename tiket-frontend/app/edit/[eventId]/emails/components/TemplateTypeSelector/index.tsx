@@ -1,7 +1,8 @@
 "use client";
 
+
 import React from "react";
-import { EmailTemplateType, EmailTemplate } from "@/types/email";
+import type { EmailTemplateType, EmailTemplate } from "@/types/email";
 import {
   Mail,
   CheckCircle2,

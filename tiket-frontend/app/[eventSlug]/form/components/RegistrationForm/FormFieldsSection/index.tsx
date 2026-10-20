@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { FiAlertCircle } from "react-icons/fi";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import DynamicField from "../fields/DynamicField";
-import { FormFieldsSectionProps } from "../types";
+import type { FormFieldsSectionProps } from "../types";
 import styles from "./FormFieldsSection.module.css";
 
 export default function FormFieldsSection({

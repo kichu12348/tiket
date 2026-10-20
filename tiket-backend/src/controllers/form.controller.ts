@@ -1,3 +1,5 @@
+import { verifyEventPermission } from "../utils/permissions";
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
 import { formFields } from "@db/schema";
@@ -28,10 +30,10 @@ export const createField = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_forms");
     if (!isOwner) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Only the event creator can configure custom forms." });
     }
 
@@ -58,11 +60,7 @@ export const createField = async (
 
     return reply.status(201).send(createdField);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -100,14 +98,14 @@ export const updateField = async (
     const { eventId, fieldId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_forms");
     if (!isOwner) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Only the event creator can modify form fields." });
     }
 
-    const payload: any = {};
+    const payload: Partial<typeof formFields.$inferInsert> = {};
     if (body.name !== undefined) payload.name = body.name;
     if (body.label !== undefined) payload.label = body.label;
     if (body.fieldType !== undefined) payload.fieldType = body.fieldType;
@@ -129,11 +127,7 @@ export const updateField = async (
 
     return reply.send(updatedField);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -146,9 +140,9 @@ export const deleteField = async (
     const user = request.user as { id: string };
     const { eventId, fieldId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_forms");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const deletedFieldList = await db
@@ -162,11 +156,7 @@ export const deleteField = async (
 
     return reply.send({ message: "Form field successfully deleted." });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -179,9 +169,9 @@ export const deletePage = async (
     const user = request.user as { id: string };
     const { eventId, pageNum } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_forms");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     // Run transaction to ensure atomicity
@@ -200,10 +190,6 @@ export const deletePage = async (
 
     return reply.send({ message: `Page ${pageNum} successfully deleted and subsequent pages shifted.` });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };

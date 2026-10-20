@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Event } from '@/types/event';
+import type { Event } from '@/types/event';
 
 interface EventState {
   event: Event | null;

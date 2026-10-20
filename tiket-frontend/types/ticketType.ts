@@ -1,4 +1,5 @@
 export interface TicketType {
+  isHidden?: boolean;
   id: string;
   eventId: string;
   name: string;
@@ -17,6 +18,7 @@ export interface TicketType {
 }
 
 export interface CreateTicketTypePayload {
+  isHidden?: boolean;
   name: string;
   description?: string;
   price?: number;
@@ -29,4 +31,4 @@ export interface CreateTicketTypePayload {
   maxTransfers?: number;
 }
 
-export interface UpdateTicketTypePayload extends Partial<CreateTicketTypePayload> {}
+export type UpdateTicketTypePayload = Partial<CreateTicketTypePayload>;

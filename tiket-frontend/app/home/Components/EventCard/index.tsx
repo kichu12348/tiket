@@ -1,5 +1,5 @@
-import { MapPin, UsersRound, CalendarClock } from "lucide-react";
-import { Event } from "@/types/event";
+import { MapPin, UsersRound } from "lucide-react";
+import type { Event } from "@/types/event";
 import styles from "./EventCard.module.css";
 import { getImageUrl } from "@/constants/config";
 import Image from "@/components/Image";

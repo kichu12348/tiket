@@ -62,12 +62,11 @@ export default function ColorPicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Sync internal hex input when value changes externally
-  useEffect(() => {
-    if (value && value.replace("#", "") !== hexInput) {
-      setHexInput(value.replace("#", ""));
-    }
-  }, [value]);
+  const [previousValue, setPreviousValue] = useState(value);
+  if (value !== previousValue) {
+    setPreviousValue(value);
+    setHexInput(value?.replace("#", "") || "000000");
+  }
 
   const handleHexInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newHex = e.target.value.replace(/[^0-9A-Fa-f]/g, "");

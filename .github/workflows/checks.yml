@@ -1,0 +1,54 @@
+name: Checks
+on: [push, pull_request]
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tiket-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: bunx tsc --noEmit
+      - run: bun run lint
+      - run: bun run build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+          NEXT_PUBLIC_CDN_URL: http://127.0.0.1:3001
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: evaluation_only
+          POSTGRES_DB: tiket_evaluation
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: tiket-backend
+    env:
+      DATABASE_URL: postgres://postgres:evaluation_only@127.0.0.1:5432/tiket_evaluation
+      JWT_SECRET: evaluation_secret_only
+      FRONTEND_URL: http://localhost:3000
+      DEBUG: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run db:migrate
+      - run: bun run test
+        env:
+          RUN_INTEGRATION: 1
+      - run: bun run build

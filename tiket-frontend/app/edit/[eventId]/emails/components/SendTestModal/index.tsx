@@ -1,8 +1,9 @@
 "use client";
 
+
 import React, { useState } from "react";
 import Modal from "@/components/Modal";
-import { Send, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import styles from "./SendTestModal.module.css";
 
 interface SendTestModalProps {
@@ -46,7 +47,7 @@ export default function SendTestModal({
     >
       <form onSubmit={handleSubmit} className={styles.formBody}>
         <p className={styles.infoText}>
-          Test email template <strong>"{templateName}"</strong> with sample event and attendee data.
+          Test email template <strong>&quot;{templateName}&quot;</strong> with sample event and attendee data.
         </p>
 
         <div className={styles.fieldGroup}>

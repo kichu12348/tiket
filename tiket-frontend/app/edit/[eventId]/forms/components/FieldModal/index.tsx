@@ -1,28 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
-import {
-  ChevronLeft,
-  Type,
-  AlignLeft,
-  List,
-  CheckSquare,
-  Calendar,
-  Mail,
-  Hash,
-  X,
-  Trash2,
-  Phone,
-  ChevronDown,
-  CircleDot,
-  CalendarClock,
-  Star,
-  Clock,
-  Link,
-  Upload,
-} from "lucide-react";
+import React, { useState, useRef } from "react";
+import { ChevronLeft, Type, AlignLeft, List, CheckSquare, Calendar, Mail, Hash, X, Trash2, Phone, ChevronDown, CircleDot, CalendarClock, Star, Clock, Link, Upload } from "lucide-react";
 import Modal from "@/components/Modal";
 import { confirm } from "@/components/ConfirmModal";
 import Switch from "@/components/Switch";
-import { LocalField, FieldType, FIELD_TYPES } from "../../types";
+import type { LocalField, FieldType } from "../../types";
+import { FIELD_TYPES } from "../../types";
 import styles from "./FieldModal.module.css";
 import { toast } from "sonner";
 
@@ -36,6 +18,7 @@ interface Props {
 }
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
+  file: <Upload size={18} />,
   text: <Type size={18} />,
   long_text: <AlignLeft size={18} />,
   email: <Mail size={18} />,
@@ -54,6 +37,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 const TYPE_DESCRIPTIONS: Record<string, string> = {
+  file: "Collect a private registration file",
   text: "Ask for a free-form response",
   long_text: "Ask for a multi-line response",
   email: "Ask for an email address",
@@ -71,7 +55,7 @@ const TYPE_DESCRIPTIONS: Record<string, string> = {
   select: "Let the guest choose from a list of options",
 };
 
-export default function FieldModal({
+function FieldModalContent({
   isOpen,
   onClose,
   mode,
@@ -79,51 +63,25 @@ export default function FieldModal({
   onSave,
   onDelete,
 }: Props) {
-  const [step, setStep] = useState<"type" | "details">("type");
-  const [fieldType, setFieldType] = useState<FieldType>("text");
-  const [label, setLabel] = useState("");
-  const [isRequired, setIsRequired] = useState(false);
+  const [step, setStep] = useState<"type" | "details">(mode === "edit" ? "details" : "type");
+  const [fieldType, setFieldType] = useState<FieldType>(initialField?.fieldType ?? "text");
+  const [label, setLabel] = useState(initialField?.label ?? "");
+  const [isRequired, setIsRequired] = useState(initialField?.isRequired ?? false);
 
-  const [options, setOptions] = useState<string[]>([]);
+  const [options, setOptions] = useState<string[]>(initialField?.options ?? []);
   const [tagInput, setTagInput] = useState("");
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
 
-  const [minOptions, setMinOptions] = useState<number | "">(0);
-  const [maxOptions, setMaxOptions] = useState<number | "">("");
+  const [minOptions, setMinOptions] = useState<number | "">(initialField?.minOptions ?? 0);
+  const [maxOptions, setMaxOptions] = useState<number | "">(initialField?.maxOptions ?? "");
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const optionSetRef = useRef<Set<string>>(new Set());
+  const optionSetRef = useRef<Set<string>>(new Set(initialField?.options ?? []));
 
-  useEffect(() => {
-    if (isOpen) {
-      if (mode === "edit" && initialField) {
-        setStep("details");
-        setFieldType(initialField.fieldType);
-        setLabel(initialField.label);
-        setIsRequired(initialField.isRequired);
-        setOptions(initialField.options || []);
-        optionSetRef.current = new Set(initialField.options || []);
-        setMinOptions(initialField.minOptions ?? 0);
-        setMaxOptions(initialField.maxOptions ?? "");
-      } else {
-        setStep("type");
-        setFieldType("text");
-        setLabel("");
-        setIsRequired(false);
-        setOptions([]);
-        optionSetRef.current = new Set();
-        setTagInput("");
-        setIsBulkAdding(false);
-        setIsDraggingFile(false);
-        setMinOptions(0);
-        setMaxOptions("");
-      }
-    }
-  }, [isOpen, mode, initialField]);
 
   const handleTypeSelect = (type: FieldType) => {
     setFieldType(type);
@@ -307,16 +265,6 @@ export default function FieldModal({
     );
   };
 
-  useEffect(() => {
-    if (fieldType === "multi_select" && options.length > 0) {
-      if (maxOptions !== "" && Number(maxOptions) > options.length) {
-        setMaxOptions(options.length);
-      }
-      if (minOptions !== "" && Number(minOptions) > options.length) {
-        setMinOptions(options.length);
-      }
-    }
-  }, [options.length, maxOptions, minOptions, fieldType]);
 
   if (!isOpen) return null;
 
@@ -549,4 +497,8 @@ export default function FieldModal({
       )}
     </Modal>
   );
+}
+
+export default function FieldModal(props: Props) {
+  return props.isOpen ? <FieldModalContent key={props.initialField?.localId ?? "new"} {...props} /> : null;
 }

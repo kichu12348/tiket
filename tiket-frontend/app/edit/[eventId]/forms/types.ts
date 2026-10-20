@@ -1,4 +1,4 @@
-import { FieldType } from "@/types/form";
+import type { FieldType } from "@/types/form";
 
 export { FIELD_TYPES } from "@/types/form";
 export type { FieldType } from "@/types/form";

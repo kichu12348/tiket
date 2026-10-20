@@ -1,7 +1,8 @@
 "use client";
 
+
 import React from "react";
-import { AvailableVariables } from "@/types/email";
+import type { AvailableVariables } from "@/types/email";
 import { Eye, Smartphone, Monitor } from "lucide-react";
 import styles from "./LivePreviewPane.module.css";
 

@@ -7,9 +7,21 @@ export const MAP_ID = process.env.NEXT_PUBLIC_MAP_ID!;
 
 //constants
 export const TOKEN_KEY = "authToken";
-export const MAX_AGE = 63072000;
+export const MAX_AGE = 30 * 24 * 60 * 60;
 
 export const API_ENDPOINTS = {
+  COMMERCE: {
+    PERMISSIONS: (id: string) => `/api/commerce/${id}/permissions`,
+    APPROVALS: (id: string) => `/api/commerce/${id}/approvals`,
+    AVAILABILITY: (id: string) => `/api/commerce/${id}/availability`,
+    FINANCE: (id: string) => `/api/commerce/${id}/finance`,
+    COUPONS: (id: string) => `/api/commerce/${id}/coupons`,
+    REFUND: (id: string, order: string) => `/api/commerce/${id}/orders/${order}/refunds`,
+    DECISION: (id: string, order: string) => `/api/commerce/${id}/orders/${order}/decision`,
+  },
+  REALTIME: { CONNECT: (id: string) => `/api/realtime/events/${id}/connect`, SOCKET: "/api/realtime/ws" },
+  CONNECTIONS: { MAIL: (id: string) => `/api/connections/events/${id}/mail`, UPLOAD: "/api/connections/uploads", COMPLETE_UPLOAD: (id: string) => `/api/connections/uploads/${id}/complete`, FILE: (id: string) => `/api/connections/uploads/${id}` },
+  AUTH: { ME: "/api/auth/me" },
   BACKEND: {
     AUTH: {
       PASSWORD: `${API_URL}/api/auth/password`,
@@ -18,6 +30,7 @@ export const API_ENDPOINTS = {
     },
   },
   FRONTEND: {
+    REALTIME_CONNECT: "/api/realtime/connect",
     AUTH: {
       PASSWORD: "/api/auth/password",
       OTP_SEND: "/api/auth/otp/send",
@@ -58,9 +71,13 @@ export const API_ENDPOINTS = {
     GET: (ticketId: string) => `/api/tickets/${ticketId}`, // To be implemented in backend
   },
   ORDERS: {
+    QUOTE: "/api/orders/quote",
+    GET: (id: string) => `/api/orders/${id}`,
+    RESUME: (key: string) => `/api/orders/resume/${key}`,
+    CANCEL: (id: string) => `/api/orders/${id}/cancel`,
     CREATE: `/api/orders`,
-    PAY: (orderId: string) => `/api/orders/${orderId}/pay`,
   },
+  CHECK_IN: "/api/check-ins/scan",
   PAYMENTS: {
     VERIFY: `/api/payments/verify`,
     WEBHOOK: `/api/payments/webhook`,

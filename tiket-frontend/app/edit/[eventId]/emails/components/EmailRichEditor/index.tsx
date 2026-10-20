@@ -1,24 +1,13 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { Link } from "@tiptap/extension-link";
 import { Image } from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import {
-  Bold,
-  Italic,
-  Heading1,
-  Heading2,
-  List,
-  ListOrdered,
-  Quote,
-  Minus,
-  Link as LinkIcon,
-  MousePointerClick,
-  X,
-} from "lucide-react";
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Minus, Link as LinkIcon, MousePointerClick } from "lucide-react";
 import Modal from "@/components/Modal";
 import styles from "./EmailRichEditor.module.css";
 

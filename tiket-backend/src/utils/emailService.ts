@@ -1,3 +1,5 @@
+import { deliverMail } from "../services/mail.service";
+import { sanitizeRichText } from "./html";
 import db from "@db";
 import { emailLogs, emailTemplates } from "@db/schema";
 import { eq, and } from "drizzle-orm";
@@ -46,17 +48,17 @@ export function interpolateTemplate(
 
       const [domain, key] = parts;
       if (domain === "event" && data.event) {
-        return (data.event as any)[key] ?? match;
+        return Reflect.get(data.event, key!) ?? match;
       }
       if (domain === "attendee" && data.attendee) {
-        return (data.attendee as any)[key] ?? match;
+        return Reflect.get(data.attendee, key!) ?? match;
       }
       if (domain === "ticket" && data.ticket) {
         if (key === "qrCodeUrl") {
           const qrData = data.ticket.qrCode || "TKT-SAMPLE-12345";
           return `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=300&margin=1`;
         }
-        return (data.ticket as any)[key] ?? match;
+        return Reflect.get(data.ticket, key!) ?? match;
       }
       if (domain === "form" && data.form) {
         return data.form[key] ?? match;
@@ -92,20 +94,14 @@ export async function sendEmail(options: SendEmailOptions) {
   let errorMessage: string | undefined = undefined;
 
   try {
-    // -------------------------------------------------------------
-    // Developer placeholder: Email content log
-    // -------------------------------------------------------------
-    console.log("==========================================");
-    console.log(
-      `[EMAIL DISPATCH] To: ${options.recipientName || "Attendee"} <${options.recipientEmail}>`,
+    await deliverMail(
+      {
+        ...options,
+        subject: interpolatedSubject,
+        body: sanitizeRichText(interpolatedBody),
+      },
+      options.eventId,
     );
-    console.log(`[EMAIL DISPATCH] Subject: ${interpolatedSubject}`);
-    console.log(`[EMAIL DISPATCH] Event ID: ${options.eventId}`);
-    console.log(
-      `[EMAIL DISPATCH] Body Snippet: ${interpolatedBody.substring(0, 150)}...`,
-    );
-    console.log("==========================================");
-
     // Save record to email_logs
     const [log] = await db
       .insert(emailLogs)
@@ -121,7 +117,7 @@ export async function sendEmail(options: SendEmailOptions) {
       .returning();
 
     return { success: true, log };
-  } catch (error: any) {
+  } catch (error) {
     console.error("[EMAIL DISPATCH ERROR]", error);
     try {
       await db.insert(emailLogs).values({
@@ -131,12 +127,17 @@ export async function sendEmail(options: SendEmailOptions) {
         recipientName: options.recipientName || null,
         subject: interpolatedSubject,
         status: "failed",
-        errorMessage: error.message || "Failed to log email",
+        errorMessage:
+          (error instanceof Error ? error.message : "Email delivery failed") ||
+          "Failed to log email",
       });
     } catch (e) {
       // Ignore fallback log error
     }
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Email delivery failed",
+    };
   }
 }
 

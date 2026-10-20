@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { TicketType } from "@/types/ticketType";
-import { FormField } from "@/types/form";
+import type { TicketType } from "@/types/ticketType";
+import type { FormField } from "@/types/form";
 
 /** Returns true when a ticket type is currently on sale. */
 export function isTicketActive(tt: TicketType): boolean {
@@ -89,7 +89,7 @@ export function buildZodSchema(fields: FormField[]): z.ZodObject<z.ZodRawShape> 
         `${field.label} is required`,
       );
     } else {
-      validator = validator.optional();
+      validator = z.union([validator, z.literal("")]).optional();
     }
 
     shape[field.id] = validator;
@@ -110,7 +110,7 @@ export function buildFormResponses(
     .map((field) => {
       const val = data[field.id];
       if (val === undefined || val === null || val === "") return null;
-      const responseValue = Array.isArray(val) ? val.join(",") : String(val);
+      const responseValue = Array.isArray(val) ? JSON.stringify(val) : String(val);
       return { fieldId: field.id, responseValue };
     })
     .filter(Boolean) as { fieldId: string; responseValue: string }[];

@@ -1,6 +1,8 @@
 "use client";
+import { getErrorMessage } from "@/lib/errors";
 
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useEventStore } from "@/store/useEventStore";
 import { updateEvent, updateEventSlug } from "@/api/events";
 import { toast } from "sonner";
@@ -12,23 +14,16 @@ import type { Event } from "@/types/event";
 
 type EventStatus = Event["status"];
 
-export default function EditSettingsPage() {
-  const { event, updateEventLocally } = useEventStore();
+function SettingsForm({ event }: { event: Event }) {
+  const { updateEventLocally } = useEventStore();
 
-  const [slug, setSlug] = useState("");
+  const [slug, setSlug] = useState(event.slug);
 
-  const [requireApproval, setRequireApproval] = useState(false);
-  const [status, setStatus] = useState<EventStatus>("draft");
+  const [requireApproval, setRequireApproval] = useState(event.requireApproval);
+  const [status, setStatus] = useState<EventStatus>(event.status);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingSlug, setIsSubmittingSlug] = useState(false);
 
-  useEffect(() => {
-    if (event) {
-      setSlug(event.slug || "");
-      setRequireApproval(event.requireApproval || false);
-      setStatus(event.status || "draft");
-    }
-  }, [event]);
 
   const hasChanges = () => {
     if (!event) return false;
@@ -69,8 +64,8 @@ export default function EditSettingsPage() {
       );
       updateEventLocally({ slug: newSlugVal });
       toast.success(message);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to update slug.");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update slug.");
     } finally {
       setIsSubmittingSlug(false);
     }
@@ -90,8 +85,8 @@ export default function EditSettingsPage() {
       const updated = await updateEvent(event.id, payload);
       updateEventLocally({ ...updated });
       toast.success("Settings updated successfully!");
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to update settings.");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to update settings.");
     } finally {
       setIsSubmitting(false);
     }
@@ -118,7 +113,7 @@ export default function EditSettingsPage() {
           <div className={styles.slugContainer}>
             <div className={styles.slugInputWrapper}>
               <span className={styles.slugPrefix}>
-                {window.location.origin.replace(/.*?\/\//, "") + "/"}
+                {"Event URL /"}
               </span>
               <input
                 type="text"
@@ -209,4 +204,9 @@ export default function EditSettingsPage() {
       </button>
     </div>
   );
+}
+
+export default function EditSettingsPage() {
+  const event = useEventStore(state => state.event);
+  return event ? <SettingsForm key={event.id} event={event} /> : null;
 }

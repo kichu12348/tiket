@@ -1,14 +1,16 @@
+import type { LocationDetails } from "@/types/event";
 import { useState, useRef, useCallback, useEffect } from "react";
 import styles from "./LocationPicker.module.css";
 import Dropdown from "../Dropdown";
 import { MapPin, Link as LinkIcon, Plus, Minus } from "lucide-react";
+import type {
+  MapMouseEvent} from "@vis.gl/react-google-maps";
 import {
   APIProvider,
   Map,
   AdvancedMarker,
   useMap,
   useMapsLibrary,
-  MapMouseEvent,
   MapControl,
   ControlPosition,
   ColorScheme,
@@ -17,10 +19,10 @@ import { GOOGLE_MAPS_API_KEY, MAP_ID } from "@/constants/config";
 
 interface LocationPickerProps {
   locationType: "online" | "offline" | "hybrid";
-  locationDetails: any;
+  locationDetails: LocationDetails | null;
   virtualLink: string;
   onChangeLocationType: (type: "online" | "offline" | "hybrid") => void;
-  onChangeLocationDetails: (val: any) => void;
+  onChangeLocationDetails: (val: LocationDetails | null) => void;
   onChangeVirtualLink: (val: string) => void;
 }
 
@@ -45,7 +47,7 @@ function formatDetails(results: google.maps.GeocoderResult[]) {
   let state = "";
   let country = "";
   if (results[0].address_components) {
-    results[0].address_components.forEach((component: any) => {
+    results[0].address_components.forEach((component) => {
       if (component.types.includes("locality")) {
         city = component.long_name;
       }
@@ -101,19 +103,19 @@ function LocationPickerInner({
   const [mapCenter, setMapCenter] = useState<{
     lat: number;
     lng: number;
-  } | null>(null);
+  } | null>(() => locationDetails?.lat !== undefined && locationDetails?.lng !== undefined ? { lat: locationDetails.lat, lng: locationDetails.lng } : null);
   const [markerPosition, setMarkerPosition] = useState<{
     lat: number;
     lng: number;
-  } | null>(null);
+  } | null>(() => locationDetails?.lat !== undefined && locationDetails?.lng !== undefined ? { lat: locationDetails.lat, lng: locationDetails.lng } : null);
   const [zoomAction, setZoomAction] = useState<"in" | "out" | null>(null);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+  const [searchValue, setSearchValue] = useState(locationDetails?.address || locationDetails?.name || "");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(true);
-  const prevLocationDetailsRef = useRef<any>(null);
+  const [previousDetails, setPreviousDetails] = useState(locationDetails);
 
   useEffect(() => {
     isMounted.current = true;
@@ -122,32 +124,14 @@ function LocationPickerInner({
     };
   }, []);
 
-  // Sync prop -> local state on mount or when locationDetails changes externally
-  useEffect(() => {
-    if (!locationDetails) {
-      setSearchValue("");
-      prevLocationDetailsRef.current = locationDetails;
-      return;
-    }
-
-    // Prevent feedback loops
-    if (locationDetails === prevLocationDetailsRef.current) return;
-    prevLocationDetailsRef.current = locationDetails;
-
-    const parsed = typeof locationDetails === 'string' ? (() => { try { return JSON.parse(locationDetails) } catch { return locationDetails } })() : locationDetails;
-    if (parsed && typeof parsed === 'object') {
-      if (parsed.address || parsed.name) {
-        setSearchValue(parsed.address || parsed.name);
-      }
-      if (parsed.lat && parsed.lng) {
-        const pos = { lat: parsed.lat, lng: parsed.lng };
-        setMarkerPosition(pos);
-        setMapCenter(pos);
-      }
-    } else if (typeof parsed === 'string') {
-      setSearchValue(parsed);
-    }
-  }, [locationDetails]);
+  if (locationDetails !== previousDetails) {
+    setPreviousDetails(locationDetails);
+    setSearchValue(locationDetails?.address || locationDetails?.name || "");
+    const pos = locationDetails?.lat !== undefined && locationDetails.lng !== undefined
+      ? { lat: locationDetails.lat, lng: locationDetails.lng } : null;
+    setMarkerPosition(pos);
+    setMapCenter(pos);
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -224,9 +208,9 @@ function LocationPickerInner({
         if (status === "OK" && results && results[0]) {
           const loc = results[0].geometry.location;
           const lat =
-            typeof loc.lat === "function" ? loc.lat() : (loc as any).lat;
+            loc.lat();
           const lng =
-            typeof loc.lng === "function" ? loc.lng() : (loc as any).lng;
+            loc.lng();
           const newPos = { lat, lng };
           setMarkerPosition(newPos);
           setMapCenter(newPos);
@@ -254,7 +238,7 @@ function LocationPickerInner({
                   state,
                   country,
                 };
-                prevLocationDetailsRef.current = newData;
+                setPreviousDetails(newData);
                 onChangeLocationDetails(newData);
               });
           } else {
@@ -268,17 +252,17 @@ function LocationPickerInner({
               state,
               country,
             };
-            prevLocationDetailsRef.current = newData;
+            setPreviousDetails(newData);
             onChangeLocationDetails(newData);
           }
         } else {
-          prevLocationDetailsRef.current = description;
-          onChangeLocationDetails(description);
+          setPreviousDetails({ address: description });
+          onChangeLocationDetails({ address: description });
         }
       });
     } else {
-      prevLocationDetailsRef.current = description;
-      onChangeLocationDetails(description);
+      setPreviousDetails({ address: description });
+      onChangeLocationDetails({ address: description });
     }
   };
 
@@ -326,7 +310,7 @@ function LocationPickerInner({
                     state,
                     country,
                   };
-                  prevLocationDetailsRef.current = newData;
+                  setPreviousDetails(newData);
                   onChangeLocationDetails(newData);
                 });
             } else {
@@ -340,7 +324,7 @@ function LocationPickerInner({
                 state,
                 country,
               };
-              prevLocationDetailsRef.current = newData;
+              setPreviousDetails(newData);
               onChangeLocationDetails(newData);
             }
           }
@@ -365,7 +349,7 @@ function LocationPickerInner({
       <Dropdown
         options={TYPE_OPTIONS}
         value={locationType}
-        onChange={(val) => onChangeLocationType(val as any)}
+        onChange={(val) => onChangeLocationType(val === "online" || val === "hybrid" ? val : "offline")}
         className={styles.typeDropdown}
         alignSelf="flex-end"
         popoverAlign="right"
@@ -398,7 +382,7 @@ function LocationPickerInner({
                       lat: 0,
                       lng: 0,
                     };
-                    prevLocationDetailsRef.current = newData;
+                    setPreviousDetails(newData);
                     onChangeLocationDetails(newData);
                   }}
                   onFocus={() => setIsOpen(true)}

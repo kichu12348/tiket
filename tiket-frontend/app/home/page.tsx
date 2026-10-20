@@ -1,16 +1,19 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import styles from "./Home.module.css";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, LogOut } from "lucide-react";
+import { useToken } from "@/hooks/useToken";
 import { BsCalendar4Week } from "react-icons/bs";
 import EventList from "./Components/EventList";
 import { getMyEvents } from "./api/events";
 import SkeletonList from "./Components/SkeletonList";
-import { Event } from "@/types/event";
+import type { Event } from "@/types/event";
 
 export default function Home() {
+  const { logout } = useToken();
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +50,7 @@ export default function Home() {
             <button className={styles.softIconBtn} aria-label="Search">
               <Search size={18} />
             </button>
-            <div className={styles.avatar}>:)</div>
+            <button className={styles.softIconBtn} onClick={logout} aria-label="Sign out" title="Sign out"><LogOut size={18} /></button>
           </div>
         </header>
 
@@ -83,7 +86,7 @@ export default function Home() {
 
               <h2 className={styles.emptyTitle}>No events here</h2>
               <p className={styles.emptySubtitle}>
-                You haven't scheduled anything yet. Create your first event to
+                You haven&apos;t scheduled anything yet. Create your first event to
                 get started.
               </p>
             </div>

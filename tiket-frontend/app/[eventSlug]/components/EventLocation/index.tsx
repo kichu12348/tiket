@@ -1,6 +1,6 @@
 import React from "react";
 import styles from "./EventLocation.module.css";
-import { Event } from "@/types/event";
+import type { Event } from "@/types/event";
 import { GOOGLE_MAPS_API_KEY } from "@/constants/config";
 import { FiMap } from "react-icons/fi";
 

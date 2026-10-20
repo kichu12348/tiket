@@ -1,6 +1,7 @@
+import { getErrorMessage, getErrorStatus } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import { getTicketPass } from "@/api/tickets";
-import { TicketPassData } from "@/types/ticket";
+import type { TicketPassData } from "@/types/ticket";
 
 export function useTicketPass(ticketId: string | undefined) {
   const [ticket, setTicket] = useState<TicketPassData | null>(null);
@@ -24,13 +25,9 @@ export function useTicketPass(ticketId: string | undefined) {
           setError("Ticket pass not found.");
           setStatusCode(404);
         }
-      } catch (err: any) {
-        const status = err?.response?.status;
-        const message =
-          err?.response?.data?.error ||
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load ticket pass.";
+      } catch (err: unknown) {
+        const status = getErrorStatus(err);
+        const message = getErrorMessage(err) || "Failed to load ticket pass.";
 
         setStatusCode(status);
         setError(message);

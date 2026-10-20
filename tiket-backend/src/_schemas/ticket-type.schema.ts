@@ -3,16 +3,17 @@ const ticketTypeObj = {
   properties: {
     id: { type: "string" },
     eventId: { type: "string" },
+    isHidden: { type: "boolean" },
     name: { type: "string" },
     description: { type: ["string", "null"] },
-    price: { type: "string" }, 
-    quantityLimit: { type: ["integer", "null"] },
+    price: { type: "string" },
+    quantityLimit: { type: ["integer", "null"], minimum: 1 },
     saleStart: { type: ["string", "null"], format: "date-time" },
     saleEnd: { type: ["string", "null"], format: "date-time" },
     isRefundable: { type: "boolean" },
     refundableUntil: { type: ["string", "null"], format: "date-time" },
     isTransferable: { type: "boolean" },
-    maxTransfers: { type: "integer" },
+    maxTransfers: { type: "integer", minimum: 0, maximum: 100 },
     sortOrder: { type: "integer" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
@@ -35,16 +36,17 @@ export const createTicketTypeSchema = {
       type: "object",
       required: ["name"],
       properties: {
-        name: { type: "string", minLength: 2 },
+        isHidden: { type: "boolean" },
+    name: { type: "string", minLength: 2 },
         description: { type: "string" },
-        price: { type: "number" }, 
-        quantityLimit: { type: "integer" },
+        price: { type: "number", minimum: 0, maximum: 10000000 },
+        quantityLimit: { type: ["integer", "null"], minimum: 1 },
         saleStart: { type: "string", format: "date-time" },
         saleEnd: { type: "string", format: "date-time" },
         isRefundable: { type: "boolean" },
         refundableUntil: { type: "string", format: "date-time" },
         isTransferable: { type: "boolean" },
-        maxTransfers: { type: "integer" },
+        maxTransfers: { type: "integer", minimum: 0, maximum: 100 },
       },
     },
     response: {
@@ -80,7 +82,7 @@ export const updateTicketTypeSchema = {
     params: {
       type: "object",
       required: ["eventId", "ticketTypeId"],
-      properties: { 
+      properties: {
         eventId: { type: "string" },
         ticketTypeId: { type: "string" }
       },
@@ -88,16 +90,17 @@ export const updateTicketTypeSchema = {
     body: {
       type: "object",
       properties: {
-        name: { type: "string", minLength: 2 },
+        isHidden: { type: "boolean" },
+    name: { type: "string", minLength: 2 },
         description: { type: "string" },
-        price: { type: "number" },
-        quantityLimit: { type: ["integer", "null"] },
+        price: { type: "number", minimum: 0, maximum: 10000000 },
+        quantityLimit: { type: ["integer", "null"], minimum: 1 },
         saleStart: { type: ["string", "null"], format: "date-time" },
         saleEnd: { type: ["string", "null"], format: "date-time" },
         isRefundable: { type: "boolean" },
         refundableUntil: { type: ["string", "null"], format: "date-time" },
         isTransferable: { type: "boolean" },
-        maxTransfers: { type: "integer" },
+        maxTransfers: { type: "integer", minimum: 0, maximum: 100 },
       },
       minProperties: 1,
     },
@@ -116,7 +119,7 @@ export const deleteTicketTypeSchema = {
     params: {
       type: "object",
       required: ["eventId", "ticketTypeId"],
-      properties: { 
+      properties: {
         eventId: { type: "string" },
         ticketTypeId: { type: "string" }
       },

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Check, ChevronLeft } from "lucide-react";
-import { SuccessCardProps } from "../types";
+import type { SuccessCardProps } from "../types";
 import styles from "./SuccessCard.module.css";
 
 export default function SuccessCard({ event, createdTicketId }: SuccessCardProps) {

@@ -1,12 +1,12 @@
 import api from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/config";
-import {
+import type {
   TicketType,
   CreateTicketTypePayload,
   UpdateTicketTypePayload,
 } from "@/types/ticketType";
 
-import { TicketPassData } from "@/types/ticket";
+import type { TicketPassData } from "@/types/ticket";
 
 export const getTicketTypes = async (eventId: string): Promise<TicketType[]> => {
   const response = await api.get(API_ENDPOINTS.TICKET_TYPES.GET_ALL(eventId));

@@ -1,26 +1,23 @@
 "use client";
 
+
+import { useEventRevision } from "@/hooks/useLiveEvent";
+import { useAvailability } from "@/hooks/useAvailability";
 import { useEffect, useState } from "react";
 import { useEventStore } from "@/store/useEventStore";
 import { format } from "date-fns";
 import Link from "next/link";
-import { getEventHosts, EventHost } from "@/api/events";
+import type { EventHost } from "@/api/events";
+import { getEventHosts } from "@/api/events";
 import { getAttendees } from "@/api/attendees";
-import { AttendeeItem } from "@/types/attendee";
-import {
-  Calendar,
-  MapPin,
-  Users,
-  ExternalLink,
-  Edit2,
-  Clock,
-  ShieldCheck,
-  MailX,
-} from "lucide-react";
+import type { AttendeeItem } from "@/types/attendee";
+import { Calendar, MapPin, Users, ExternalLink, Edit2, Clock } from "lucide-react";
 import styles from "./Overview.module.css";
 
 export default function EditOverviewPage() {
   const { event } = useEventStore();
+  const revision = useEventRevision(event?.id || "");
+  const availability = useAvailability(event?.id || "");
 
   const [hosts, setHosts] = useState<EventHost[]>([]);
   const [isLoadingHosts, setIsLoadingHosts] = useState(true);
@@ -36,7 +33,6 @@ export default function EditOverviewPage() {
         .catch(console.error)
         .finally(() => setIsLoadingHosts(false));
 
-      setIsLoadingAttendees(true);
       getAttendees(event.id, { limit: 5 })
         .then((res) => {
           setRecentAttendees(res.attendees || []);
@@ -45,7 +41,7 @@ export default function EditOverviewPage() {
         .catch(console.error)
         .finally(() => setIsLoadingAttendees(false));
     }
-  }, [event?.id]);
+  }, [event?.id, revision]);
 
   if (!event) return null;
 
@@ -123,7 +119,7 @@ export default function EditOverviewPage() {
           <div>
             <h2 className={styles.sectionTitle}>Event Recap</h2>
             <span className={styles.sectionSubtitle}>
-              Quick overview of your event's core details.
+              Quick overview of your event&apos;s core details.
             </span>
           </div>
         </div>
@@ -184,7 +180,7 @@ export default function EditOverviewPage() {
           <div>
             <h2 className={styles.sectionTitle}>At a Glance</h2>
             <span className={styles.sectionSubtitle}>
-              Registration progress and capacity.
+              Registration progress and capacity. {availability?.remaining === null ? "Unlimited capacity" : availability ? `${availability.remaining} spots available (including checkout holds).` : ""}
             </span>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Ticket, ChevronLeft } from "lucide-react";
-import { EmptyStateProps } from "../types";
+import type { EmptyStateProps } from "../types";
 import styles from "./EmptyState.module.css";
 
 export default function EmptyState({ slug }: EmptyStateProps) {

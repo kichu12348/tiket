@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { getFormFields, createFormField, updateFormField, deleteFormField } from "@/api/forms";
-import { FormField } from "@/types/form";
+import { FIELD_TYPES, type FieldType, type FormField } from "@/types/form";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import Modal from "@/components/Modal";
@@ -14,14 +15,6 @@ interface Props {
   eventId: string;
 }
 
-const FIELD_TYPES = [
-  { label: "Short Text", value: "text" },
-  { label: "Email", value: "email" },
-  { label: "Number", value: "number" },
-  { label: "Select (Dropdown)", value: "select" },
-  { label: "Checkbox", value: "checkbox" },
-  { label: "Date", value: "date" },
-];
 
 export default function RegistrationFormPanel({ eventId }: Props) {
   const [fields, setFields] = useState<FormField[]>([]);
@@ -32,27 +25,23 @@ export default function RegistrationFormPanel({ eventId }: Props) {
   // Form State
   const [name, setName] = useState("");
   const [label, setLabel] = useState("");
-  const [fieldType, setFieldType] = useState<"text" | "email" | "number" | "select" | "checkbox" | "date">("text");
+  const [fieldType, setFieldType] = useState<FieldType>("text");
   const [isRequired, setIsRequired] = useState(false);
   const [optionsStr, setOptionsStr] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchFields();
-  }, [eventId]);
-
-  const fetchFields = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getFormFields(eventId);
+  const fetchFields = useCallback(async () => {
+    return (getFormFields(eventId)).then(async (data) => {
       setFields(data?.sort((a, b) => a.sortOrder - b.sortOrder) || []);
-    } catch (error) {
+    }).catch((error: unknown) => {
       console.error("Failed to fetch form fields", error);
       toast.error("Failed to load registration form fields.");
-    } finally {
+    }).finally(() => {
       setIsLoading(false);
-    }
-  };
+    });
+  }, [eventId]);
+
+  useEffect(() => { void fetchFields(); }, [fetchFields]);
 
   const openModal = (field?: FormField) => {
     if (field) {
@@ -61,7 +50,7 @@ export default function RegistrationFormPanel({ eventId }: Props) {
       setLabel(field.label);
       setFieldType(field.fieldType);
       setIsRequired(field.isRequired);
-      setOptionsStr(field.options?.join(", ") || "");
+      setOptionsStr((Array.isArray(field.options) ? field.options : field.options?.choices)?.join(", ") || "");
     } else {
       setEditingId(null);
       setName("");
@@ -150,7 +139,7 @@ export default function RegistrationFormPanel({ eventId }: Props) {
                 </div>
                 <div className={styles.fieldMeta}>
                   Type: {FIELD_TYPES.find(t => t.value === field.fieldType)?.label || field.fieldType}
-                  {field.fieldType === 'select' && field.options && ` • Options: ${field.options.length}`}
+                  {field.fieldType === 'select' && field.options && ` • Options: ${(Array.isArray(field.options) ? field.options : field.options.choices).length}`}
                 </div>
               </div>
               <div className={styles.fieldActions}>
@@ -193,7 +182,7 @@ export default function RegistrationFormPanel({ eventId }: Props) {
             <Dropdown
               options={FIELD_TYPES}
               value={fieldType}
-              onChange={(val) => setFieldType(val as any)}
+              onChange={(val) => setFieldType(FIELD_TYPES.find(type => type.value === val)?.value ?? "text")}
             />
           </div>
           {fieldType === 'select' && (

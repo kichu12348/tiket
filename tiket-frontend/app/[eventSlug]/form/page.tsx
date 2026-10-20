@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { getEventBySlug, getMe } from "../api/eventApi";
 import { TOKEN_KEY } from "@/constants/config";
 import {

@@ -1,3 +1,6 @@
+import { verifyEventPermission } from "../utils/permissions";
+import { sanitizeRichText } from "../utils/html";
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
 import {
@@ -27,9 +30,9 @@ export const getEmailTemplates = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized access to event templates." });
+      return reply.status(403).send({ error: "Unauthorized access to event templates." });
     }
 
     const templateHeaders = await db
@@ -47,11 +50,7 @@ export const getEmailTemplates = async (
 
     return reply.send(templateHeaders);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -65,9 +64,9 @@ export const getEmailTemplateById = async (
     const user = request.user as { id: string };
     const { eventId, templateId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized access to event template." });
+      return reply.status(403).send({ error: "Unauthorized access to event template." });
     }
 
     const [template] = await db
@@ -81,11 +80,7 @@ export const getEmailTemplateById = async (
 
     return reply.send(template);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -109,9 +104,9 @@ export const createEmailTemplate = async (
     const { eventId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const [created] = await db
@@ -121,18 +116,14 @@ export const createEmailTemplate = async (
         name: body.name,
         type: body.type || "custom",
         subject: body.subject,
-        body: body.body,
+        body: sanitizeRichText(body.body),
         isActive: body.isActive !== undefined ? body.isActive : true,
       })
       .returning();
 
     return reply.status(201).send(created);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -155,9 +146,9 @@ export const updateEmailTemplate = async (
     const { eventId, templateId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const payload: any = { updatedAt: new Date() };
@@ -179,11 +170,7 @@ export const updateEmailTemplate = async (
 
     return reply.send(updated);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -198,9 +185,9 @@ export const deleteEmailTemplate = async (
     const user = request.user as { id: string };
     const { eventId, templateId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const deletedList = await db
@@ -214,11 +201,7 @@ export const deleteEmailTemplate = async (
 
     return reply.send({ message: "Email template deleted successfully." });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -233,9 +216,9 @@ export const resetEmailTemplate = async (
     const user = request.user as { id: string };
     const { eventId, templateId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const [existing] = await db
@@ -264,11 +247,7 @@ export const resetEmailTemplate = async (
 
     return reply.send(resetted);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -281,9 +260,9 @@ export const getAvailableVariables = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const [eventObj] = await db.select().from(events).where(eq(events.id, eventId));
@@ -313,8 +292,8 @@ export const getAvailableVariables = async (
         label: "Location / Venue",
         sample: eventObj?.locationType === "online" ? "Online Stream Link" : "Grand Convention Center",
       },
-      { key: "{{event.url}}", label: "Public Event URL", sample: `http://localhost:3000/${eventObj?.slug || "event-slug"}` },
-      { key: "{{event.passUrl}}", label: "Attendee Pass URL", sample: `http://localhost:3000/passes/sample-pass-id` },
+      { key: "{{event.url}}", label: "Public Event URL", sample: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/${eventObj?.slug || "event-slug"}` },
+      { key: "{{event.passUrl}}", label: "Attendee Pass URL", sample: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/sample-pass-id` },
     ];
 
     const attendeeVariables = [
@@ -345,11 +324,7 @@ export const getAvailableVariables = async (
       formVariables,
     });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -372,9 +347,9 @@ export const sendTestEmail = async (
     const { eventId } = request.params;
     const { recipientEmail, recipientName, subject, body, templateId } = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const [eventObj] = await db.select().from(events).where(eq(events.id, eventId));
@@ -389,8 +364,8 @@ export const sendTestEmail = async (
           ? new Date(eventObj.endDate).toLocaleString()
           : "Oct 24, 2026, 05:00 PM",
         location: eventObj?.locationType === "online" ? "Online Stream" : "Main Auditorium",
-        url: `http://localhost:3000/${eventObj?.slug || "sample-event"}`,
-        passUrl: `http://localhost:3000/passes/sample-pass-id`,
+        url: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/${eventObj?.slug || "sample-event"}`,
+        passUrl: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/sample-pass-id`,
       },
       attendee: {
         name: recipientName || "Test Recipient",
@@ -421,11 +396,7 @@ export const sendTestEmail = async (
       log: result.log,
     });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -448,9 +419,9 @@ export const sendBatchEmail = async (
     const { eventId } = request.params;
     const { targetGroup, customEmails, subject, body, templateId } = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const [eventObj] = await db.select().from(events).where(eq(events.id, eventId));
@@ -525,8 +496,8 @@ export const sendBatchEmail = async (
             ? new Date(eventObj.endDate).toLocaleString()
             : "",
           location: eventObj?.locationType === "online" ? "Online Stream" : "Venue",
-          url: `http://localhost:3000/${eventObj?.slug || ""}`,
-          passUrl: r.passId ? `http://localhost:3000/passes/${r.passId}` : "",
+          url: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/${eventObj?.slug || ""}`,
+          passUrl: r.passId ? `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/${r.passId}` : "",
         },
         attendee: {
           name: r.name,
@@ -537,7 +508,7 @@ export const sendBatchEmail = async (
         },
       };
 
-      await sendEmail({
+      const result = await sendEmail({
         eventId,
         templateId,
         recipientEmail: r.email,
@@ -547,7 +518,7 @@ export const sendBatchEmail = async (
         data,
       });
 
-      sentCount++;
+      if (result.success) sentCount++;
     }
 
     return reply.send({
@@ -555,11 +526,7 @@ export const sendBatchEmail = async (
       sentCount,
     });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -572,9 +539,9 @@ export const getEmailLogs = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const logs = await db
@@ -584,10 +551,6 @@ export const getEmailLogs = async (
 
     return reply.send(logs);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };

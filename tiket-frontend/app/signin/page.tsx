@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Signin() {
   const router = useRouter();
+  const returnTo = () => { const path = new URLSearchParams(window.location.search).get("redirect"); return path?.startsWith("/") && !path.startsWith("//") && !path.includes("\\") ? path : "/home"; };
   const { verifyOtp, sendOtp, loginWithPassword, isLoading, error, setError } =
     useAuth();
 
@@ -33,7 +35,7 @@ export default function Signin() {
       if (!otp) return;
       const res = await verifyOtp(email, otp);
       if (res.success) {
-        router.push("/home");
+        router.push(returnTo());
       }
       return;
     }
@@ -58,7 +60,7 @@ export default function Signin() {
     if (res.needsName) {
       setNeedsName(true);
     } else if (res.success) {
-      router.push("/home");
+      router.push(returnTo());
     }
   };
 

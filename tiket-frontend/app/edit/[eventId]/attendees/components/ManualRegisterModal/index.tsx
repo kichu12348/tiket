@@ -3,8 +3,8 @@ import { UserPlus, Mail, User, Ticket, FileText } from "lucide-react";
 import Modal from "@/components/Modal";
 import Dropdown from "@/components/Dropdown";
 import { Input } from "@/components/ui/input";
-import { TicketType } from "@/types/ticketType";
-import { ManualRegisterPayload } from "@/types/attendee";
+import type { TicketType } from "@/types/ticketType";
+import type { ManualRegisterPayload } from "@/types/attendee";
 import styles from "./ManualRegisterModal.module.css";
 
 interface ManualRegisterModalProps {

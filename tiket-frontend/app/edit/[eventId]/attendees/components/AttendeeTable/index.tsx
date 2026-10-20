@@ -6,7 +6,7 @@ import {
   ChevronRight,
   Users,
 } from "lucide-react";
-import { AttendeeItem } from "@/types/attendee";
+import type { AttendeeItem } from "@/types/attendee";
 import styles from "./AttendeeTable.module.css";
 
 interface AttendeeTableProps {

@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useParams } from "next/navigation";
 import { useAttendees } from "@/hooks/useAttendees";
 import AttendeeStats from "./components/AttendeeStats";
@@ -95,6 +96,7 @@ export default function AttendeesPage() {
       {/* Attendee Detail Modal */}
       {selectedTicketId && (
         <AttendeeDetailModal
+          key={selectedTicketId}
           eventId={eventId}
           detail={attendeeDetail}
           isLoading={isDetailLoading}

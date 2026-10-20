@@ -1,62 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState, type ImgHTMLAttributes } from "react";
+import { useCallback, useState, type ImgHTMLAttributes, type RefObject } from "react";
 import { ImageOff } from "lucide-react";
 import styles from "./Image.module.css";
 
 interface ImageProps extends ImgHTMLAttributes<HTMLImageElement> {
-  ref?: React.RefObject<HTMLImageElement | null>;
+  ref?: RefObject<HTMLImageElement | null>;
 }
 
-export default function Image({
-  ref = useRef(null),
-  loading = "lazy",
-  ...props
-}: ImageProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
+function ImageContent({ ref, loading = "lazy", alt = "", onLoad, onError, ...props }: ImageProps) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const attach = useCallback((node: HTMLImageElement | null) => {
+    if (ref) ref.current = node;
+    if (node?.complete) setStatus(node.naturalWidth > 0 ? "loaded" : "error");
+  }, [ref]);
+  if (status === "error") return <div role="img" aria-label={alt || "Image unavailable"} className={`${props.className || ""} ${styles.errorContainer}`}><ImageOff className={styles.errorIcon} /></div>;
+  return <img {...props} alt={alt} ref={attach} loading={loading}
+    onLoad={event => { setStatus("loaded"); onLoad?.(event); }}
+    onError={event => { setStatus("error"); onError?.(event); }}
+    className={`${props.className || ""} ${status === "loading" ? styles.shimmer : ""}`} />;
+}
 
-  useEffect(() => {
-    setIsLoading(true);
-    setIsError(false);
-    const img = ref.current;
-
-    if (img) {
-      if (img.complete) {
-        setIsLoading(false);
-        if (img.naturalWidth === 0) setIsError(true);
-      }
-
-      const handleLoad = () => setIsLoading(false);
-      const handleError = () => {
-        setIsError(true);
-        setIsLoading(false);
-      };
-
-      img.addEventListener("load", handleLoad);
-      img.addEventListener("error", handleError);
-
-      return () => {
-        img.removeEventListener("load", handleLoad);
-        img.removeEventListener("error", handleError);
-      };
-    }
-  }, [props.src]);
-
-  if (isError) {
-    return (
-      <div className={`${props.className || ""} ${styles.errorContainer}`}>
-        <ImageOff className={styles.errorIcon} />
-      </div>
-    );
-  }
-
-  return (
-    <img
-      {...props}
-      ref={ref}
-      loading={loading}
-      className={`${props.className || ""} ${isLoading ? styles.shimmer : ""}`}
-    />
-  );
+export default function Image(props: ImageProps) {
+  return <ImageContent key={String(props.src)} {...props} />;
 }

@@ -1,6 +1,11 @@
+import { allocatedByTier, emitEvent, expireHolds, lockEvent } from "../services/inventory.service";
+import { verifyEventPermission } from "../utils/permissions";
+import { handleControllerError } from "../utils/errors";
+import { sanitizeRichText } from "../utils/html";
+import { HttpError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
-import { events, users, eventRoles, eventTeamMembers } from "@db/schema";
+import { events, users, eventRoles, eventTeamMembers, orders, domainEvents, connectionTickets, uploads } from "@db/schema";
 import { generateSlug } from "@utils";
 import { seedDefaultTemplatesForEvent } from "../utils/emailService";
 import { eq, and, ne } from "drizzle-orm";
@@ -11,7 +16,7 @@ interface CreateEventBody {
   coverImage?: string;
   color?: string;
   locationType?: "online" | "offline" | "hybrid";
-  locationDetails?: string;
+  locationDetails?: { name?: string; address?: string; city?: string; state?: string; country?: string; placeId?: string; lat?: number; lng?: number; link?: string };
   startDate: string;
   endDate: string;
   timezone: string;
@@ -43,6 +48,8 @@ export const createEvent = async (
     // }
 
     const body = request.body;
+    if (body.startDate && body.endDate && new Date(body.endDate) <= new Date(body.startDate)) throw new HttpError(400, "Event end must follow start.");
+    if (body.capacity !== undefined && body.capacity !== null && body.capacity <= 0) throw new HttpError(400, "Capacity must be positive.");
 
     const slug = generateSlug(8);
 
@@ -62,7 +69,7 @@ export const createEvent = async (
       .insert(events)
       .values({
         title: body.title,
-        description: body.description,
+        description: body.description ? sanitizeRichText(body.description) : null,
         coverImage: body.coverImage,
         color: body.color,
         locationType: body.locationType || "offline",
@@ -95,15 +102,7 @@ export const createEvent = async (
 
     return reply.status(201).send(createdEvent);
   } catch (error) {
-    if (
-      (error as Error).message.includes("Authorization") ||
-      (error as Error).message.includes("jwt")
-    ) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    console.log(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -139,14 +138,7 @@ export const getMyEvents = async (
 
     return reply.send(myEventsList);
   } catch (error) {
-    if (
-      (error as Error).message.includes("Authorization") ||
-      (error as Error).message.includes("jwt")
-    ) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -171,7 +163,7 @@ export const getEventById = async (
       try {
         await request.jwtVerify();
         const user = request.user as { id: string };
-        if (event.organizationId !== user.id) {
+        if (event.organizationId !== user.id && !(await db.select({ id: eventTeamMembers.id }).from(eventTeamMembers).where(and(eq(eventTeamMembers.eventId, event.id), eq(eventTeamMembers.userId, user.id))).limit(1)).length) {
           return reply.status(404).send({ error: "Event not found" });
         }
       } catch (err) {
@@ -260,13 +252,15 @@ export const updateEvent = async (
       return reply.status(404).send({ error: "Event not found" });
     }
 
-    if (eventToUpdate.organizationId !== user.id) {
+    if (!await verifyEventPermission(eventId, user.id, "manage_settings")) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Unauthorized to modify this event" });
     }
 
-    const payload: any = { ...body, updatedAt: new Date() };
+    const { startDate, endDate, registrationStart, registrationEnd, ...details } = body;
+    const payload: Partial<typeof events.$inferInsert> = { ...details, updatedAt: new Date() };
+    if (body.description !== undefined) payload.description = sanitizeRichText(body.description);
     if (body.startDate) payload.startDate = new Date(body.startDate);
     if (body.endDate) payload.endDate = new Date(body.endDate);
     if (body.timezone) payload.timezone = body.timezone;
@@ -279,12 +273,14 @@ export const updateEvent = async (
     if (body.capacity !== undefined) payload.capacity = body.capacity;
     if (body.status !== undefined) payload.status = body.status;
 
-    const updatedEventList = await db
-      .update(events)
-      .set(payload)
-      .where(eq(events.id, eventId))
-      .returning();
-
+    const updatedEventList = await db.transaction(async tx => {
+      const current = await lockEvent(tx, eventId); await expireHolds(tx, eventId);
+      const start = payload.startDate ?? current.startDate; const end = payload.endDate ?? current.endDate;
+      const registrationStart = payload.registrationStart ?? current.registrationStart; const registrationEnd = payload.registrationEnd ?? current.registrationEnd;
+      if (end <= start || registrationStart && registrationEnd && registrationEnd <= registrationStart || registrationEnd && registrationEnd > end) throw new HttpError(400, "Invalid event or registration window.");
+      if (body.capacity !== undefined && body.capacity !== null && (body.capacity <= 0 || body.capacity < [...(await allocatedByTier(tx, eventId)).values()].reduce((a, b) => a + b, 0))) throw new HttpError(409, "Capacity cannot be lower than allocated tickets.");
+      const result = await tx.update(events).set(payload).where(eq(events.id, eventId)).returning(); await emitEvent(tx, eventId, "event.changed"); return result;
+    });
     const updatedEvent = updatedEventList[0];
     if (!updatedEvent) {
       return reply
@@ -294,14 +290,7 @@ export const updateEvent = async (
 
     return reply.send(updatedEvent);
   } catch (error) {
-    if (
-      (error as Error).message.includes("Authorization") ||
-      (error as Error).message.includes("jwt")
-    ) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -326,22 +315,23 @@ export const deleteEvent = async (
 
     if (eventToDelete.organizationId !== user.id) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Unauthorized to delete this event" });
     }
 
-    await db.delete(events).where(eq(events.id, eventId));
+    await db.transaction(async tx => {
+      await lockEvent(tx, eventId);
+      const [sale] = await tx.select({ id: orders.id }).from(orders).where(eq(orders.eventId, eventId)).limit(1);
+      const [file] = await tx.select({ id: uploads.id }).from(uploads).where(eq(uploads.eventId, eventId)).limit(1);
+      if (sale || file) throw new HttpError(409, "Events with orders or registration files must be cancelled, not deleted.");
+      await tx.delete(connectionTickets).where(eq(connectionTickets.eventId, eventId));
+      await tx.delete(domainEvents).where(eq(domainEvents.eventId, eventId));
+      await tx.delete(events).where(eq(events.id, eventId));
+    });
 
     return reply.send({ message: "Event deleted successfully" });
   } catch (error) {
-    if (
-      (error as Error).message.includes("Authorization") ||
-      (error as Error).message.includes("jwt")
-    ) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -367,7 +357,7 @@ export const updateEventSlug = async (
 
     if (eventToUpdate.organizationId !== user.id) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Unauthorized to modify this event" });
     }
 
@@ -402,14 +392,7 @@ export const updateEventSlug = async (
       id: updatedEvent.id,
     });
   } catch (error) {
-    if (
-      (error as Error).message.includes("Authorization") ||
-      (error as Error).message.includes("jwt")
-    ) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -475,10 +458,6 @@ export const getEventHosts = async (
 
     return reply.send(hosts);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };

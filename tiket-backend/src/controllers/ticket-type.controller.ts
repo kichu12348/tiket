@@ -1,10 +1,16 @@
+import { toPaise, fromPaise } from "../utils/money";
+import { HttpError } from "../utils/errors";
+import { allocatedByTier, emitEvent, expireHolds, lockEvent } from "../services/inventory.service";
+import { verifyEventPermission } from "../utils/permissions";
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
-import { ticketTypes } from "@db/schema";
+import { ticketTypes, events, tickets } from "@db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
 import { verifyEventOwner } from "@utils";
 
 interface CreateTicketTypeBody {
+  isHidden?: boolean;
   name: string;
   description?: string;
   price?: number;
@@ -31,19 +37,21 @@ export const createTicketType = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_tickets");
     if (!isOwner) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Only the event creator can configure tickets." });
     }
 
     const body = request.body;
 
     // Normalize price string mapping perfectly
-    const normalizedPrice = body.price ? body.price.toString() : "0.00";
+    const normalizedPrice = fromPaise(toPaise(String(body.price ?? 0)));
+    if (body.saleStart && body.saleEnd && new Date(body.saleStart) >= new Date(body.saleEnd)) throw new HttpError(400, "Sale end must follow start.");
 
     const newTicketTypeList = await db.transaction(async (tx) => {
+      await lockEvent(tx, eventId);
       const maxCountResult = await tx
         .select({
           maxCount: max(ticketTypes.sortOrder),
@@ -53,11 +61,12 @@ export const createTicketType = async (
 
       const maxCount = maxCountResult[0]?.maxCount || 0;
 
-      return await tx
+      const result = await tx
         .insert(ticketTypes)
         .values({
           eventId,
           name: body.name,
+          isHidden: body.isHidden ?? false,
           description: body.description,
           price: normalizedPrice,
           quantityLimit: body.quantityLimit,
@@ -72,6 +81,8 @@ export const createTicketType = async (
           sortOrder: maxCount + 1,
         })
         .returning();
+      await emitEvent(tx, eventId, "tickets.changed");
+      return result;
     });
 
     const createdType = newTicketTypeList[0];
@@ -81,11 +92,7 @@ export const createTicketType = async (
 
     return reply.status(201).send(createdType);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -96,13 +103,11 @@ export const getTicketTypes = async (
   try {
     const { eventId } = request.params;
 
-    // Both attendees and creators uniquely share access to see listing tiers!
-    const ticketTypesList = await db
-      .select()
-      .from(ticketTypes)
-      .where(eq(ticketTypes.eventId, eventId))
-      .orderBy(asc(ticketTypes.sortOrder));
-
+    let manager = false;
+    try { await request.jwtVerify(); manager = await verifyEventPermission(eventId, (request.user as { id: string }).id, "manage_tickets"); } catch { /* Public tier list */ }
+    const [event] = await db.select().from(events).where(eq(events.id, eventId));
+    if (!event || event.status !== "published" && !manager) throw new HttpError(404, "Event not found.");
+    const ticketTypesList = await db.select().from(ticketTypes).where(and(eq(ticketTypes.eventId, eventId), manager ? undefined : eq(ticketTypes.isHidden, false))).orderBy(asc(ticketTypes.sortOrder));
     return reply.send(ticketTypesList);
   } catch (error) {
     request.log.error(error);
@@ -123,17 +128,18 @@ export const updateTicketType = async (
     const { eventId, ticketTypeId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_tickets");
     if (!isOwner) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Only the event creator can modify ticket tiers." });
     }
 
-    const payload: any = { updatedAt: new Date() };
+    const payload: Partial<typeof ticketTypes.$inferInsert> = { updatedAt: new Date() };
+    if (body.isHidden !== undefined) payload.isHidden = body.isHidden;
     if (body.name !== undefined) payload.name = body.name;
     if (body.description !== undefined) payload.description = body.description;
-    if (body.price !== undefined) payload.price = body.price.toString();
+    if (body.price !== undefined) payload.price = fromPaise(toPaise(String(body.price)));
     if (body.quantityLimit !== undefined)
       payload.quantityLimit = body.quantityLimit;
     if (body.isRefundable !== undefined)
@@ -152,14 +158,16 @@ export const updateTicketType = async (
         ? new Date(body.refundableUntil)
         : null;
 
-    const updatedTypeList = await db
-      .update(ticketTypes)
-      .set(payload)
-      .where(
-        and(eq(ticketTypes.id, ticketTypeId), eq(ticketTypes.eventId, eventId)),
-      )
-      .returning();
-
+    const updatedTypeList = await db.transaction(async tx => {
+      await lockEvent(tx, eventId); await expireHolds(tx, eventId);
+      const [current] = await tx.select().from(ticketTypes).where(and(eq(ticketTypes.id, ticketTypeId), eq(ticketTypes.eventId, eventId)));
+      if (!current) throw new HttpError(404, "Ticket tier not found.");
+      const merged = { ...current, ...payload };
+      if (merged.saleStart && merged.saleEnd && merged.saleStart >= merged.saleEnd) throw new HttpError(400, "Sale end must follow start.");
+      if (body.quantityLimit !== undefined && body.quantityLimit !== null && body.quantityLimit < ((await allocatedByTier(tx, eventId)).get(ticketTypeId) || 0)) throw new HttpError(409, "Quantity cannot be reduced below allocated tickets.");
+      const result = await tx.update(ticketTypes).set(payload).where(and(eq(ticketTypes.id, ticketTypeId), eq(ticketTypes.eventId, eventId))).returning();
+      await emitEvent(tx, eventId, "tickets.changed"); return result;
+    });
     const updatedType = updatedTypeList[0];
     if (!updatedType) {
       return reply.status(404).send({ error: "Ticket Tier not found" });
@@ -167,11 +175,7 @@ export const updateTicketType = async (
 
     return reply.send(updatedType);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -186,17 +190,19 @@ export const deleteTicketType = async (
     const user = request.user as { id: string };
     const { eventId, ticketTypeId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_tickets");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
-    const deletedTypeList = await db
-      .delete(ticketTypes)
-      .where(
-        and(eq(ticketTypes.id, ticketTypeId), eq(ticketTypes.eventId, eventId)),
-      )
-      .returning();
+    const deletedTypeList = await db.transaction(async tx => {
+      await lockEvent(tx, eventId);
+      const [issued] = await tx.select({ id: tickets.id }).from(tickets).where(eq(tickets.ticketTypeId, ticketTypeId)).limit(1);
+      if (issued) throw new HttpError(409, "Ticket types with registrations must be hidden or closed rather than deleted.");
+      const result = await tx.delete(ticketTypes).where(and(eq(ticketTypes.id, ticketTypeId), eq(ticketTypes.eventId, eventId))).returning();
+      if (result.length) await emitEvent(tx, eventId, "tickets.changed");
+      return result;
+    });
 
     if (deletedTypeList.length === 0) {
       return reply.status(404).send({ error: "Ticket tier not found" });
@@ -204,11 +210,7 @@ export const deleteTicketType = async (
 
     return reply.send({ message: "Ticket tier successfully deleted." });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -225,10 +227,10 @@ export const reorderTicketTypes = async (
     const { eventId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_tickets");
     if (!isOwner) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Only the event creator can modify ticket tiers." });
     }
 
@@ -245,10 +247,6 @@ export const reorderTicketTypes = async (
 
     return reply.send({ message: "Ticket types reordered successfully." });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };

@@ -1,5 +1,5 @@
-import { Users, UserCheck, DollarSign, IndianRupee } from "lucide-react";
-import { AttendeeStatsData } from "@/types/attendee";
+import { Users, UserCheck, IndianRupee } from "lucide-react";
+import type { AttendeeStatsData } from "@/types/attendee";
 import styles from "./AttendeeStats.module.css";
 
 interface AttendeeStatsProps {

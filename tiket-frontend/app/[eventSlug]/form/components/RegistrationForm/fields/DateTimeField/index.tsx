@@ -1,14 +1,10 @@
 import { Controller } from "react-hook-form";
 import { CalendarIcon, Clock } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Dropdown from "@/components/Dropdown";
 import { format } from "date-fns";
-import { FieldRendererProps } from "../../types";
+import type { FieldRendererProps } from "../../types";
 import styles from "./DateTimeField.module.css";
 
 const TIME_OPTIONS = Array.from({ length: 48 }).map((_, i) => {
@@ -24,7 +20,6 @@ export default function DateTimeField({
   error,
 }: FieldRendererProps) {
   const isTimeOnly = field.fieldType === "time";
-  const isDateOnly = field.fieldType === "date";
   const isDateTime = field.fieldType === "datetime";
 
   return (

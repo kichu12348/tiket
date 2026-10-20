@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { confirm } from "@/components/ConfirmModal";
-import { LocalField } from "../types";
+import type { LocalField } from "../types";
 
 export function useFormUI(pages: number[], deletePageFromDB: (pageNum: number) => Promise<void>) {
   const [activePage, setActivePage] = useState(1);

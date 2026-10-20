@@ -1,3 +1,4 @@
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
 import { tickets, ticketTypes, ticketTransfers, users } from "@db/schema";
@@ -34,7 +35,7 @@ export const initiateTransfer = async (
 
     const ticket = ticketList[0];
     if (!ticket) return reply.status(404).send({ error: "Ticket not found." });
-    if (ticket.userId !== user.id) return reply.status(401).send({ error: "You don't natively own this ticket." });
+    if (ticket.userId !== user.id) return reply.status(403).send({ error: "You don't natively own this ticket." });
     if (ticket.status !== "active") return reply.status(400).send({ error: "Ticket is not currently active." });
 
     const tierList = await db.select().from(ticketTypes).where(eq(ticketTypes.id, ticket.ticketTypeId));
@@ -76,11 +77,7 @@ export const initiateTransfer = async (
     return reply.status(201).send(transferLists[0]);
 
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -97,7 +94,7 @@ export const acceptTransfer = async (
     const transfer = transferList[0];
 
     if(!transfer) return reply.status(404).send({ error: "Transfer sequence unmapped." });
-    if(transfer.toUserId !== user.id) return reply.status(401).send({ error: "Unauthorized target access restriction." });
+    if(transfer.toUserId !== user.id) return reply.status(403).send({ error: "Unauthorized target access restriction." });
     if(transfer.status !== "pending") return reply.status(400).send({ error: "Transfer condition completely fulfilled previously." });
 
     // Enforce strictly binding atomic execution mapping
@@ -127,10 +124,6 @@ export const acceptTransfer = async (
     });
 
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };

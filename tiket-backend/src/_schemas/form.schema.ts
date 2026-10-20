@@ -13,6 +13,7 @@ const fieldTypes = [
   "time",
   "rating",
   "url",
+  "file",
   "select",
 ] as const;
 

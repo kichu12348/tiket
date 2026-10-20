@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest} from "next/server";
+import { NextResponse } from "next/server";
 import { API_ENDPOINTS, TOKEN_KEY, MAX_AGE } from "@/constants/config";
 
 export async function POST(req: NextRequest) {
@@ -32,7 +33,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: data.message,
       user: data.user,
-      token: data.token,
     });
   } catch (error) {
     console.error("Password auth error:", error);

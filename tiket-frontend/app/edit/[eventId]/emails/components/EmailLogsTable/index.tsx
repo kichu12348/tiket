@@ -1,7 +1,8 @@
 "use client";
 
+
 import React from "react";
-import { EmailLog } from "@/types/email";
+import type { EmailLog } from "@/types/email";
 import { History, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import styles from "./EmailLogsTable.module.css";
 

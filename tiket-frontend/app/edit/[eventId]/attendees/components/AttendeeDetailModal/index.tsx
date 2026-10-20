@@ -1,19 +1,9 @@
-import { useState, useEffect } from "react";
+import { useFileDownload } from "@/hooks/useFileDownload";
+import { useState } from "react";
 import Link from "next/link";
-import {
-  Mail,
-  Ticket,
-  Calendar,
-  CheckCircle2,
-  XCircle,
-  ExternalLink,
-  ClipboardList,
-  Clock,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Mail, Ticket, Calendar, CheckCircle2, XCircle, ExternalLink, ClipboardList, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import Modal from "@/components/Modal";
-import { AttendeeDetailResponse, FormResponseItem } from "@/types/attendee";
+import type { AttendeeDetailResponse, FormResponseItem } from "@/types/attendee";
 import { getAttendeeFormResponses } from "@/api/attendees";
 import { toast } from "sonner";
 import styles from "./AttendeeDetailModal.module.css";
@@ -38,15 +28,10 @@ export default function AttendeeDetailModal({
   const isOpen = !!detail || isLoading;
 
   const [isResponsesExpanded, setIsResponsesExpanded] = useState(false);
+  const downloadFile = useFileDownload();
   const [formResponses, setFormResponses] = useState<FormResponseItem[] | null>(null);
   const [isLoadingResponses, setIsLoadingResponses] = useState(false);
 
-  // Reset lazy state when detail ticket changes
-  useEffect(() => {
-    setIsResponsesExpanded(false);
-    setFormResponses(null);
-    setIsLoadingResponses(false);
-  }, [detail?.attendee.id]);
 
   const handleToggleFormResponses = async () => {
     if (!detail) return;
@@ -59,7 +44,7 @@ export default function AttendeeDetailModal({
         setIsLoadingResponses(true);
         const res = await getAttendeeFormResponses(eventId, detail.attendee.id);
         setFormResponses(res.responses);
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast.error("Failed to load registration answers.");
       } finally {
         setIsLoadingResponses(false);
@@ -197,7 +182,7 @@ export default function AttendeeDetailModal({
                         <div key={idx} className={styles.responseItem}>
                           <span className={styles.responseLabel}>{resp.label}</span>
                           <span className={styles.responseValue}>
-                            {resp.value || "(No answer provided)"}
+                            {resp.value.startsWith("file:") ? <button type="button" onClick={() => downloadFile(resp.value)}>Download file</button> : resp.value || "(No answer provided)"}
                           </span>
                         </div>
                       ))}

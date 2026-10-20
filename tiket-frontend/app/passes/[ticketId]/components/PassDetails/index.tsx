@@ -1,7 +1,7 @@
 import React from "react";
 import { User, Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
-import { TicketPassAttendee, TicketPassEvent } from "@/types/ticket";
+import type { TicketPassAttendee, TicketPassEvent } from "@/types/ticket";
 import { formatLocation } from "../../utils/formatLocation";
 import styles from "./PassDetails.module.css";
 

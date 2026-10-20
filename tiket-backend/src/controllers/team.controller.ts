@@ -1,3 +1,5 @@
+import { verifyEventPermission } from "../utils/permissions";
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
 import { eventRoles, eventTeamMembers, users } from "@db/schema";
@@ -26,10 +28,10 @@ export const createRole = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
     if (!isOwner) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Only the event creator can manage roles." });
     }
 
@@ -40,7 +42,7 @@ export const createRole = async (
       .values({
         eventId,
         name,
-        permissions: permissions as any,
+        permissions: permissions,
       })
       .returning();
 
@@ -51,11 +53,7 @@ export const createRole = async (
 
     return reply.status(201).send(createdRole);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -69,9 +67,9 @@ export const getRoles = async (
     const { eventId } = request.params;
 
     // We restrict roles fetching to the event creator
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized." });
+      return reply.status(403).send({ error: "Unauthorized." });
     }
 
     const rolesList = await db
@@ -81,11 +79,7 @@ export const getRoles = async (
 
     return reply.send(rolesList);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -98,10 +92,10 @@ export const addTeamMember = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
     if (!isOwner) {
       return reply
-        .status(401)
+        .status(403)
         .send({ error: "Only the event creator can add members." });
     }
 
@@ -169,11 +163,7 @@ export const addTeamMember = async (
 
     return reply.status(201).send(createdMember);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -186,9 +176,9 @@ export const getTeamMembers = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized." });
+      return reply.status(403).send({ error: "Unauthorized." });
     }
 
     // Highly optimized relational join utilizing Drizzle Postgres mapping rules
@@ -216,11 +206,7 @@ export const getTeamMembers = async (
 
     return reply.send(membersList);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -237,15 +223,15 @@ export const updateRole = async (
     const { eventId, roleId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized." });
+      return reply.status(403).send({ error: "Unauthorized." });
     }
 
-    const payload: any = {};
+    const payload: Partial<typeof eventRoles.$inferInsert> = {};
     if (body.name !== undefined) payload.name = body.name;
     if (body.permissions !== undefined)
-      payload.permissions = body.permissions as any;
+      payload.permissions = body.permissions;
 
     const updatedRoleList = await db
       .update(eventRoles)
@@ -260,11 +246,7 @@ export const updateRole = async (
 
     return reply.send(updatedRole);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -279,9 +261,9 @@ export const deleteRole = async (
     const user = request.user as { id: string };
     const { eventId, roleId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized." });
+      return reply.status(403).send({ error: "Unauthorized." });
     }
 
     // Check if role is in use
@@ -307,11 +289,7 @@ export const deleteRole = async (
 
     return reply.send({ message: "Role deleted successfully." });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -326,9 +304,9 @@ export const removeTeamMember = async (
     const user = request.user as { id: string };
     const { eventId, memberId } = request.params;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
+    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized." });
+      return reply.status(403).send({ error: "Unauthorized." });
     }
 
     const deletedMemberList = await db
@@ -347,10 +325,6 @@ export const removeTeamMember = async (
 
     return reply.send({ message: "Team member removed successfully." });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };

@@ -1,6 +1,6 @@
-import { TicketType } from "@/types/ticketType";
-import { FormField } from "@/types/form";
-import { Event } from "@/types/event";
+import type { TicketType } from "@/types/ticketType";
+import type { FormField } from "@/types/form";
+import type { Event } from "@/types/event";
 
 // ─── Registration Form Type Contracts ──────────────────────────────────────────
 

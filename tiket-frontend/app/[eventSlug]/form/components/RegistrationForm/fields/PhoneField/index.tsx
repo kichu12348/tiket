@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import countryData from "@/data/countryDial.json";
-import { FieldRendererProps } from "../../types";
+import type { FieldRendererProps } from "../../types";
 import styles from "./PhoneField.module.css";
 
 export interface CountryDial {

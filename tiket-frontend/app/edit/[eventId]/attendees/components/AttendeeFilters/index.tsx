@@ -1,8 +1,8 @@
 import { Search, Download, UserPlus, X } from "lucide-react";
 import Dropdown from "@/components/Dropdown";
 import { Input } from "@/components/ui/input";
-import { TicketType } from "@/types/ticketType";
-import { AttendeeFiltersState } from "@/types/attendee";
+import type { TicketType } from "@/types/ticketType";
+import type { AttendeeFiltersState } from "@/types/attendee";
 import styles from "./AttendeeFilters.module.css";
 
 interface AttendeeFiltersProps {

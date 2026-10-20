@@ -1,5 +1,5 @@
 import api from "@/lib/api";
-import { Event } from "@/types/event";
+import type { Event } from "@/types/event";
 import { API_ENDPOINTS } from "@/constants/config";
 
 export async function getMyEvents() {

@@ -1,5 +1,6 @@
 "use client";
 
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -37,6 +38,7 @@ export default function SidebarNav({ eventId }: SidebarNavProps) {
     },
     { href: `/edit/${eventId}/tickets`, label: "Tickets", icon: Ticket },
     { href: `/edit/${eventId}/attendees`, label: "Attendees", icon: Users },
+    { href: `/edit/${eventId}/operations`, label: "Operations", icon: Ticket },
     { href: `/edit/${eventId}/forms`, label: "Forms", icon: ClipboardList },
     { href: `/edit/${eventId}/emails`, label: "Emails", icon: Mail },
     { href: `/edit/${eventId}/team`, label: "Team", icon: UsersRound },

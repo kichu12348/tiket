@@ -1,3 +1,4 @@
+import DOMPurify from "isomorphic-dompurify";
 import styles from "./EventPage.module.css";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
@@ -9,7 +10,7 @@ import RegistrationCard from "./components/RegistrationCard";
 import EventLocation from "./components/EventLocation";
 import { FiArrowUpRight } from "react-icons/fi";
 import { TRANSPARENT_BG } from "@/constants/util";
-import { Metadata, Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 
 interface PageProps {
   params: Promise<{ eventSlug: string }>;
@@ -196,7 +197,7 @@ export default async function EventPage({ params }: PageProps) {
               <div
                 className={`${styles.aboutContent} prose prose-invert`}
                 dangerouslySetInnerHTML={{
-                  __html: event.description || "No description provided.",
+                  __html: DOMPurify.sanitize(event.description || "No description provided."),
                 }}
               />
             </div>

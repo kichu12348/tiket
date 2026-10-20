@@ -1,4 +1,5 @@
 export const FIELD_TYPES = [
+  { label: "File", value: "file" as const },
   { label: "Text", value: "text" as const },
   { label: "LongText", value: "long_text" as const },
   { label: "Email", value: "email" as const },
@@ -48,4 +49,4 @@ export interface CreateFormFieldPayload {
   page?: number;
 }
 
-export interface UpdateFormFieldPayload extends Partial<CreateFormFieldPayload> {}
+export type UpdateFormFieldPayload = Partial<CreateFormFieldPayload>;

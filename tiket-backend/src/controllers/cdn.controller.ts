@@ -1,3 +1,4 @@
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 
 const CND_URL = process.env.CDN_URL!;

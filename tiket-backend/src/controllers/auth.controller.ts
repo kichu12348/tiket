@@ -1,3 +1,5 @@
+import { deliverMail } from "../services/mail.service";
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
 import { users } from "@db/schema";
@@ -129,7 +131,7 @@ export const sendOtp = async (
     }
 
     // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = crypto.randomInt(100000, 1000000).toString();
     const otpHash = await Bun.password.hash(otp);
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
@@ -138,8 +140,11 @@ export const sendOtp = async (
       .set({ otpHash, otpExpiresAt })
       .where(eq(users.id, user.id));
 
-    // Log OTP for development
-    console.log(`[DEV ONLY] OTP for ${email} is: ${otp}`);
+    await deliverMail({
+      recipientEmail: email,
+      subject: "Your Tiket sign-in code",
+      body: `<p>Your code is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    });
 
     return reply.send({ message: "OTP sent successfully" });
   } catch (error) {

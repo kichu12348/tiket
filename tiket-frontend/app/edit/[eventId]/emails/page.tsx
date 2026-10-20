@@ -1,4 +1,6 @@
 "use client";
+import { getErrorMessage } from "@/lib/errors";
+
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useEventStore } from "@/store/useEventStore";
@@ -53,54 +55,50 @@ export default function EditEmailsPage() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
   // 1. Initial load: Fetch template types list, variables & logs
-  const loadInitialData = async (eventId: string) => {
-    try {
-      setIsInitialLoading(true);
-      const [tplData, varData, logData] = await Promise.all([
+  const loadInitialData = useCallback(async (eventId: string) => {
+    return (Promise.all([
         getEmailTemplates(eventId),
         getAvailableVariables(eventId),
         getEmailLogs(eventId),
-      ]);
+      ])).then(async ([tplData, varData, logData]) => {
 
       setTemplates(tplData);
       setVariables(varData);
       setLogs(logData);
 
       // Select first template matching activeType
-      const match = tplData.find((t) => t.type === activeType) || tplData[0];
+      const match = tplData.find((t) => t.type === "confirmation") || tplData[0];
       if (match) {
         setSelectedTemplateId(match.id);
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to load email templates");
-    } finally {
+    }).catch((err: unknown) => {
+      toast.error(getErrorMessage(err) || "Failed to load email templates");
+    }).finally(() => {
       setIsInitialLoading(false);
-    }
-  };
+    });
+  }, []);
 
   useEffect(() => {
     if (event?.id) {
       loadInitialData(event.id);
     }
-  }, [event?.id]);
+  }, [event?.id, loadInitialData]);
 
   // 2. Lazy loading template content on demand when selected
   const fetchTemplateOnDemand = useCallback(
     async (eventId: string, templateId: string) => {
       if (loadedTemplatesMap[templateId]) return;
 
-      try {
-        setIsTemplateLoading(true);
-        const fetched = await getEmailTemplateById(eventId, templateId);
+      return (getEmailTemplateById(eventId, templateId)).then(async (fetched) => {
         setLoadedTemplatesMap((prev) => ({
           ...prev,
           [templateId]: fetched,
         }));
-      } catch (err: any) {
-        toast.error(err.response?.data?.error || "Failed to load email template");
-      } finally {
+      }).catch((err: unknown) => {
+        toast.error(getErrorMessage(err) || "Failed to load email template");
+      }).finally(() => {
         setIsTemplateLoading(false);
-      }
+      });
     },
     [loadedTemplatesMap],
   );
@@ -146,8 +144,8 @@ export default function EditEmailsPage() {
         [updated.id]: updated,
       }));
       toast.success("Email template saved successfully!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to save template");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to save template");
     } finally {
       setIsSaving(false);
     }
@@ -167,8 +165,8 @@ export default function EditEmailsPage() {
         [reseted.id]: reseted,
       }));
       toast.success("Template reset to system default email layout!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to reset template");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to reset template");
     } finally {
       setIsSaving(false);
     }
@@ -192,8 +190,8 @@ export default function EditEmailsPage() {
       setActiveType("custom");
       setSelectedTemplateId(newCustom.id);
       toast.success("New custom template created!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to create custom template");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to create custom template");
     }
   };
 
@@ -225,8 +223,8 @@ export default function EditEmailsPage() {
       }
 
       toast.success("Custom template deleted!");
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to delete template");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to delete template");
     }
   };
 
@@ -246,8 +244,8 @@ export default function EditEmailsPage() {
       if (res.log) {
         setLogs((prev) => [res.log, ...prev]);
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to send test email");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to send test email");
     }
   };
 
@@ -270,8 +268,8 @@ export default function EditEmailsPage() {
       // Reload logs
       const updatedLogs = await getEmailLogs(event.id);
       setLogs(updatedLogs);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Failed to send batch email");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to send batch email");
     }
   };
 

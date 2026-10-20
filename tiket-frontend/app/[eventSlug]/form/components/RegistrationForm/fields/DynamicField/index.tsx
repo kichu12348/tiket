@@ -1,4 +1,5 @@
-import { FieldRendererProps } from "../../types";
+import FileField from "../FileField";
+import type { FieldRendererProps } from "../../types";
 import RatingField from "../RatingField";
 import SelectField from "../SelectField";
 import InputField from "../InputField";
@@ -22,6 +23,7 @@ const DATE_TIME_TYPES = new Set(["date", "datetime", "time"]);
  */
 export default function DynamicField(props: FieldRendererProps) {
   const { field } = props;
+  if (field.fieldType === "file") return <FileField {...props} />;
 
   if (SELECT_TYPES.has(field.fieldType)) {
     return <SelectField {...props} />;

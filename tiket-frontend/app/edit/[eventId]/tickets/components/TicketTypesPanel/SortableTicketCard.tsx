@@ -2,7 +2,7 @@ import React from "react";
 import { Edit2, Trash2, GripVertical } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { TicketType } from "@/types/ticketType";
+import type { TicketType } from "@/types/ticketType";
 import styles from "./TicketTypesPanel.module.css";
 
 interface Props {

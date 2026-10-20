@@ -1,7 +1,8 @@
 "use client";
 
+
 import React from "react";
-import { Editor } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 import Dropdown from "@/components/Dropdown";
 import ColorPicker from "@/components/ColorPicker";
 import {

@@ -1,3 +1,4 @@
+import type { PriceLine } from "./commerce";
 export interface PurchaseFormResponse {
   fieldId: string;
   responseValue: string;
@@ -11,6 +12,7 @@ export interface PurchaseItem {
 export interface CreateOrderPayload {
   eventId: string;
   purchases: PurchaseItem[];
+  code?: string;
 }
 
 export interface Order {
@@ -18,7 +20,11 @@ export interface Order {
   eventId: string;
   userId: string;
   totalAmount: string;
-  paymentStatus: "pending" | "success" | "failed" | "refunded";
+  totalPaise: number;
+  expiresAt: string | null;
+  reservationState: "held" | "confirmed" | "released";
+  registrationStatus: "checkout" | "confirmed" | "pending_approval" | "declined" | "cancelled" | "expired" | "refund_pending";
+  paymentStatus: "pending" | "success" | "failed" | "refunded" | "partially_refunded";
   paymentProvider: string | null;
   paymentIntentId: string | null;
   createdAt: string;
@@ -32,7 +38,7 @@ export interface Ticket {
   userId: string;
   eventId: string;
   qrCode: string;
-  status: "active" | "cancelled" | "transferred" | "used";
+  status: "active" | "cancelled" | "transferred" | "used" | "pending" | "pending_approval" | "refunded";
   transferCount: number;
   createdAt: string;
   updatedAt: string;
@@ -47,6 +53,8 @@ export interface RazorpayOrderData {
 
 export interface CreateOrderResponse {
   order: Order;
+  serverTime: string;
+  items: PriceLine[];
   tickets: Ticket[];
   razorpayOrder?: RazorpayOrderData | null;
 }

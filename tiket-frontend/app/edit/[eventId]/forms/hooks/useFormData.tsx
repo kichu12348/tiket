@@ -1,14 +1,8 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { toast } from "sonner";
-import {
-  getFormFields,
-  createFormField,
-  updateFormField,
-  deleteFormField,
-  deleteFormPage,
-} from "@/api/forms";
-import { FormField } from "@/types/form";
-import { LocalField, StandardField, StandardFieldStatus } from "../types";
+import { getFormFields, createFormField, updateFormField, deleteFormField, deleteFormPage } from "@/api/forms";
+import type { FormField } from "@/types/form";
+import type { LocalField, StandardField, StandardFieldStatus } from "../types";
 import { serverToLocal, getPagesFromFields } from "../functions/formHelpers";
 import { User, Mail, Phone } from "lucide-react";
 
@@ -38,8 +32,7 @@ export function useFormData(eventId?: string) {
 
   const refreshFields = useCallback(async () => {
     if (!eventId) return;
-    try {
-      const data = await getFormFields(eventId);
+    return (getFormFields(eventId)).then(async (data) => {
 
       const custom: LocalField[] = [];
       const stdMap = new Map<string, FormField>();
@@ -81,14 +74,13 @@ export function useFormData(eventId?: string) {
           };
         }),
       );
-    } catch (error) {
+    }).catch((error: unknown) => {
       console.error("Failed to fetch form fields", error);
       toast.error("Failed to load form fields.");
-    }
+    });
   }, [eventId]);
 
   useEffect(() => {
-    setIsLoading(true);
     refreshFields().finally(() => setIsLoading(false));
   }, [refreshFields]);
 

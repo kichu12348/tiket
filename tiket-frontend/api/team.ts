@@ -1,6 +1,6 @@
 import api from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/config";
-import {
+import type {
   EventRole,
   TeamMember,
   CreateRolePayload,

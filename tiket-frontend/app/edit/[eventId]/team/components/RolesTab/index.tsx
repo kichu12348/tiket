@@ -1,18 +1,12 @@
 "use client";
+import { getErrorMessage } from "@/lib/errors";
 
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { getRoles, createRole, updateRole, deleteRole } from "@/api/team";
-import { EventRole } from "@/types/team";
+import type { EventRole } from "@/types/team";
 import { toast } from "sonner";
-import {
-  CheckCircle2,
-  Edit2,
-  Plus,
-  ShieldAlert,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { CheckCircle2, Edit2, Plus, ShieldAlert, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import styles from "./RolesTab.module.css";
 import { confirm } from "@/components/ConfirmModal";
 import Modal from "@/components/Modal";
@@ -25,6 +19,9 @@ const AVAILABLE_PERMISSIONS = [
   { id: "manage_guests", label: "Manage Guests" },
   { id: "scan_tickets", label: "Scan Tickets" },
   { id: "manage_settings", label: "Manage Settings" },
+  { id: "view_payments", label: "View Payments" },
+  { id: "manage_refunds", label: "Manage Refunds" },
+  { id: "manage_emails", label: "Manage Emails" },
   { id: "view_analytics", label: "View Analytics" },
   { id: "manage_team", label: "Manage Team" },
 ];
@@ -40,21 +37,17 @@ export default function RolesTab({ eventId }: { eventId: string }) {
   const [name, setName] = useState("");
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetchRoles();
+  const fetchRoles = useCallback(async () => {
+    return (getRoles(eventId)).then(async (data) => {
+      setRoles(data);
+    }).catch((error: unknown) => {
+      toast.error("Failed to load roles");
+    }).finally(() => {
+      setIsLoading(false);
+    });
   }, [eventId]);
 
-  const fetchRoles = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getRoles(eventId);
-      setRoles(data);
-    } catch (error) {
-      toast.error("Failed to load roles");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => { void fetchRoles(); }, [fetchRoles]);
 
   const toggleExpand = (roleId: string) => {
     setExpandedRoles((prev) =>
@@ -105,8 +98,8 @@ export default function RolesTab({ eventId }: { eventId: string }) {
       }
       setIsModalOpen(false);
       fetchRoles();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to save role");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to save role");
     }
   };
 
@@ -120,8 +113,8 @@ export default function RolesTab({ eventId }: { eventId: string }) {
           await deleteRole(eventId, roleId);
           toast.success("Role deleted");
           fetchRoles();
-        } catch (error: any) {
-          toast.error(error.response?.data?.error || "Failed to delete role");
+        } catch (error: unknown) {
+          toast.error(getErrorMessage(error) || "Failed to delete role");
         }
       },
     });

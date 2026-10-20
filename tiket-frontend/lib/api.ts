@@ -1,3 +1,4 @@
+import { getErrorStatus } from "@/lib/errors";
 import axios from "axios";
 import { API_URL } from "@/constants/config";
 import { removeToken } from "@/hooks/useToken";
@@ -10,16 +11,16 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+// Cookie-authenticated requests to Next.js route handlers stay on the frontend origin.
+export const frontendApi = axios.create({ baseURL: "/", timeout: 10000, withCredentials: true });
 
-let token: string | undefined = undefined;
+
 
 api.interceptors.request.use(
   async (config) => {
     // Only access localStorage if in browser environment
     if (typeof window !== "undefined") {
-      if (!token) {
-        token = await getToken();
-      }
+      const token = await getToken();
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -36,11 +37,11 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    if (error.response?.status === 401) {
+    if (getErrorStatus(error) === 401) {
       if (typeof window !== "undefined") {
         await removeToken();
-        token = undefined;
-        window.location.href = "/signin";
+
+        window.location.href = `/signin?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
       }
     }
     return Promise.reject(error);

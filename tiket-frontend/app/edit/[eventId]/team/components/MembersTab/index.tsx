@@ -1,13 +1,10 @@
 "use client";
+import { getErrorMessage } from "@/lib/errors";
 
-import { useState, useEffect } from "react";
-import {
-  getTeamMembers,
-  getRoles,
-  addTeamMember,
-  removeTeamMember,
-} from "@/api/team";
-import { TeamMember, EventRole } from "@/types/team";
+
+import { useState, useEffect, useCallback } from "react";
+import { getTeamMembers, getRoles, addTeamMember, removeTeamMember } from "@/api/team";
+import type { TeamMember, EventRole } from "@/types/team";
 import { toast } from "sonner";
 import { Plus, Trash2, Mail, Users } from "lucide-react";
 import styles from "./MembersTab.module.css";
@@ -23,29 +20,23 @@ export default function MembersTab({ eventId }: { eventId: string }) {
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, [eventId]);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [membersData, rolesData] = await Promise.all([
+  const fetchData = useCallback(async () => {
+    return (Promise.all([
         getTeamMembers(eventId),
         getRoles(eventId),
-      ]);
+      ])).then(async ([membersData, rolesData]) => {
       setMembers(membersData);
       setRoles(rolesData);
-      if (rolesData.length > 0 && !selectedRoleId) {
-        setSelectedRoleId(rolesData[0].id);
-      }
-    } catch (error) {
+      setSelectedRoleId(previous => previous || rolesData[0]?.id || "");
+    }).catch((error: unknown) => {
       console.error(error);
       toast.error("Failed to load team data");
-    } finally {
+    }).finally(() => {
       setIsLoading(false);
-    }
-  };
+    });
+  }, [eventId]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +47,8 @@ export default function MembersTab({ eventId }: { eventId: string }) {
       setIsModalOpen(false);
       setEmail("");
       fetchData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to invite member");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || "Failed to invite member");
     }
   };
 

@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { LocalField, FIELD_TYPES } from "../../types";
+import type { LocalField} from "../../types";
+import { FIELD_TYPES } from "../../types";
 import styles from "./SortableFieldCard.module.css";
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {

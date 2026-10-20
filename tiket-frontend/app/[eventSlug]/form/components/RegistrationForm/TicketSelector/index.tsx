@@ -1,5 +1,5 @@
 import { Check, Ticket, Sparkles } from "lucide-react";
-import { TicketSelectorProps, AutoSelectedBadgeProps } from "../types";
+import type { TicketSelectorProps, AutoSelectedBadgeProps } from "../types";
 import { formatPrice } from "../utils";
 import styles from "./TicketSelector.module.css";
 

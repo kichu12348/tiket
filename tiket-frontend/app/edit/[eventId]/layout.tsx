@@ -1,5 +1,8 @@
 "use client";
 
+
+import { useLiveEvent } from "@/hooks/useLiveEvent";
+import { useToken } from "@/hooks/useToken";
 import { useEffect } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import SidebarNav from "@/components/SidebarNav";
@@ -20,6 +23,8 @@ export default function EditEventLayout({
   const router = useRouter();
   const pathname = usePathname();
   const eventId = params.eventId as string;
+  useLiveEvent(eventId);
+  const { logout } = useToken();
 
   const { setEvent, isLoading, setIsLoading } = useEventStore();
 
@@ -55,7 +60,7 @@ export default function EditEventLayout({
       <div className={styles.pageWrapper}>
         <div className={styles.background} />
         {!isDetailsPage && (
-          <Navbar isAuthenticated={true} borderBottom={true} />
+          <Navbar isAuthenticated={true} borderBottom={true} onSignOut={logout} />
         )}
         <div className={styles.layout}>
           {!isDetailsPage && <SidebarNav eventId={eventId} />}
@@ -72,7 +77,7 @@ export default function EditEventLayout({
       <div className={styles.background} />
       <div style={{ position: "relative", zIndex: 20 }}>
         {!isDetailsPage && (
-          <Navbar isAuthenticated={true} borderBottom={true} />
+          <Navbar isAuthenticated={true} borderBottom={true} onSignOut={logout} />
         )}
       </div>
       <div className={styles.layout}>

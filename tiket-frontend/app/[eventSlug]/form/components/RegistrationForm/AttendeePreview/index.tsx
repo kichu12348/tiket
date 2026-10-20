@@ -1,4 +1,4 @@
-import { AttendeePreviewProps } from "../types";
+import type { AttendeePreviewProps } from "../types";
 import styles from "./AttendeePreview.module.css";
 
 export default function AttendeePreview({ user }: AttendeePreviewProps) {

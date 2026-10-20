@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { getTicketTypes, deleteTicketType, reorderTicketTypes } from "@/api/tickets";
-import { TicketType } from "@/types/ticketType";
+import type { TicketType } from "@/types/ticketType";
 import { toast } from "sonner";
 import { Plus, Ticket } from "lucide-react";
 import styles from "./TicketTypesPanel.module.css";
@@ -11,14 +12,15 @@ import { useEventStore } from "@/store/useEventStore";
 import TicketEditModal from "../TicketEditModal";
 import SortableTicketCard from "./SortableTicketCard";
 
+import type {
+  DragEndEvent} from "@dnd-kit/core";
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
-  useSensors,
-  DragEndEvent,
+  useSensors
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -49,22 +51,18 @@ export default function TicketTypesPanel({ eventId }: Props) {
     }),
   );
 
-  useEffect(() => {
-    fetchTicketTypes();
-  }, [eventId]);
-
-  const fetchTicketTypes = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getTicketTypes(eventId);
+  const fetchTicketTypes = useCallback(async () => {
+    return (getTicketTypes(eventId)).then(async (data) => {
       setTicketTypes(data || []);
-    } catch (error) {
+    }).catch((error: unknown) => {
       console.error("Failed to fetch ticket types", error);
       toast.error("Failed to load ticket types.");
-    } finally {
+    }).finally(() => {
       setIsLoading(false);
-    }
-  };
+    });
+  }, [eventId]);
+
+  useEffect(() => { void fetchTicketTypes(); }, [fetchTicketTypes]);
 
   const openModal = (ticket?: TicketType) => {
     setEditingTicket(ticket || null);

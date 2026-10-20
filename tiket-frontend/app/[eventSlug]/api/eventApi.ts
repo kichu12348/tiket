@@ -1,4 +1,4 @@
-import { Event } from "@/types/event";
+import type { Event } from "@/types/event";
 import { API_URL, API_ENDPOINTS } from "@/constants/config";
 
 export interface AuthenticatedUser {
@@ -36,7 +36,7 @@ export async function getEventBySlug(
 
 export async function getMe(token: string): Promise<AuthenticatedUser | null> {
   try {
-    const res = await fetch(`${API_URL}/api/auth/me`, {
+    const res = await fetch(`${API_URL}${API_ENDPOINTS.AUTH.ME}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

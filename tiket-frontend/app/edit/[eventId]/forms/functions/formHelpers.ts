@@ -1,5 +1,5 @@
-import { FormField } from "@/types/form";
-import { LocalField } from "../types";
+import type { FormField } from "@/types/form";
+import type { LocalField } from "../types";
 
 export function serverToLocal(field: FormField): LocalField {
   let parsedOptions: string[] | null = null;
@@ -10,7 +10,7 @@ export function serverToLocal(field: FormField): LocalField {
     if (Array.isArray(field.options)) {
       parsedOptions = field.options as string[];
     } else if (typeof field.options === "object") {
-      const optObj = field.options as any;
+      const optObj = field.options;
       parsedOptions = Array.isArray(optObj.choices) ? optObj.choices : [];
       minOptions = typeof optObj.min === "number" ? optObj.min : null;
       maxOptions = typeof optObj.max === "number" ? optObj.max : null;
@@ -22,7 +22,7 @@ export function serverToLocal(field: FormField): LocalField {
     serverId: field.id,
     name: field.name,
     label: field.label,
-    fieldType: field.fieldType as any,
+    fieldType: field.fieldType,
     isRequired: field.isRequired,
     options: parsedOptions,
     minOptions,

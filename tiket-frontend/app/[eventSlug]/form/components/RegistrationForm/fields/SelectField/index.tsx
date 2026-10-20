@@ -2,7 +2,7 @@ import { Controller } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check } from "lucide-react";
-import { FieldRendererProps } from "../../types";
+import type { FieldRendererProps } from "../../types";
 import styles from "./SelectField.module.css";
 
 export default function SelectField({ field, control }: FieldRendererProps) {

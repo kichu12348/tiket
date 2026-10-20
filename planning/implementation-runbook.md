@@ -1,0 +1,79 @@
+# Tiket Foundation and Phases 3–5
+
+This slice implements the approved platform Razorpay flow, organizer operations, realtime invalidation and general-admission reservations. It also adds the selected Brevo/SMTP and registration-file R2 transports. It does not complete all Phase 6–7 parity work. Certificate, document and workflow tables remain intact; no certificate generation or engagement features were built.
+
+## Foundation — changes, assumptions and open items
+
+- Reconciled the money, permission, form-validation and HTML-sanitization helpers. Removed mock payment handling and the experimental Vinext/Vite/Wrangler configuration. The frontend uses standard Next.js for Vercel.
+- Fixed frontend type/lint errors, type-only imports and controlled component lifecycles. Public rich text is sanitized. Protected operations enforce event-scoped permissions; scans require the intended event, valid payment and active admission state.
+- `drizzle/0000_baseline.sql` creates the complete current schema, constraints, unique admission/payment/idempotency records and immutable financial-snapshot triggers. Generated migration metadata is tracked. Do not replace this baseline once it has been used outside disposable development.
+- The authorized fake local database was reset and the consolidated baseline applied. Existing user changes were retained. No production database was reset.
+- Assumption: only the named local development database is disposable. Open deployment item: provision a separate production database and apply migrations with `bun run db:migrate`; never run the reset script there.
+
+## Phase 3 — payments and operations
+
+- Checkout creates one durable order per purchaser/idempotency key. Reusing a key with a different payload conflicts. One active paid checkout per buyer/event and a 20-ticket server cart limit bound stock hoarding.
+- Prices are calculated in integer paise from stored tier prices. Each ticket has an immutable name, policy and price/discount/tax/fee snapshot. The database rejects snapshot rewrites. Platform fees and tax rates default to zero. Configured rates are basis points; fixed platform fees are paise **per nonzero ticket line**, added to the discounted price. Ticket tax and fee tax are separate, rounded per line.
+- Only the platform Razorpay credentials are used. Optional order `linkedAccountId` and `payoutReference` fields reserve room for future Route settlements. There are no organizer Razorpay keys.
+- Checkout HMAC verification binds the authenticated buyer to the stored provider order. A server fetch must confirm capture before tickets become usable. Signed raw-byte webhooks are durably stored before acknowledgement. Payment attempts, captures, failed attempts and refund events converge through the same reducer. Replays and out-of-order events are guarded by unique IDs, event locks and state transitions.
+- Reconciliation repairs missing callbacks/webhooks. A lost provider response becomes `uncertain`; it is not blindly repeated. Order reconciliation filters by the local receipt. Refund reconciliation looks for the persistent command ID on provider entities. A definitive provider rejection becomes failed, allowing a corrected request with a new command key.
+- `/edit/[eventId]/operations` provides finance snapshots, approval decisions, full/partial refunds, coupon/access-code configuration, scanner input and email connection settings. Finance shows the latest 500 orders and explicitly labels that scope. Payment and refund permissions are distinct.
+- Paid approval registrations are captured upfront and hold capacity as `pending_approval`. They cannot enter. Decline releases capacity and queues the remaining captured balance for refund. A partial cash refund retains admission unless explicit ticket IDs are voided; reserving the complete refundable balance cancels admission and releases capacity. Monetary completion remains pending until provider confirmation. Check-in undo has a separate explicit command and an append-only audit.
+- Brevo is the default transactional provider; organizer SMTP/Brevo overrides apply to all events owned by that organizer. Credentials use AES-256-GCM encryption, and API reads never return them. SMTP requires TLS and a public IPv4 destination. Confirmation/pending/decline messages are durable, deduplicated jobs. Provider acceptance is not proof of inbox delivery. Ambiguous SMTP outcomes are retained for review rather than automatically duplicated.
+- Registration uploads use short-lived signed browser PUT URLs to a private R2 staging key. Completion verifies size/type and copies to a separate final key, preventing the old writable URL from modifying a submitted answer. Download URLs require the uploader or `view_guests` permission and expire after one minute.
+- Assumptions: INR; exclusive pricing; full refunds include the original quoted fees/taxes; partial refunds are organizer-entered cash amounts; sender identity is verified with the selected provider. Open external work: credentials, verified sending domain, R2 bucket/CORS and an HTTPS Razorpay test webhook. Real provider charge/refund/delivery/upload smoke tests were not performed with live credentials.
+
+## Phase 4 — realtime
+
+- Fastify WebSockets use an event-bound, single-use ticket, minted by a cookie-authenticated Next BFF endpoint. Tickets expire after 30 seconds and are consumed atomically in shared storage. The socket sends its ticket in the first message, never a JWT in a URL.
+- Origin checks, payload/connection/send-buffer bounds, authorization refresh, heartbeat and a 30-minute socket renewal limit protect connections. Role revocation closes the subscription.
+- Every inventory/payment/registration/admission mutation increments a committed event version and writes a durable domain event in its transaction. Each API instance polls shared PostgreSQL versions once a second and sends minimal event/version invalidations to its subscribed event rooms. No attendee/payment records travel in socket messages. This provides multi-instance propagation without a Redis service or client dependency.
+- Clients refetch authorized HTTP snapshots on notifications and reconnect, refresh on focus/online, reconnect with bounded exponential backoff and jitter, and retain a 15-second refresh fallback. Availability snapshots discard obsolete requests. Operations guards stale overlapping refreshes and clears revoked finance access.
+- Assumption: a persistent Fastify backend, shared PostgreSQL and an upgrade-capable reverse proxy are available. Open deployment item: choose that backend host and production origin. Large-event throughput and propagation latency still need measurement under representative load. Redis can later reduce polling traffic; it is not required for inventory correctness.
+
+## Phase 5 — reservations
+
+- The hold lasts 12 minutes from entry into checkout after a valid cart/form submission. Expiry is stored using database time and the client countdown uses the server clock offset.
+- Event rows serialize allocation, capture, manual issue, approval, refund/restock, admission and capacity changes. Both event and tier limits are checked. Quantity reductions below allocated inventory are rejected. Free and complimentary registrations use the allocator too.
+- Availability/allocation/status reads lazily release expired holds. A separate five-second cleanup worker also releases them. Correct stock accounting excludes expired holds immediately, even with cleanup stopped. Confirmed, approval-pending and checked-in allocations do not expire.
+- Cancellation and failed payment attempts release only held reservations. A captured order cannot be downgraded by an old failure. Capture after expiry/cancellation conservatively queues a compensating refund and issues no usable pass, even if stock later becomes available. This is the selected safe late-payment policy.
+- Changes become committed event invalidations, so organizer seats, registrations, payments and check-ins refresh across instances.
+- Assumptions: general admission, no numbered seats; confirmed paid seats remain allocated until an explicit cancellation/refund policy releases them. No additional product decision is required for this implementation. Open validation: representative peak sales/scanner load and a credentialed staging rehearsal.
+
+## Setup and deploy
+
+1. Install each app independently with `bun install --frozen-lockfile`. Backend uses Bun 1.4.3 in CI; frontend uses Node 24 and standard Next.js. Configure the variables in each `.env.example` locally and in the host's secret settings. Keep backend secrets out of `NEXT_PUBLIC_*` variables.
+2. Keep loopback names consistent locally: the backend example listens on IPv4, so use `http://127.0.0.1:3001` for the API URL. `localhost` can resolve to IPv6 on Windows. List the actual frontend origins in comma-separated `FRONTEND_URL` (no trailing slash). Use HTTPS origins in production.
+3. On a fresh database run `bun run db:migrate`. The development-only command `bun run db:reset:dev` deliberately requires a loopback database and refuses production mode. It drops data and recreates the schema. The baseline SQL's immutable-snapshot triggers must remain part of future migrations; `db:push` does not install custom migration triggers.
+4. Configure one Razorpay account's key ID/secret and a separate webhook secret. Optionally set `RAZORPAY_ACCOUNT_ID` for account validation. Use separate test/live environments and databases. Configure automatic capture in the Razorpay account. Subscribe the HTTPS `/api/payments/webhook` endpoint to `payment.captured`, `payment.failed`, `order.paid`, `refund.created`, `refund.processed`, and `refund.failed`. Preserve exact request bytes through the proxy. Do not issue tickets for authorization alone. See [Razorpay webhook validation](https://razorpay.com/docs/webhooks/validate-test/) and [refund events](https://razorpay.com/docs/webhooks/refunds/).
+5. Configure `BREVO_API_KEY`, `EMAIL_FROM`, `EMAIL_FROM_NAME` and a persistent `CREDENTIAL_ENCRYPTION_KEY` (64 hex characters / 32 random bytes). Retain that key across deploys; rotating it requires re-encrypting stored connections. Verify sender/domain through Brevo or the organizer's SMTP service. The mail command UUID goes in Brevo's JSON `headers.idempotencyKey`; its provider deduplication window is bounded, so the database remains the durable guard. See [Brevo API](https://developers.brevo.com/reference/send-transac-email) and [idempotency](https://developers.brevo.com/docs/heterogenous-versions-batch-emails).
+6. Configure the private R2 bucket and S3-compatible account credentials. Allow browser `PUT` and the `Content-Type` header from the exact frontend origins in R2 CORS. Uploads accept PDF, PNG, JPEG and plain text, up to 10 MB. Set a lifecycle rule to delete `staging/` objects after one day. The SDK uses path-style addressing and required-only checksum calculation for presigned uploads. See [R2 presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/). Rehearse upload, completion and authorized download in the actual bucket before launch.
+7. Run the backend with `bun run start` on a persistent process host. `src/index.ts` starts independent non-overlapping cleanup, inbox, refund, delivery and reconciliation loops. Multiple instances may run them; DB claims and locks arbitrate work. Enable WebSocket upgrades at `/api/realtime/ws` with idle timeouts longer than the heartbeat interval. Do not host this backend inside Vercel request functions. Deploy only `tiket-frontend/` as the Vercel Next.js project.
+
+## Verification and recovery
+
+Final local verification on 20 October 2026:
+
+| Check | Result |
+| --- | --- |
+| Consolidated baseline reset/migration rehearsal | Passed on the disposable local database |
+| Backend TypeScript | Passed |
+| Maintained backend suite | 31 passed, 0 failed, 106 assertions |
+| Backend Bun production bundle | Passed |
+| Frontend production build, including TypeScript | Passed |
+| Frontend ESLint | 0 errors, 17 warnings (remaining unused bindings and image guidance) |
+| Browser sign-in/checkout/reload/cancel/free registration/live dashboard/door scan | Passed with disposable fixtures |
+| Real Razorpay, Brevo/SMTP and R2 staging transactions | Requires configured credentials and external smoke tests |
+
+Actual diff groups: Foundation controller/validation/permission and frontend type/lifecycle repairs; one tracked baseline with financial guards; checkout/payment/refund/inventory/provider services; durable inbox/jobs and Fastify realtime; typed frontend APIs/hooks and Operations/checkout UI; Next.js deployment cleanup, environment examples and CI. Existing document/certificate/workflow tables were preserved. Added runtime packages are `@fastify/websocket` for Fastify sockets and the AWS S3 client/presigner for R2; `@types/ws` is a development typing dependency. Razorpay, Nodemailer, sanitizers and UI primitives were reused. PostgreSQL versions supply multi-instance realtime propagation, so no Redis dependency was added.
+
+- Maintained checks: backend `bun run typecheck`, `bun run test`, `bun run build`; frontend `bunx tsc --noEmit`, `bun run lint`, `bun run build`. Integration tests require `RUN_INTEGRATION=1` and a loopback database whose name contains `evaluation`. CI provisions PostgreSQL and applies the baseline first. Normal unit tests skip DB integration when that flag is absent.
+- Coverage includes distinct buyers racing for the last ticket, repeated checkout keys, code usage reservation, approval/admission, duplicate capture and stale failure, exact-byte webhook verification/replay, refund before capture, lost refund responses, partial/full caps, expiry/cancel/capture races, reconciliation, snapshot immutability, capacity edits, custom SMTP credential redaction, provider request signing and two-instance WebSocket propagation/revocation.
+- Browser rehearsal used disposable local accounts and a fake gateway: sign-in return flow; paise breakdown/countdown; reload/resume; cancellation; free confirmation; organizer live connection and operations controls. No real card/UPI transaction, external email or R2 upload was initiated in that rehearsal.
+- Monitor unresolved `webhook_inbox` entries (`processed_at is null`), `orders.initialization_state` of creating/uncertain, `refunds.status` of processing/uncertain/failed, and `delivery_jobs.status` of processing/uncertain/failed. Alert on growing age/backlog. Provider failures and ambiguous outcomes are financial/support work, not grounds to activate a pass.
+- When a provider command's response is lost, look up the provider order by receipt or refunds by payment ID and command ID. Existing matching entities converge through reconciliation. Never reset an uncertain command to requested simply because a network timeout occurred: the original request may still have succeeded. Definitively rejected refunds can be corrected and submitted through Operations. Ambiguous outcomes require provider evidence before operator repair.
+- A worker crash after mail dispatch may leave a processing job; review provider logs before retry. SMTP has no universal idempotency guarantee. Keep this distinction visible in operational procedures. Payment/seat correctness does not depend on email delivery or socket availability.
+
+## Remaining approved parity work
+
+Phases 6–7 still include the complete multi-attendee buyer UI, waitlists, bundles/add-ons, conditional/ticket-specific forms, complete transfer UI/QR rotation, camera scanning and offline admission, event-day exports/analytics refinement, campaign/reminder automation and delivery-event reconciliation. These are not claimed complete by this slice. Certificates, booth tracking, games and voting remain excluded under the locked scope; their existing schema tables are preserved.

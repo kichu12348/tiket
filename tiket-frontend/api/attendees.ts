@@ -1,6 +1,6 @@
 import api from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/config";
-import {
+import type {
   GetAttendeesResponse,
   AttendeeStatsData,
   AttendeeDetailResponse,
@@ -58,10 +58,10 @@ export const getAttendeeFormResponses = async (
 
 export const toggleCheckIn = async (
   eventId: string,
-  ticketId: string,
-): Promise<{ message: string; status: string; checkedInAt: string | null }> => {
+  ticketId: string, action: "checkin" | "undo",
+): Promise<{ message: string; status: AttendeeItem["status"]; checkedInAt: string | null }> => {
   const response = await api.post(
-    API_ENDPOINTS.ATTENDEES.TOGGLE_CHECKIN(eventId, ticketId),
+    API_ENDPOINTS.ATTENDEES.TOGGLE_CHECKIN(eventId, ticketId), { action },
   );
   return response.data;
 };
@@ -82,7 +82,7 @@ export const manualRegisterAttendee = async (
 ): Promise<{ message: string; ticket: AttendeeItem }> => {
   const response = await api.post(
     API_ENDPOINTS.ATTENDEES.MANUAL_REGISTER(eventId),
-    payload,
+    payload, { headers: { "Idempotency-Key": crypto.randomUUID() } },
   );
   return response.data;
 };

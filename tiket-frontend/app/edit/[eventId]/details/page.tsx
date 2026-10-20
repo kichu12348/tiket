@@ -1,22 +1,16 @@
 "use client";
+import { getErrorMessage } from "@/lib/errors";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+
+import { useState, useRef } from "react";
+
 import Link from "next/link";
-import {
-  ImagePlus,
-  MapPin,
-  Users,
-  CheckCircle,
-  Type,
-  CalendarClock,
-  CalendarCheck,
-  ChevronLeft,
-} from "lucide-react";
+import { ImagePlus, MapPin, Users, CheckCircle, Type, CalendarClock, CalendarCheck, ChevronLeft } from "lucide-react";
 import styles from "./Details.module.css";
 import { getSignedUrl, uploadToCDN, updateEvent } from "@/api/events";
 import { getBackgroundColor } from "@/lib/color";
 
+// Custom components
 // Custom components
 import DateRangeBlock from "@/components/DateRangeBlock";
 import FontPicker from "@/components/FontPicker";
@@ -24,7 +18,7 @@ import ColorPicker from "@/components/ColorPicker";
 import LocationPicker from "@/components/LocationPicker";
 import DescriptionModal from "@/components/DescriptionModal";
 import DOMPurify from "isomorphic-dompurify";
-import Dropdown from "@/components/Dropdown";
+
 import Switch from "@/components/Switch";
 import { toast } from "sonner";
 import { validateEventPayload } from "@/lib/validators/event";
@@ -32,78 +26,40 @@ import { useEventStore } from "@/store/useEventStore";
 import Image from "@/components/Image";
 import { getImageUrl } from "@/constants/config";
 import { TRANSPARENT_BG } from "@/constants/util";
-import { LocationDetails } from "@/types/event";
+import type { Event, LocationDetails } from "@/types/event";
 
-export default function EditDetailsPage() {
-  const router = useRouter();
+function DetailsForm({ event }: { event: Event }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { event, updateEventLocally } = useEventStore();
+  const { updateEventLocally } = useEventStore();
 
   // State
-  const [bgColor, setBgColor] = useState<string>("");
-  const [coverImageUrl, setCoverImageUrl] = useState<string>("");
+  const [bgColor, setBgColor] = useState<string>(event.color || "");
+  const [coverImageUrl, setCoverImageUrl] = useState<string>(event.coverImage ? getImageUrl(event.coverImage) : "");
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
-  const [title, setTitle] = useState("");
-  const [titleFont, setTitleFont] = useState("'Inter', sans-serif");
+  const [title, setTitle] = useState(event.title);
+  const [titleFont, setTitleFont] = useState(event.fontFamily);
 
   // Date/Time State
-  const [startDate, setStartDate] = useState(new Date().toISOString());
-  const [endDate, setEndDate] = useState(
-    new Date(Date.now() + 3600000).toISOString(),
-  );
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
+  const [startDate, setStartDate] = useState(event.startDate);
+  const [endDate, setEndDate] = useState(event.endDate);
+  const [timezone, setTimezone] = useState(event.timezone);
 
   // Registration Date/Time State
-  const [regStartDate, setRegStartDate] = useState(new Date().toISOString());
-  const [regEndDate, setRegEndDate] = useState(
-    new Date(Date.now() + 86400000).toISOString(),
-  );
+  const [regStartDate, setRegStartDate] = useState(event.registrationStart || event.startDate);
+  const [regEndDate, setRegEndDate] = useState(event.registrationEnd || event.startDate);
 
   const [locationType, setLocationType] = useState<
     "online" | "offline" | "hybrid"
-  >("offline");
+  >(event.locationType);
   const [locationDetails, setLocationDetails] =
-    useState<LocationDetails | null>(null);
-  const [virtualLink, setVirtualLink] = useState("");
-  const [description, setDescription] = useState("");
+    useState<LocationDetails | null>(event.locationDetails);
+  const [virtualLink, setVirtualLink] = useState(event.locationDetails?.link || "");
+  const [description, setDescription] = useState(event.description || "");
   const [isDescModalOpen, setIsDescModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [requireApproval, setRequireApproval] = useState(false);
-  const [capacity, setCapacity] = useState("");
+  const [requireApproval, setRequireApproval] = useState(event.requireApproval);
+  const [capacity, setCapacity] = useState(event.capacity?.toString() || "");
 
-  useEffect(() => {
-    if (event) {
-      setBgColor(event.color || "#000000");
-      setCoverImageUrl(getImageUrl(event.coverImage || ""));
-      setTitle(event.title || "");
-      setTitleFont(event.fontFamily || "'Inter', sans-serif");
-      setStartDate(event.startDate || new Date().toISOString());
-      setEndDate(event.endDate || new Date(Date.now() + 3600000).toISOString());
-      setTimezone(
-        event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      );
-      setRegStartDate(event.registrationStart || new Date().toISOString());
-      setRegEndDate(
-        event.registrationEnd || new Date(Date.now() + 86400000).toISOString(),
-      );
-      setLocationType(event.locationType || "offline");
-
-      if (event.locationType === "online") {
-        setVirtualLink(event.locationDetails?.link || "");
-      } else if (event.locationType === "hybrid") {
-        setLocationDetails(event.locationDetails || null);
-        setVirtualLink(event.locationDetails?.link || "");
-      } else {
-        setLocationDetails(event.locationDetails || null);
-      }
-
-      setDescription(event.description || "");
-      setRequireApproval(event.requireApproval || false);
-      setCapacity(event.capacity ? event.capacity.toString() : "");
-    }
-  }, [event]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -219,10 +175,10 @@ export default function EditDetailsPage() {
       toast.success("Event updated successfully!");
       setCoverImageFile(null);
       // Don't auto navigate away, keep them on the edit page so they can keep making changes if needed
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating event:", error);
       toast.error(
-        error.response?.data?.error ||
+        getErrorMessage(error) ||
           "An error occurred while saving the event.",
       );
     } finally {
@@ -267,7 +223,7 @@ export default function EditDetailsPage() {
                     className={styles.uploadedImage}
                   />
                 ) : (
-                  <Image src={coverImageUrl} className={styles.uploadedImage} />
+                  <Image alt="Event cover" src={coverImageUrl} className={styles.uploadedImage} />
                 )}
               </div>
             ) : (
@@ -439,4 +395,9 @@ export default function EditDetailsPage() {
       />
     </div>
   );
+}
+
+export default function EditDetailsPage() {
+  const event = useEventStore(state => state.event);
+  return event ? <DetailsForm key={event.id} event={event} /> : null;
 }

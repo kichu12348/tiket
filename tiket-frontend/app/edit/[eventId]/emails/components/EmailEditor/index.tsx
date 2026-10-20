@@ -1,9 +1,11 @@
 "use client";
 
+
 import React from "react";
-import { EmailTemplate } from "@/types/email";
+import type { EmailTemplate } from "@/types/email";
 import { Save, RotateCcw, Send, Users, Power, Trash2 } from "lucide-react";
-import EmailRichEditor, { EmailRichEditorRef } from "../EmailRichEditor";
+import type { EmailRichEditorRef } from "../EmailRichEditor";
+import EmailRichEditor from "../EmailRichEditor";
 import styles from "./EmailEditor.module.css";
 
 interface EmailEditorProps {
@@ -21,7 +23,7 @@ interface EmailEditorProps {
   onBodyChange?: (body: string) => void;
 }
 
-export default function EmailEditor({
+function EmailEditorContent({
   template,
   onSave,
   onReset,
@@ -39,12 +41,6 @@ export default function EmailEditor({
   const [isActive, setIsActive] = React.useState(template.isActive);
 
   // Sync internal state when template changes
-  React.useEffect(() => {
-    setName(template.name);
-    setSubject(template.subject);
-    setBody(template.body);
-    setIsActive(template.isActive);
-  }, [template]);
 
   const handleSave = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -91,7 +87,7 @@ export default function EmailEditor({
       <div className={styles.fieldGroup}>
         <label className={styles.label}>Email Subject</label>
         <input
-          ref={subjectRef as any}
+          ref={subjectRef}
           type="text"
           className={styles.input}
           value={subject}
@@ -175,4 +171,8 @@ export default function EmailEditor({
       </div>
     </form>
   );
+}
+
+export default function EmailEditor(props: EmailEditorProps) {
+  return <EmailEditorContent key={props.template.id + props.template.updatedAt} {...props} />;
 }

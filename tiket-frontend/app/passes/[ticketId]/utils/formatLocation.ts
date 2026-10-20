@@ -1,4 +1,4 @@
-import { LocationDetails } from "@/types/ticket";
+import type { LocationDetails } from "@/types/ticket";
 
 export function formatLocation(
   locationType?: "online" | "offline" | "hybrid",

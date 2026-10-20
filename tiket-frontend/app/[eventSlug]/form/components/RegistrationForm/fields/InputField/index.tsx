@@ -1,7 +1,7 @@
 import { Controller } from "react-hook-form";
 import { Input } from "@/components/ui/input";
-import { FieldType } from "@/types/form";
-import { FieldRendererProps } from "../../types";
+import type { FieldType } from "@/types/form";
+import type { FieldRendererProps } from "../../types";
 import styles from "./InputField.module.css";
 
 const INPUT_TYPE_MAP: Partial<Record<FieldType, string>> = {

@@ -1,11 +1,12 @@
+import type { AuthenticatedUser } from "../../api/eventApi";
 import styles from "./RegistrationCard.module.css";
-import { Event } from "@/types/event";
+import type { Event } from "@/types/event";
 import { FaUserCheck, FaCog } from "react-icons/fa";
 import Link from "next/link";
 
 interface RegistrationCardProps {
   event: Event;
-  user: any;
+  user: AuthenticatedUser | null;
   isAssociated?: boolean;
 }
 
@@ -56,11 +57,11 @@ export default function RegistrationCard({
             </div>
             <div className={styles.userInfo}>
               <div className={styles.userAvatar}>
-                {user.name ? user.name.charAt(0).toUpperCase() : ":)"}
+                {user?.name ? user?.name.charAt(0).toUpperCase() : ":)"}
               </div>
               <div className={styles.userDetails}>
-                <span className={styles.userName}>{user.name}</span>
-                <span className={styles.userEmail}>{user.email}</span>
+                <span className={styles.userName}>{user?.name}</span>
+                <span className={styles.userEmail}>{user?.email}</span>
               </div>
             </div>
             <Link
@@ -76,16 +77,16 @@ export default function RegistrationCard({
         ) : user ? (
           <>
             <div className={styles.welcomeText}>
-              Welcome, {user.name?.split(" ")[0] || "User"}! To join the event,
+              Welcome, {user?.name?.split(" ")[0] || "User"}! To join the event,
               please register below.
             </div>
             <div className={styles.userInfo}>
               <div className={styles.userAvatar}>
-                {user.name ? user.name.charAt(0).toUpperCase() : ":)"}
+                {user?.name ? user?.name.charAt(0).toUpperCase() : ":)"}
               </div>
               <div className={styles.userDetails}>
-                <span className={styles.userName}>{user.name}</span>
-                <span className={styles.userEmail}>{user.email}</span>
+                <span className={styles.userName}>{user?.name}</span>
+                <span className={styles.userEmail}>{user?.email}</span>
               </div>
             </div>
             <Link

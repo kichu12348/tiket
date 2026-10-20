@@ -1,8 +1,9 @@
 "use client";
 
+
 import { useState } from "react";
 import { useInView } from "react-intersection-observer";
-import { Event } from "@/types/event";
+import type { Event } from "@/types/event";
 import EventCard from "../EventCard";
 import styles from "./EventList.module.css";
 

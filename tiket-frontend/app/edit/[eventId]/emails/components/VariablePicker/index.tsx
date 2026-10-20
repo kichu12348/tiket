@@ -1,7 +1,8 @@
 "use client";
 
+
 import React from "react";
-import { AvailableVariables, VariableItem } from "@/types/email";
+import type { AvailableVariables, VariableItem } from "@/types/email";
 import { Tag, Sparkles } from "lucide-react";
 import styles from "./VariablePicker.module.css";
 

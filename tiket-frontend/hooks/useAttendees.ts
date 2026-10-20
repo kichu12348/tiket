@@ -1,15 +1,17 @@
-"use client";
+import { useEventRevision } from "./useLiveEvent";
+import { getErrorMessage } from "@/lib/errors";
+
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import {
+import type {
   AttendeeItem,
   AttendeeStatsData,
   AttendeeDetailResponse,
   AttendeeFiltersState,
   ManualRegisterPayload,
 } from "@/types/attendee";
-import { TicketType } from "@/types/ticketType";
+import type { TicketType } from "@/types/ticketType";
 import {
   getAttendees,
   getAttendeeStats,
@@ -23,6 +25,7 @@ import { getTicketTypes } from "@/api/tickets";
 import { validateManualRegisterPayload } from "@/lib/validators/attendee";
 
 export function useAttendees(eventId: string) {
+  const revision = useEventRevision(eventId);
   const [filters, setFilters] = useState<AttendeeFiltersState>({
     search: "",
     ticketTypeId: "",
@@ -55,45 +58,41 @@ export function useAttendees(eventId: string) {
   // Fetch Stats & Ticket Types once
   const fetchMetadata = useCallback(async () => {
     if (!eventId) return;
-    try {
-      setIsStatsLoading(true);
-      const [statsData, typesData] = await Promise.all([
+    return (Promise.all([
         getAttendeeStats(eventId),
         getTicketTypes(eventId),
-      ]);
+      ])).then(async ([statsData, typesData]) => {
       setStats(statsData);
       setTicketTypes(typesData);
-    } catch (err) {
+    }).catch((err: unknown) => {
       console.error("Failed to load metadata stats:", err);
-    } finally {
+    }).finally(() => {
       setIsStatsLoading(false);
-    }
+    });
   }, [eventId]);
 
   // Fetch Attendees List
   const fetchAttendeesList = useCallback(async () => {
     if (!eventId) return;
-    try {
-      setIsLoading(true);
-      const res = await getAttendees(eventId, filters);
+    return (getAttendees(eventId, filters)).then(async (res) => {
       setAttendees(res.attendees);
       setTotal(res.total);
       setTotalPages(res.totalPages);
-    } catch (err: any) {
+    }).catch((err: unknown) => {
       console.error("Failed to fetch attendees:", err);
-      toast.error(err?.response?.data?.error || "Failed to load attendees.");
-    } finally {
+      toast.error(getErrorMessage(err) || "Failed to load attendees.");
+    }).finally(() => {
       setIsLoading(false);
-    }
+    });
   }, [eventId, filters]);
 
   useEffect(() => {
-    fetchMetadata();
-  }, [fetchMetadata]);
+    void fetchMetadata();
+  }, [fetchMetadata, revision]);
 
   useEffect(() => {
-    fetchAttendeesList();
-  }, [fetchAttendeesList]);
+    void fetchAttendeesList();
+  }, [fetchAttendeesList, revision]);
 
   // Fetch Attendee Detail
   const openAttendeeDetail = async (ticketId: string) => {
@@ -102,9 +101,9 @@ export function useAttendees(eventId: string) {
       setIsDetailLoading(true);
       const data = await getAttendeeDetail(eventId, ticketId);
       setAttendeeDetail(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
-        err?.response?.data?.error || "Failed to load attendee details.",
+        getErrorMessage(err) || "Failed to load attendee details.",
       );
       setSelectedTicketId(null);
     } finally {
@@ -120,7 +119,7 @@ export function useAttendees(eventId: string) {
   // Check In Toggle Handler
   const handleToggleCheckIn = async (ticketId: string) => {
     try {
-      const res = await toggleCheckIn(eventId, ticketId);
+      const res = await toggleCheckIn(eventId, ticketId, (attendees.find(att => att.id === ticketId)?.status === "used" ? "undo" : "checkin"));
       toast.success(res.message);
 
       // Optimistic update in list
@@ -129,7 +128,7 @@ export function useAttendees(eventId: string) {
           if (att.id === ticketId) {
             return {
               ...att,
-              status: res.status as any,
+              status: res.status,
               checkedInAt: res.checkedInAt,
             };
           }
@@ -143,7 +142,7 @@ export function useAttendees(eventId: string) {
           ...attendeeDetail,
           attendee: {
             ...attendeeDetail.attendee,
-            status: res.status as any,
+            status: res.status,
             checkedInAt: res.checkedInAt,
           },
         });
@@ -151,9 +150,9 @@ export function useAttendees(eventId: string) {
 
       // Refresh stats
       fetchMetadata();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
-        err?.response?.data?.error || "Failed to update check-in status.",
+        getErrorMessage(err) || "Failed to update check-in status.",
       );
     }
   };
@@ -192,8 +191,8 @@ export function useAttendees(eventId: string) {
       }
 
       fetchMetadata();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Failed to cancel ticket.");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to cancel ticket.");
     }
   };
 
@@ -214,9 +213,9 @@ export function useAttendees(eventId: string) {
       fetchAttendeesList();
       fetchMetadata();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
-        err?.response?.data?.error || "Failed to manually register attendee.",
+        getErrorMessage(err) || "Failed to manually register attendee.",
       );
       return false;
     } finally {
@@ -243,8 +242,8 @@ export function useAttendees(eventId: string) {
       document.body.removeChild(a);
 
       toast.success(`Exported roster as ${format.toUpperCase()}`);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Failed to export roster.");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to export roster.");
     }
   };
 

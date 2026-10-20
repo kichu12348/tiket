@@ -1,17 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createTicketType, updateTicketType } from "@/api/tickets";
-import { TicketType } from "@/types/ticketType";
+import type { TicketType } from "@/types/ticketType";
 import { toast } from "sonner";
 import { Globe, CalendarIcon, Clock } from "lucide-react";
 import Modal from "@/components/Modal";
 import Switch from "@/components/Switch";
 import styles from "./TicketEditModal.module.css";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import Dropdown from "@/components/Dropdown";
 
@@ -61,7 +57,7 @@ interface TicketEditModalProps {
   eventEndDate?: string | null;
 }
 
-export default function TicketEditModal({
+function TicketEditModalContent({
   isOpen,
   onClose,
   eventId,
@@ -72,58 +68,18 @@ export default function TicketEditModal({
   eventRegistrationEnd,
   eventEndDate,
 }: TicketEditModalProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [quantityLimit, setQuantityLimit] = useState("");
-  const [isRefundable, setIsRefundable] = useState(false);
-  const [isTransferable, setIsTransferable] = useState(true);
-  const [maxTransfers, setMaxTransfers] = useState("1");
-  const [saleStart, setSaleStart] = useState("");
-  const [saleEnd, setSaleEnd] = useState("");
+  const [name, setName] = useState(ticket?.name ?? "");
+  const [description, setDescription] = useState(ticket?.description ?? "");
+  const [price, setPrice] = useState(ticket?.price.toString() ?? "0");
+  const [quantityLimit, setQuantityLimit] = useState(ticket?.quantityLimit?.toString() ?? "");
+  const [isHidden, setIsHidden] = useState(ticket?.isHidden ?? false);
+  const [isRefundable, setIsRefundable] = useState(ticket?.isRefundable ?? false);
+  const [isTransferable, setIsTransferable] = useState(ticket?.isTransferable ?? true);
+  const [maxTransfers, setMaxTransfers] = useState(ticket?.maxTransfers?.toString() ?? "1");
+  const [saleStart, setSaleStart] = useState(() => ticket?.saleStart || eventRegistrationStart || new Date().toISOString());
+  const [saleEnd, setSaleEnd] = useState(() => ticket?.saleEnd || eventRegistrationEnd || eventEndDate || new Date(Date.now() + 86400000).toISOString());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      if (ticket) {
-        setName(ticket.name);
-        setDescription(ticket.description || "");
-        setPrice(ticket.price.toString());
-        setQuantityLimit(
-          ticket.quantityLimit ? ticket.quantityLimit.toString() : "",
-        );
-        setIsRefundable(ticket.isRefundable ?? false);
-        setIsTransferable(ticket.isTransferable ?? true);
-        setMaxTransfers(
-          ticket.maxTransfers !== undefined
-            ? ticket.maxTransfers.toString()
-            : "1",
-        );
-        setSaleStart(
-          ticket.saleStart ||
-            eventRegistrationStart ||
-            new Date().toISOString(),
-        );
-        setSaleEnd(
-          ticket.saleEnd ||
-            eventRegistrationEnd ||
-            new Date(Date.now() + 86400000).toISOString(),
-        );
-      } else {
-        setName("");
-        setDescription("");
-        setPrice("");
-        setQuantityLimit("");
-        setIsRefundable(false);
-        setIsTransferable(true);
-        setMaxTransfers("1");
-        setSaleStart(eventRegistrationStart || new Date().toISOString());
-        setSaleEnd(
-          eventRegistrationEnd || new Date(Date.now() + 86400000).toISOString(),
-        );
-      }
-    }
-  }, [isOpen, ticket, eventRegistrationStart, eventRegistrationEnd]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -157,6 +113,7 @@ export default function TicketEditModal({
         description,
         price: Number(price),
         quantityLimit: quantityLimit ? parseInt(quantityLimit, 10) : null,
+        isHidden,
         isRefundable,
         isTransferable,
         maxTransfers: isTransferable ? parseInt(maxTransfers, 10) || 1 : 0,
@@ -369,6 +326,9 @@ export default function TicketEditModal({
             </div>
           </div>
           <div className={styles.switchRow}>
+            <span>Require an access code</span><Switch checked={isHidden} onChange={setIsHidden} />
+          </div>
+          <div className={styles.switchRow}>
             <span>Allow Refunds</span>
             <Switch checked={isRefundable} onChange={setIsRefundable} />
           </div>
@@ -406,4 +366,8 @@ export default function TicketEditModal({
       </div>
     </Modal>
   );
+}
+
+export default function TicketEditModal(props: TicketEditModalProps) {
+  return props.isOpen ? <TicketEditModalContent key={props.ticket?.id ?? "new"} {...props} /> : null;
 }

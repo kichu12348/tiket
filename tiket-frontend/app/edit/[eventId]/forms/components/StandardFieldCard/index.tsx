@@ -1,6 +1,6 @@
 import React from "react";
 import Dropdown from "@/components/Dropdown";
-import { StandardField, StandardFieldStatus } from "../../types";
+import type { StandardField, StandardFieldStatus } from "../../types";
 import styles from "./StandardFieldCard.module.css";
 
 interface Props {

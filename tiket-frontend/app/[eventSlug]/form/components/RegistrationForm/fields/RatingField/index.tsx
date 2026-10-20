@@ -1,6 +1,6 @@
 import { Controller } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { FieldRendererProps } from "../../types";
+import type { FieldRendererProps } from "../../types";
 import styles from "./RatingField.module.css";
 
 export default function RatingField({ field, control }: FieldRendererProps) {

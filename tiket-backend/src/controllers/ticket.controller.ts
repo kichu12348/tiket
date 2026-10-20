@@ -1,6 +1,10 @@
+import { verifyEventPermission } from "../utils/permissions";
+import { fromPaise } from "../utils/money";
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
 import {
+  orderItems,
   tickets,
   events,
   ticketTypes,
@@ -58,19 +62,8 @@ export const getTicketPass = async (
     const isTicketOwner = row.ticket.userId === user.id;
     const isEventOrganizer = row.event.organizationId === user.id;
 
-    let isTeamMember = false;
-    if (!isTicketOwner && !isEventOrganizer) {
-      const teamCheck = await db
-        .select()
-        .from(eventTeamMembers)
-        .where(
-          and(
-            eq(eventTeamMembers.eventId, row.event.id),
-            eq(eventTeamMembers.userId, user.id),
-          ),
-        );
-      isTeamMember = teamCheck.length > 0;
-    }
+    const isTeamMember = await verifyEventPermission(row.event.id, user.id, "view_guests");
+    const [item] = await db.select().from(orderItems).where(eq(orderItems.ticketId, ticketId));
 
     if (!isTicketOwner && !isEventOrganizer && !isTeamMember) {
       return reply
@@ -106,11 +99,11 @@ export const getTicketPass = async (
       },
       ticketType: {
         id: row.ticketType.id,
-        name: row.ticketType.name,
-        price: row.ticketType.price,
+        name: item?.name ?? row.ticketType.name,
+        price: item ? fromPaise(item.unitPricePaise) : row.ticketType.price,
         description: row.ticketType.description,
-        isTransferable: row.ticketType.isTransferable,
-        isRefundable: row.ticketType.isRefundable,
+        isTransferable: item?.policy.isTransferable ?? row.ticketType.isTransferable,
+        isRefundable: item?.policy.isRefundable ?? row.ticketType.isRefundable,
       },
       attendee: {
         id: row.attendee.id,
@@ -131,13 +124,6 @@ export const getTicketPass = async (
 
     return reply.status(200).send(responsePayload);
   } catch (error) {
-    if (
-      (error as Error).message?.includes("jwt") ||
-      (error as Error).message.includes("Authorization")
-    ) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Failed to fetch ticket pass." });
+    return handleControllerError(request, reply, error);
   }
 };

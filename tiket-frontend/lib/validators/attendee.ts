@@ -1,4 +1,4 @@
-import { ManualRegisterPayload } from "@/types/attendee";
+import type { ManualRegisterPayload } from "@/types/attendee";
 
 export interface ValidationResult {
   isValid: boolean;

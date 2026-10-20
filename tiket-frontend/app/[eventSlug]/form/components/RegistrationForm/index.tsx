@@ -1,21 +1,26 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+
+
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FiAlertCircle, FiLoader } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 
-import { submitRegistrationOrder } from "../../services/registrationService";
-import { RegistrationFormProps, SubmitStep } from "./types";
+import { useCheckout } from "@/hooks/useCheckout";
+import { useAvailability } from "@/hooks/useAvailability";
+import CheckoutReview from "../CheckoutReview";
+import { Input } from "@/components/ui/input";
+import type { RegistrationFormProps, SubmitStep } from "./types";
 import { isTicketActive, buildZodSchema, buildFormResponses } from "./utils";
-import Skeleton from "./Skeleton";
+
 import ApprovalBanner from "./ApprovalBanner";
 import { TicketSelector, AutoSelectedBadge } from "./TicketSelector";
 import FormFieldsSection from "./FormFieldsSection";
 import AttendeePreview from "./AttendeePreview";
-import SuccessCard from "./SuccessCard";
-import EmptyState from "./EmptyState";
+
+
 import styles from "./RegistrationForm.module.css";
 
 /**
@@ -29,27 +34,22 @@ export default function RegistrationForm({
   ticketTypes,
   formFields,
 }: RegistrationFormProps) {
-  const [mounted, setMounted] = useState(false);
+  const checkout = useCheckout(event.id, user);
+  const [code, setCode] = useState("");
+  const availability = useAvailability(event.id, code);
   const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [submitStep, setSubmitStep] = useState<SubmitStep>("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
 
   // ── Ticket filtering ───────────────────────────────────────────────────────
   const activeTicketTypes = useMemo(
-    () => ticketTypes.filter(isTicketActive),
-    [ticketTypes],
+    () => (availability?.tiers ?? ticketTypes).filter(isTicketActive),
+    [ticketTypes, availability],
   );
   const needsTicketSelection = activeTicketTypes.length > 1;
 
-  useEffect(() => {
-    setMounted(true);
-    // Auto-select when only one ticket type is currently on sale
-    if (activeTicketTypes.length === 1 && activeTicketTypes[0]) {
-      setSelectedTicketTypeId(activeTicketTypes[0].id);
-    }
-  }, [activeTicketTypes]);
+
 
   // ── Normalize 0-indexed page numbers & sort fields ─────────────────────────
   const normalizedFormFields = useMemo(() => {
@@ -129,46 +129,19 @@ export default function RegistrationForm({
 
   // ── Submission ─────────────────────────────────────────────────────────────
   const onSubmit = async (data: Record<string, unknown>) => {
-    if (!selectedTicketTypeId) {
+    const effectiveTypeId = selectedTicketTypeId ?? activeTicketTypes[0]?.id;
+    if (!effectiveTypeId) {
       setErrorMessage("Please select a ticket type.");
       setSubmitStep("error");
       return;
     }
 
-    setSubmitStep("submitting");
-    setErrorMessage("");
-
-    try {
-      const formResponses = buildFormResponses(normalizedFormFields, data);
-      const { createdTicketId } = await submitRegistrationOrder({
-        eventId: event.id,
-        ticketTypeId: selectedTicketTypeId,
-        formResponses,
-        userEmail: user?.email,
-        userName: user?.name,
-      });
-
-      setCreatedTicketId(createdTicketId);
-      setSubmitStep("success");
-    } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const msg = (err as any)?.response?.data?.error
-        || (err as Error)?.message
-        || "Something went wrong. Please try again.";
-      setErrorMessage(msg);
-      setSubmitStep("error");
-    }
+    await checkout.prepare({ eventId: event.id, code: code.trim() || undefined, purchases: [{ ticketTypeId: effectiveTypeId, formResponses: buildFormResponses(normalizedFormFields, data) }] });
   };
 
-  // ── Early returns ──────────────────────────────────────────────────────────
-  if (!mounted) return <Skeleton />;
-  if (activeTicketTypes.length === 0) return <EmptyState slug={event.slug} />;
-  if (submitStep === "success") {
-    return <SuccessCard event={event} createdTicketId={createdTicketId} />;
-  }
-
+  if (checkout.checkout) return <CheckoutReview data={checkout.checkout} remaining={checkout.remaining} busy={checkout.busy} error={checkout.error} pay={checkout.pay} cancel={checkout.cancel} restart={checkout.restart} />;
   const selectedTicket = activeTicketTypes.find(
-    (t) => t.id === selectedTicketTypeId,
+    (t) => t.id === (selectedTicketTypeId ?? activeTicketTypes[0]?.id),
   );
 
   const canGoNext = currentPage < maxPage;
@@ -181,11 +154,15 @@ export default function RegistrationForm({
       onSubmit={handleSubmit(onSubmit as Parameters<typeof handleSubmit>[0])}
     >
       {event.requireApproval && <ApprovalBanner />}
+      <label>Coupon or access code<Input value={code} onChange={event => setCode(event.target.value)} placeholder="Enter a code" maxLength={64} /></label>
+      {availability && <p>{availability.remaining === null ? "Unlimited capacity" : availability.remaining + " spots available"}. A spot is held for 12 minutes after you review your order.</p>}
+      {activeTicketTypes.length === 0 && <p>No tickets are on sale. Enter an access code if you have one.</p>}
+      {checkout.error && <p role="alert">{checkout.error}</p>}
 
       {needsTicketSelection && (
         <TicketSelector
           ticketTypes={activeTicketTypes}
-          selectedId={selectedTicketTypeId}
+          selectedId={selectedTicketTypeId ?? activeTicketTypes[0]?.id ?? null}
           onSelect={setSelectedTicketTypeId}
           hasError={submitStep === "error"}
         />
@@ -223,10 +200,10 @@ export default function RegistrationForm({
           id="submit-registration"
           type="submit"
           size="lg"
-          disabled={submitStep === "submitting"}
-          className={`${styles.primaryBtn} ${styles.submitBtn} ${submitStep === "submitting" ? styles.submitting : ""}`}
+          disabled={checkout.busy || activeTicketTypes.length === 0}
+          className={`${styles.primaryBtn} ${styles.submitBtn} ${checkout.busy ? styles.submitting : ""}`}
         >
-          {submitStep === "submitting" ? (
+          {checkout.busy ? (
             <>
               <FiLoader size={16} className={styles.spinIcon} />
               Submitting…
@@ -234,7 +211,7 @@ export default function RegistrationForm({
           ) : event.requireApproval ? (
             "Request to Join"
           ) : (
-            "Complete Registration"
+            "Review registration"
           )}
         </Button>
       )}

@@ -1,3 +1,4 @@
+import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
 import { documentTemplates } from "@db/schema";
@@ -8,13 +9,13 @@ interface CreateTemplateBody {
   name: string;
   type: "ticket" | "certificate";
   backgroundImageUrl?: string;
-  elementsJson?: any;
+  elementsJson?: unknown;
 }
 
 interface UpdateTemplateBody {
   name?: string;
   backgroundImageUrl?: string;
-  elementsJson?: any;
+  elementsJson?: unknown;
 }
 
 export const createTemplate = async (
@@ -32,7 +33,7 @@ export const createTemplate = async (
 
     const isOwner = await verifyEventOwner(eventId, user.id);
     if (!isOwner) {
-      return reply.status(401).send({
+      return reply.status(403).send({
         error:
           "Only the event creator can configure Document visual boundaries.",
       });
@@ -51,11 +52,7 @@ export const createTemplate = async (
 
     return reply.status(201).send(newTemplateList[0]);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized access mapping." });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -93,12 +90,12 @@ export const updateTemplate = async (
 
     const isOwner = await verifyOwnerByTemplateId(templateId, user.id);
     if (!isOwner) {
-      return reply.status(401).send({
+      return reply.status(403).send({
         error: "Unauthorized. Template boundaries natively restricted.",
       });
     }
 
-    const payload: any = { updatedAt: new Date() };
+    const payload: Partial<typeof documentTemplates.$inferInsert> = { updatedAt: new Date() };
     if (body.name !== undefined) payload.name = body.name;
     if (body.backgroundImageUrl !== undefined)
       payload.backgroundImageUrl = body.backgroundImageUrl;
@@ -113,11 +110,7 @@ export const updateTemplate = async (
 
     return reply.send(updatedTemplateList[0]);
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized access mapping." });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };
 
@@ -132,7 +125,7 @@ export const deleteTemplate = async (
 
     const isOwner = await verifyOwnerByTemplateId(templateId, user.id);
     if (!isOwner) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const deletedTemplateList = await db
@@ -148,10 +141,6 @@ export const deleteTemplate = async (
       message: "Document Canvas logically destroyed from database.",
     });
   } catch (error) {
-    if ((error as Error).message.includes("jwt")) {
-      return reply.status(401).send({ error: "Unauthorized access mapping." });
-    }
-    request.log.error(error);
-    return reply.status(500).send({ error: "Internal Server Error" });
+    return handleControllerError(request, reply, error);
   }
 };

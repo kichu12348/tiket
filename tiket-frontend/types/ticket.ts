@@ -1,4 +1,4 @@
-export type TicketStatus = "active" | "used" | "transferred" | "refunded" | "cancelled";
+export type TicketStatus = "pending" | "pending_approval" | "active" | "used" | "transferred" | "refunded" | "cancelled";
 
 export interface LocationDetails {
   name?: string | null;
