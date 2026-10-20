@@ -15,11 +15,11 @@ export const getRoles = async (eventId: string): Promise<EventRole[]> => {
 
 export const createRole = async (
   eventId: string,
-  payload: CreateRolePayload
+  payload: CreateRolePayload,
 ): Promise<EventRole> => {
   const response = await api.post(
     API_ENDPOINTS.TEAM.ROLES_CREATE(eventId),
-    payload
+    payload,
   );
   return response.data;
 };
@@ -27,27 +27,27 @@ export const createRole = async (
 export const updateRole = async (
   eventId: string,
   roleId: string,
-  payload: UpdateRolePayload
+  payload: UpdateRolePayload,
 ): Promise<EventRole> => {
   const response = await api.patch(
     API_ENDPOINTS.TEAM.ROLES_UPDATE(eventId, roleId),
-    payload
+    payload,
   );
   return response.data;
 };
 
 export const deleteRole = async (
   eventId: string,
-  roleId: string
+  roleId: string,
 ): Promise<{ message: string }> => {
   const response = await api.delete(
-    API_ENDPOINTS.TEAM.ROLES_DELETE(eventId, roleId)
+    API_ENDPOINTS.TEAM.ROLES_DELETE(eventId, roleId),
   );
   return response.data;
 };
 
 export const getTeamMembers = async (
-  eventId: string
+  eventId: string,
 ): Promise<TeamMember[]> => {
   const response = await api.get(API_ENDPOINTS.TEAM.MEMBERS_GET(eventId));
   return response.data;
@@ -55,21 +55,21 @@ export const getTeamMembers = async (
 
 export const addTeamMember = async (
   eventId: string,
-  payload: AddMemberPayload
+  payload: AddMemberPayload,
 ): Promise<TeamMember> => {
   const response = await api.post(
     API_ENDPOINTS.TEAM.MEMBERS_ADD(eventId),
-    payload
+    payload,
   );
   return response.data;
 };
 
 export const removeTeamMember = async (
   eventId: string,
-  memberId: string
+  memberId: string,
 ): Promise<{ message: string }> => {
   const response = await api.delete(
-    API_ENDPOINTS.TEAM.MEMBERS_DELETE(eventId, memberId)
+    API_ENDPOINTS.TEAM.MEMBERS_DELETE(eventId, memberId),
   );
   return response.data;
 };

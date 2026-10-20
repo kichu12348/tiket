@@ -48,11 +48,11 @@ export const acceptTransferSchema = {
     },
     response: {
       200: {
-          type: "object",
-          properties: {
-              message: { type: "string" },
-              transfer: transferResponseObj
-          }
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          transfer: transferResponseObj,
+        },
       },
       400: errorResponseSchema,
       401: errorResponseSchema,

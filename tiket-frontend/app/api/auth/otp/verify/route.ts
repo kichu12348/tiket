@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { API_ENDPOINTS, TOKEN_KEY, MAX_AGE } from "@/constants/config";
 

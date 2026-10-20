@@ -98,7 +98,11 @@ export default function Dropdown<T>({
               renderTriggerContent(selectedOption)
             ) : (
               <div
-                style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
               >
                 {selectedOption?.LeftComponent}
                 <div
@@ -108,7 +112,9 @@ export default function Dropdown<T>({
                     alignItems: "flex-start",
                   }}
                 >
-                  <span>{selectedOption ? selectedOption.label : placeholder}</span>
+                  <span>
+                    {selectedOption ? selectedOption.label : placeholder}
+                  </span>
                 </div>
               </div>
             )}

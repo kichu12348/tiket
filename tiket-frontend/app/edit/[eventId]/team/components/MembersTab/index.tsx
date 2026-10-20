@@ -1,9 +1,13 @@
 "use client";
 import { getErrorMessage } from "@/lib/errors";
 
-
 import { useState, useEffect, useCallback } from "react";
-import { getTeamMembers, getRoles, addTeamMember, removeTeamMember } from "@/api/team";
+import {
+  getTeamMembers,
+  getRoles,
+  addTeamMember,
+  removeTeamMember,
+} from "@/api/team";
 import type { TeamMember, EventRole } from "@/types/team";
 import { toast } from "sonner";
 import { Plus, Trash2, Mail, Users } from "lucide-react";
@@ -21,22 +25,24 @@ export default function MembersTab({ eventId }: { eventId: string }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    return (Promise.all([
-        getTeamMembers(eventId),
-        getRoles(eventId),
-      ])).then(async ([membersData, rolesData]) => {
-      setMembers(membersData);
-      setRoles(rolesData);
-      setSelectedRoleId(previous => previous || rolesData[0]?.id || "");
-    }).catch((error: unknown) => {
-      console.error(error);
-      toast.error("Failed to load team data");
-    }).finally(() => {
-      setIsLoading(false);
-    });
+    return Promise.all([getTeamMembers(eventId), getRoles(eventId)])
+      .then(async ([membersData, rolesData]) => {
+        setMembers(membersData);
+        setRoles(rolesData);
+        setSelectedRoleId((previous) => previous || rolesData[0]?.id || "");
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+        toast.error("Failed to load team data");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [eventId]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -45,9 +45,7 @@ export default function FormFieldsSection({
           <div key={field.id} className={styles.fieldGroup}>
             <Label htmlFor={`field-${field.id}`} className={styles.fieldLabel}>
               {field.label}
-              {field.isRequired && (
-                <span className={styles.required}>*</span>
-              )}
+              {field.isRequired && <span className={styles.required}>*</span>}
             </Label>
 
             <DynamicField

@@ -1,6 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { toast } from "sonner";
-import { getFormFields, createFormField, updateFormField, deleteFormField, deleteFormPage } from "@/api/forms";
+import {
+  getFormFields,
+  createFormField,
+  updateFormField,
+  deleteFormField,
+  deleteFormPage,
+} from "@/api/forms";
 import type { FormField } from "@/types/form";
 import type { LocalField, StandardField, StandardFieldStatus } from "../types";
 import { serverToLocal, getPagesFromFields } from "../functions/formHelpers";
@@ -32,52 +38,53 @@ export function useFormData(eventId?: string) {
 
   const refreshFields = useCallback(async () => {
     if (!eventId) return;
-    return (getFormFields(eventId)).then(async (data) => {
+    return getFormFields(eventId)
+      .then(async (data) => {
+        const custom: LocalField[] = [];
+        const stdMap = new Map<string, FormField>();
 
-      const custom: LocalField[] = [];
-      const stdMap = new Map<string, FormField>();
-
-      data.forEach((f) => {
-        if (["name", "email", "phone"].includes(f.name) && f.page === 0) {
-          stdMap.set(f.name, f);
-        } else {
-          custom.push(serverToLocal(f));
-        }
-      });
-
-      custom.sort((a, b) => a.sortOrder - b.sortOrder);
-
-      // Preserve editing state during refresh
-      setCustomFields((prev) => {
-        return custom.map((newField) => {
-          const oldField = prev.find((p) => p.serverId === newField.serverId);
-          if (oldField?.isEditing) return { ...newField, isEditing: true };
-          return newField;
+        data.forEach((f) => {
+          if (["name", "email", "phone"].includes(f.name) && f.page === 0) {
+            stdMap.set(f.name, f);
+          } else {
+            custom.push(serverToLocal(f));
+          }
         });
-      });
 
-      setStandardFields((prev) =>
-        prev.map((std) => {
-          const dbField = stdMap.get(std.name);
-          if (std.name === "name" || std.name === "email") {
+        custom.sort((a, b) => a.sortOrder - b.sortOrder);
+
+        // Preserve editing state during refresh
+        setCustomFields((prev) => {
+          return custom.map((newField) => {
+            const oldField = prev.find((p) => p.serverId === newField.serverId);
+            if (oldField?.isEditing) return { ...newField, isEditing: true };
+            return newField;
+          });
+        });
+
+        setStandardFields((prev) =>
+          prev.map((std) => {
+            const dbField = stdMap.get(std.name);
+            if (std.name === "name" || std.name === "email") {
+              return {
+                ...std,
+                serverId: dbField?.id,
+                status: "Required",
+              };
+            }
+            if (!dbField) return { ...std, serverId: undefined, status: "Off" };
             return {
               ...std,
-              serverId: dbField?.id,
-              status: "Required",
+              serverId: dbField.id,
+              status: dbField.isRequired ? "Required" : "Optional",
             };
-          }
-          if (!dbField) return { ...std, serverId: undefined, status: "Off" };
-          return {
-            ...std,
-            serverId: dbField.id,
-            status: dbField.isRequired ? "Required" : "Optional",
-          };
-        }),
-      );
-    }).catch((error: unknown) => {
-      console.error("Failed to fetch form fields", error);
-      toast.error("Failed to load form fields.");
-    });
+          }),
+        );
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to fetch form fields", error);
+        toast.error("Failed to load form fields.");
+      });
   }, [eventId]);
 
   useEffect(() => {

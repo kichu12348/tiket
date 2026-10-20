@@ -197,7 +197,9 @@ export default async function EventPage({ params }: PageProps) {
               <div
                 className={`${styles.aboutContent} prose prose-invert`}
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(event.description || "No description provided."),
+                  __html: DOMPurify.sanitize(
+                    event.description || "No description provided.",
+                  ),
                 }}
               />
             </div>

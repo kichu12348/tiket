@@ -21,7 +21,9 @@ export function formatPrice(price: string): string {
  * Derives a Zod schema from an array of FormField definitions.
  * Each field id becomes a key; field type and isRequired drive the validators.
  */
-export function buildZodSchema(fields: FormField[]): z.ZodObject<z.ZodRawShape> {
+export function buildZodSchema(
+  fields: FormField[],
+): z.ZodObject<z.ZodRawShape> {
   const shape: z.ZodRawShape = {};
 
   for (const field of fields) {
@@ -48,32 +50,52 @@ export function buildZodSchema(fields: FormField[]): z.ZodObject<z.ZodRawShape> 
       case "multi_select":
       case "checkbox": {
         let arr = z.array(z.string());
-        const opts = (field.options && typeof field.options === "object" && !Array.isArray(field.options)
-          ? field.options
-          : null) as { choices?: string[]; min?: number | null; max?: number | null } | null;
+        const opts = (
+          field.options &&
+          typeof field.options === "object" &&
+          !Array.isArray(field.options)
+            ? field.options
+            : null
+        ) as {
+          choices?: string[];
+          min?: number | null;
+          max?: number | null;
+        } | null;
 
         const choicesCount = Array.isArray(field.options)
           ? field.options.length
-          : opts?.choices?.length ?? 0;
+          : (opts?.choices?.length ?? 0);
 
         const rawMin = opts?.min ?? null;
         const rawMax = opts?.max ?? null;
 
-        const effectiveMin = rawMin != null && rawMin > 0
-          ? (choicesCount > 0 ? Math.min(rawMin, choicesCount) : rawMin)
-          : null;
-        const effectiveMax = rawMax != null && rawMax > 0
-          ? (choicesCount > 0 ? Math.min(rawMax, choicesCount) : rawMax)
-          : null;
+        const effectiveMin =
+          rawMin != null && rawMin > 0
+            ? choicesCount > 0
+              ? Math.min(rawMin, choicesCount)
+              : rawMin
+            : null;
+        const effectiveMax =
+          rawMax != null && rawMax > 0
+            ? choicesCount > 0
+              ? Math.min(rawMax, choicesCount)
+              : rawMax
+            : null;
 
         if (effectiveMin != null && effectiveMin > 0) {
-          arr = arr.min(effectiveMin, `Select at least ${effectiveMin} option${effectiveMin > 1 ? "s" : ""}`);
+          arr = arr.min(
+            effectiveMin,
+            `Select at least ${effectiveMin} option${effectiveMin > 1 ? "s" : ""}`,
+          );
         } else if (field.isRequired) {
           arr = arr.min(1, `${field.label} is required`);
         }
 
         if (effectiveMax != null && effectiveMax > 0) {
-          arr = arr.max(effectiveMax, `Select at most ${effectiveMax} option${effectiveMax > 1 ? "s" : ""}`);
+          arr = arr.max(
+            effectiveMax,
+            `Select at most ${effectiveMax} option${effectiveMax > 1 ? "s" : ""}`,
+          );
         }
 
         shape[field.id] = arr;
@@ -110,7 +132,9 @@ export function buildFormResponses(
     .map((field) => {
       const val = data[field.id];
       if (val === undefined || val === null || val === "") return null;
-      const responseValue = Array.isArray(val) ? JSON.stringify(val) : String(val);
+      const responseValue = Array.isArray(val)
+        ? JSON.stringify(val)
+        : String(val);
       return { fieldId: field.id, responseValue };
     })
     .filter(Boolean) as { fieldId: string; responseValue: string }[];

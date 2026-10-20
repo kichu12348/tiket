@@ -1,8 +1,11 @@
 "use client";
 
-
 import { useState, useEffect, useCallback } from "react";
-import { getTicketTypes, deleteTicketType, reorderTicketTypes } from "@/api/tickets";
+import {
+  getTicketTypes,
+  deleteTicketType,
+  reorderTicketTypes,
+} from "@/api/tickets";
 import type { TicketType } from "@/types/ticketType";
 import { toast } from "sonner";
 import { Plus, Ticket } from "lucide-react";
@@ -12,15 +15,14 @@ import { useEventStore } from "@/store/useEventStore";
 import TicketEditModal from "../TicketEditModal";
 import SortableTicketCard from "./SortableTicketCard";
 
-import type {
-  DragEndEvent} from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
-  useSensors
+  useSensors,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -52,17 +54,22 @@ export default function TicketTypesPanel({ eventId }: Props) {
   );
 
   const fetchTicketTypes = useCallback(async () => {
-    return (getTicketTypes(eventId)).then(async (data) => {
-      setTicketTypes(data || []);
-    }).catch((error: unknown) => {
-      console.error("Failed to fetch ticket types", error);
-      toast.error("Failed to load ticket types.");
-    }).finally(() => {
-      setIsLoading(false);
-    });
+    return getTicketTypes(eventId)
+      .then(async (data) => {
+        setTicketTypes(data || []);
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to fetch ticket types", error);
+        toast.error("Failed to load ticket types.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [eventId]);
 
-  useEffect(() => { void fetchTicketTypes(); }, [fetchTicketTypes]);
+  useEffect(() => {
+    void fetchTicketTypes();
+  }, [fetchTicketTypes]);
 
   const openModal = (ticket?: TicketType) => {
     setEditingTicket(ticket || null);
@@ -105,7 +112,7 @@ export default function TicketTypesPanel({ eventId }: Props) {
     try {
       await reorderTicketTypes(
         eventId,
-        updated.map((t) => ({ id: t.id, sortOrder: t.sortOrder }))
+        updated.map((t) => ({ id: t.id, sortOrder: t.sortOrder })),
       );
     } catch (error) {
       console.error("Failed to reorder tickets", error);

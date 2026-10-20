@@ -1,13 +1,28 @@
 "use client";
 
-
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { Link } from "@tiptap/extension-link";
 import { Image } from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Minus, Link as LinkIcon, MousePointerClick } from "lucide-react";
+import {
+  Bold,
+  Italic,
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Quote,
+  Minus,
+  Link as LinkIcon,
+  MousePointerClick,
+} from "lucide-react";
 import Modal from "@/components/Modal";
 import styles from "./EmailRichEditor.module.css";
 
@@ -22,7 +37,10 @@ interface EmailRichEditorProps {
 }
 
 const EmailRichEditor = forwardRef<EmailRichEditorRef, EmailRichEditorProps>(
-  ({ value, onChange, placeholder = "Compose email content visually..." }, ref) => {
+  (
+    { value, onChange, placeholder = "Compose email content visually..." },
+    ref,
+  ) => {
     const [isButtonModalOpen, setIsButtonModalOpen] = useState(false);
     const [buttonLabel, setButtonLabel] = useState("View Your Pass");
     const [buttonUrl, setButtonUrl] = useState("{{event.passUrl}}");
@@ -123,7 +141,9 @@ const EmailRichEditor = forwardRef<EmailRichEditorRef, EmailRichEditorProps>(
           <button
             type="button"
             className={`${styles.toolbarBtn} ${editor.isActive("heading", { level: 1 }) ? styles.activeBtn : ""}`}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 1 }).run()
+            }
             title="Heading 1"
           >
             <Heading1 size={16} />
@@ -132,7 +152,9 @@ const EmailRichEditor = forwardRef<EmailRichEditorRef, EmailRichEditorProps>(
           <button
             type="button"
             className={`${styles.toolbarBtn} ${editor.isActive("heading", { level: 2 }) ? styles.activeBtn : ""}`}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 2 }).run()
+            }
             title="Heading 2"
           >
             <Heading2 size={16} />

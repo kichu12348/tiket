@@ -54,16 +54,16 @@ This slice implements the approved platform Razorpay flow, organizer operations,
 
 Final local verification on 20 October 2026:
 
-| Check | Result |
-| --- | --- |
-| Consolidated baseline reset/migration rehearsal | Passed on the disposable local database |
-| Backend TypeScript | Passed |
-| Maintained backend suite | 31 passed, 0 failed, 106 assertions |
-| Backend Bun production bundle | Passed |
-| Frontend production build, including TypeScript | Passed |
-| Frontend ESLint | 0 errors, 17 warnings (remaining unused bindings and image guidance) |
-| Browser sign-in/checkout/reload/cancel/free registration/live dashboard/door scan | Passed with disposable fixtures |
-| Real Razorpay, Brevo/SMTP and R2 staging transactions | Requires configured credentials and external smoke tests |
+| Check                                                                             | Result                                                               |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Consolidated baseline reset/migration rehearsal                                   | Passed on the disposable local database                              |
+| Backend TypeScript                                                                | Passed                                                               |
+| Maintained backend suite                                                          | 31 passed, 0 failed, 106 assertions                                  |
+| Backend Bun production bundle                                                     | Passed                                                               |
+| Frontend production build, including TypeScript                                   | Passed                                                               |
+| Frontend ESLint                                                                   | 0 errors, 17 warnings (remaining unused bindings and image guidance) |
+| Browser sign-in/checkout/reload/cancel/free registration/live dashboard/door scan | Passed with disposable fixtures                                      |
+| Real Razorpay, Brevo/SMTP and R2 staging transactions                             | Requires configured credentials and external smoke tests             |
 
 Actual diff groups: Foundation controller/validation/permission and frontend type/lifecycle repairs; one tracked baseline with financial guards; checkout/payment/refund/inventory/provider services; durable inbox/jobs and Fastify realtime; typed frontend APIs/hooks and Operations/checkout UI; Next.js deployment cleanup, environment examples and CI. Existing document/certificate/workflow tables were preserved. Added runtime packages are `@fastify/websocket` for Fastify sockets and the AWS S3 client/presigner for R2; `@types/ws` is a development typing dependency. Razorpay, Nodemailer, sanitizers and UI primitives were reused. PostgreSQL versions supply multi-instance realtime propagation, so no Redis dependency was added.
 

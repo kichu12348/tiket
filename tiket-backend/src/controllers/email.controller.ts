@@ -30,9 +30,15 @@ export const getEmailTemplates = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
-      return reply.status(403).send({ error: "Unauthorized access to event templates." });
+      return reply
+        .status(403)
+        .send({ error: "Unauthorized access to event templates." });
     }
 
     const templateHeaders = await db
@@ -54,7 +60,6 @@ export const getEmailTemplates = async (
   }
 };
 
-
 export const getEmailTemplateById = async (
   request: FastifyRequest<{ Params: { eventId: string; templateId: string } }>,
   reply: FastifyReply,
@@ -64,15 +69,26 @@ export const getEmailTemplateById = async (
     const user = request.user as { id: string };
     const { eventId, templateId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
-      return reply.status(403).send({ error: "Unauthorized access to event template." });
+      return reply
+        .status(403)
+        .send({ error: "Unauthorized access to event template." });
     }
 
     const [template] = await db
       .select()
       .from(emailTemplates)
-      .where(and(eq(emailTemplates.id, templateId), eq(emailTemplates.eventId, eventId)));
+      .where(
+        and(
+          eq(emailTemplates.id, templateId),
+          eq(emailTemplates.eventId, eventId),
+        ),
+      );
 
     if (!template) {
       return reply.status(404).send({ error: "Email template not found." });
@@ -84,13 +100,18 @@ export const getEmailTemplateById = async (
   }
 };
 
-
 export const createEmailTemplate = async (
   request: FastifyRequest<{
     Params: { eventId: string };
     Body: {
       name: string;
-      type?: "invitation" | "confirmation" | "checkin" | "thank_you" | "sorry" | "custom";
+      type?:
+        | "invitation"
+        | "confirmation"
+        | "checkin"
+        | "thank_you"
+        | "sorry"
+        | "custom";
       subject: string;
       body: string;
       isActive?: boolean;
@@ -104,7 +125,11 @@ export const createEmailTemplate = async (
     const { eventId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
@@ -132,7 +157,13 @@ export const updateEmailTemplate = async (
     Params: { eventId: string; templateId: string };
     Body: {
       name?: string;
-      type?: "invitation" | "confirmation" | "checkin" | "thank_you" | "sorry" | "custom";
+      type?:
+        | "invitation"
+        | "confirmation"
+        | "checkin"
+        | "thank_you"
+        | "sorry"
+        | "custom";
       subject?: string;
       body?: string;
       isActive?: boolean;
@@ -146,7 +177,11 @@ export const updateEmailTemplate = async (
     const { eventId, templateId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
@@ -161,7 +196,12 @@ export const updateEmailTemplate = async (
     const [updated] = await db
       .update(emailTemplates)
       .set(payload)
-      .where(and(eq(emailTemplates.id, templateId), eq(emailTemplates.eventId, eventId)))
+      .where(
+        and(
+          eq(emailTemplates.id, templateId),
+          eq(emailTemplates.eventId, eventId),
+        ),
+      )
       .returning();
 
     if (!updated) {
@@ -185,14 +225,23 @@ export const deleteEmailTemplate = async (
     const user = request.user as { id: string };
     const { eventId, templateId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
 
     const deletedList = await db
       .delete(emailTemplates)
-      .where(and(eq(emailTemplates.id, templateId), eq(emailTemplates.eventId, eventId)))
+      .where(
+        and(
+          eq(emailTemplates.id, templateId),
+          eq(emailTemplates.eventId, eventId),
+        ),
+      )
       .returning();
 
     if (deletedList.length === 0) {
@@ -216,7 +265,11 @@ export const resetEmailTemplate = async (
     const user = request.user as { id: string };
     const { eventId, templateId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
@@ -224,15 +277,24 @@ export const resetEmailTemplate = async (
     const [existing] = await db
       .select()
       .from(emailTemplates)
-      .where(and(eq(emailTemplates.id, templateId), eq(emailTemplates.eventId, eventId)));
+      .where(
+        and(
+          eq(emailTemplates.id, templateId),
+          eq(emailTemplates.eventId, eventId),
+        ),
+      );
 
     if (!existing) {
       return reply.status(404).send({ error: "Email template not found." });
     }
 
-    const defaultMatch = DEFAULT_TEMPLATES.find((t) => t.type === existing.type);
+    const defaultMatch = DEFAULT_TEMPLATES.find(
+      (t) => t.type === existing.type,
+    );
     if (!defaultMatch) {
-      return reply.status(400).send({ error: "No system default for custom template type." });
+      return reply
+        .status(400)
+        .send({ error: "No system default for custom template type." });
     }
 
     const [resetted] = await db
@@ -260,19 +322,30 @@ export const getAvailableVariables = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
 
-    const [eventObj] = await db.select().from(events).where(eq(events.id, eventId));
+    const [eventObj] = await db
+      .select()
+      .from(events)
+      .where(eq(events.id, eventId));
     const fields = await db
       .select()
       .from(formFields)
       .where(eq(formFields.eventId, eventId));
 
     const eventVariables = [
-      { key: "{{event.title}}", label: "Event Title", sample: eventObj?.title || "Tech Summit 2026" },
+      {
+        key: "{{event.title}}",
+        label: "Event Title",
+        sample: eventObj?.title || "Tech Summit 2026",
+      },
       {
         key: "{{event.startDate}}",
         label: "Start Date",
@@ -290,24 +363,52 @@ export const getAvailableVariables = async (
       {
         key: "{{event.location}}",
         label: "Location / Venue",
-        sample: eventObj?.locationType === "online" ? "Online Stream Link" : "Grand Convention Center",
+        sample:
+          eventObj?.locationType === "online"
+            ? "Online Stream Link"
+            : "Grand Convention Center",
       },
-      { key: "{{event.url}}", label: "Public Event URL", sample: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/${eventObj?.slug || "event-slug"}` },
-      { key: "{{event.passUrl}}", label: "Attendee Pass URL", sample: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/sample-pass-id` },
+      {
+        key: "{{event.url}}",
+        label: "Public Event URL",
+        sample: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/${eventObj?.slug || "event-slug"}`,
+      },
+      {
+        key: "{{event.passUrl}}",
+        label: "Attendee Pass URL",
+        sample: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/sample-pass-id`,
+      },
     ];
 
     const attendeeVariables = [
-      { key: "{{attendee.name}}", label: "Attendee Full Name", sample: "Alex Morgan" },
-      { key: "{{attendee.email}}", label: "Attendee Email", sample: "alex@example.com" },
+      {
+        key: "{{attendee.name}}",
+        label: "Attendee Full Name",
+        sample: "Alex Morgan",
+      },
+      {
+        key: "{{attendee.email}}",
+        label: "Attendee Email",
+        sample: "alex@example.com",
+      },
     ];
 
     const ticketVariables = [
-      { key: "{{ticket.type}}", label: "Ticket Type Name", sample: "VIP Access Pass" },
-      { key: "{{ticket.qrCode}}", label: "QR Code String", sample: "TKT-884920-XYZ" },
+      {
+        key: "{{ticket.type}}",
+        label: "Ticket Type Name",
+        sample: "VIP Access Pass",
+      },
+      {
+        key: "{{ticket.qrCode}}",
+        label: "QR Code String",
+        sample: "TKT-884920-XYZ",
+      },
       {
         key: "{{ticket.qrCodeUrl}}",
         label: "Ticket QR Image URL",
-        sample: "https://quickchart.io/qr?text=TKT-884920-XYZ&size=300&margin=1",
+        sample:
+          "https://quickchart.io/qr?text=TKT-884920-XYZ&size=300&margin=1",
       },
     ];
 
@@ -345,14 +446,22 @@ export const sendTestEmail = async (
     await request.jwtVerify();
     const user = request.user as { id: string };
     const { eventId } = request.params;
-    const { recipientEmail, recipientName, subject, body, templateId } = request.body;
+    const { recipientEmail, recipientName, subject, body, templateId } =
+      request.body;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
 
-    const [eventObj] = await db.select().from(events).where(eq(events.id, eventId));
+    const [eventObj] = await db
+      .select()
+      .from(events)
+      .where(eq(events.id, eventId));
 
     const sampleData: InterpolationData = {
       event: {
@@ -363,7 +472,10 @@ export const sendTestEmail = async (
         endDate: eventObj?.endDate
           ? new Date(eventObj.endDate).toLocaleString()
           : "Oct 24, 2026, 05:00 PM",
-        location: eventObj?.locationType === "online" ? "Online Stream" : "Main Auditorium",
+        location:
+          eventObj?.locationType === "online"
+            ? "Online Stream"
+            : "Main Auditorium",
         url: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/${eventObj?.slug || "sample-event"}`,
         passUrl: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/sample-pass-id`,
       },
@@ -388,7 +500,9 @@ export const sendTestEmail = async (
     });
 
     if (!result.success) {
-      return reply.status(500).send({ error: result.error || "Failed to send test email" });
+      return reply
+        .status(500)
+        .send({ error: result.error || "Failed to send test email" });
     }
 
     return reply.send({
@@ -417,19 +531,35 @@ export const sendBatchEmail = async (
     await request.jwtVerify();
     const user = request.user as { id: string };
     const { eventId } = request.params;
-    const { targetGroup, customEmails, subject, body, templateId } = request.body;
+    const { targetGroup, customEmails, subject, body, templateId } =
+      request.body;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
 
-    const [eventObj] = await db.select().from(events).where(eq(events.id, eventId));
+    const [eventObj] = await db
+      .select()
+      .from(events)
+      .where(eq(events.id, eventId));
 
-    let recipients: { email: string; name?: string; ticketType?: string; passId?: string }[] = [];
+    let recipients: {
+      email: string;
+      name?: string;
+      ticketType?: string;
+      passId?: string;
+    }[] = [];
 
     if (targetGroup === "custom" && customEmails && customEmails.length > 0) {
-      recipients = customEmails.map((e) => ({ email: e, name: e.split("@")[0] || e }));
+      recipients = customEmails.map((e) => ({
+        email: e,
+        name: e.split("@")[0] || e,
+      }));
     } else {
       // Query ticket holders for the event
       const ticketRecords = await db
@@ -459,7 +589,9 @@ export const sendBatchEmail = async (
           .from(checkIns)
           .where(eq(checkIns.eventId, eventId));
 
-        const checkedInTicketIds = new Set(checkInRecords.map((c) => c.ticketId));
+        const checkedInTicketIds = new Set(
+          checkInRecords.map((c) => c.ticketId),
+        );
 
         if (targetGroup === "checked_in") {
           recipients = ticketRecords
@@ -495,9 +627,12 @@ export const sendBatchEmail = async (
           endDate: eventObj?.endDate
             ? new Date(eventObj.endDate).toLocaleString()
             : "",
-          location: eventObj?.locationType === "online" ? "Online Stream" : "Venue",
+          location:
+            eventObj?.locationType === "online" ? "Online Stream" : "Venue",
           url: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/${eventObj?.slug || ""}`,
-          passUrl: r.passId ? `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/${r.passId}` : "",
+          passUrl: r.passId
+            ? `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/${r.passId}`
+            : "",
         },
         attendee: {
           name: r.name,
@@ -539,7 +674,11 @@ export const getEmailLogs = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_emails");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }

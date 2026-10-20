@@ -46,14 +46,12 @@ export async function changeAdmission(
       await tx
         .insert(checkIns)
         .values({ ticketId, eventId, loggedByUserId: userId });
-    await tx
-      .insert(admissionAudits)
-      .values({
-        eventId,
-        ticketId,
-        actorId: userId,
-        action: undo ? "undo" : "checkin",
-      });
+    await tx.insert(admissionAudits).values({
+      eventId,
+      ticketId,
+      actorId: userId,
+      action: undo ? "undo" : "checkin",
+    });
     await emitEvent(tx, eventId, "checkin.changed");
     return {
       ticket,

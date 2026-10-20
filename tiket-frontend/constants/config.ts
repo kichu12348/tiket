@@ -16,11 +16,21 @@ export const API_ENDPOINTS = {
     AVAILABILITY: (id: string) => `/api/commerce/${id}/availability`,
     FINANCE: (id: string) => `/api/commerce/${id}/finance`,
     COUPONS: (id: string) => `/api/commerce/${id}/coupons`,
-    REFUND: (id: string, order: string) => `/api/commerce/${id}/orders/${order}/refunds`,
-    DECISION: (id: string, order: string) => `/api/commerce/${id}/orders/${order}/decision`,
+    REFUND: (id: string, order: string) =>
+      `/api/commerce/${id}/orders/${order}/refunds`,
+    DECISION: (id: string, order: string) =>
+      `/api/commerce/${id}/orders/${order}/decision`,
   },
-  REALTIME: { CONNECT: (id: string) => `/api/realtime/events/${id}/connect`, SOCKET: "/api/realtime/ws" },
-  CONNECTIONS: { MAIL: (id: string) => `/api/connections/events/${id}/mail`, UPLOAD: "/api/connections/uploads", COMPLETE_UPLOAD: (id: string) => `/api/connections/uploads/${id}/complete`, FILE: (id: string) => `/api/connections/uploads/${id}` },
+  REALTIME: {
+    CONNECT: (id: string) => `/api/realtime/events/${id}/connect`,
+    SOCKET: "/api/realtime/ws",
+  },
+  CONNECTIONS: {
+    MAIL: (id: string) => `/api/connections/events/${id}/mail`,
+    UPLOAD: "/api/connections/uploads",
+    COMPLETE_UPLOAD: (id: string) => `/api/connections/uploads/${id}/complete`,
+    FILE: (id: string) => `/api/connections/uploads/${id}`,
+  },
   AUTH: { ME: "/api/auth/me" },
   BACKEND: {
     AUTH: {
@@ -85,26 +95,36 @@ export const API_ENDPOINTS = {
   TEAM: {
     ROLES_CREATE: (eventId: string) => `/api/teams/${eventId}/roles`,
     ROLES_GET: (eventId: string) => `/api/teams/${eventId}/roles`,
-    ROLES_UPDATE: (eventId: string, roleId: string) => `/api/teams/${eventId}/roles/${roleId}`,
-    ROLES_DELETE: (eventId: string, roleId: string) => `/api/teams/${eventId}/roles/${roleId}`,
+    ROLES_UPDATE: (eventId: string, roleId: string) =>
+      `/api/teams/${eventId}/roles/${roleId}`,
+    ROLES_DELETE: (eventId: string, roleId: string) =>
+      `/api/teams/${eventId}/roles/${roleId}`,
     MEMBERS_ADD: (eventId: string) => `/api/teams/${eventId}/members`,
     MEMBERS_GET: (eventId: string) => `/api/teams/${eventId}/members`,
-    MEMBERS_DELETE: (eventId: string, memberId: string) => `/api/teams/${eventId}/members/${memberId}`,
+    MEMBERS_DELETE: (eventId: string, memberId: string) =>
+      `/api/teams/${eventId}/members/${memberId}`,
   },
   ATTENDEES: {
     GET_ALL: (eventId: string) => `/api/attendees/${eventId}`,
     STATS: (eventId: string) => `/api/attendees/${eventId}/stats`,
-    GET_BY_ID: (eventId: string, ticketId: string) => `/api/attendees/${eventId}/${ticketId}`,
-    FORM_RESPONSES: (eventId: string, ticketId: string) => `/api/attendees/${eventId}/${ticketId}/form-responses`,
-    TOGGLE_CHECKIN: (eventId: string, ticketId: string) => `/api/attendees/${eventId}/${ticketId}/check-in`,
-    CANCEL: (eventId: string, ticketId: string) => `/api/attendees/${eventId}/${ticketId}/cancel`,
-    MANUAL_REGISTER: (eventId: string) => `/api/attendees/${eventId}/manual-register`,
+    GET_BY_ID: (eventId: string, ticketId: string) =>
+      `/api/attendees/${eventId}/${ticketId}`,
+    FORM_RESPONSES: (eventId: string, ticketId: string) =>
+      `/api/attendees/${eventId}/${ticketId}/form-responses`,
+    TOGGLE_CHECKIN: (eventId: string, ticketId: string) =>
+      `/api/attendees/${eventId}/${ticketId}/check-in`,
+    CANCEL: (eventId: string, ticketId: string) =>
+      `/api/attendees/${eventId}/${ticketId}/cancel`,
+    MANUAL_REGISTER: (eventId: string) =>
+      `/api/attendees/${eventId}/manual-register`,
     EXPORT: (eventId: string) => `/api/attendees/${eventId}/export`,
   },
   EMAILS: {
     TEMPLATES: (eventId: string) => `/api/emails/events/${eventId}/templates`,
-    TEMPLATE_BY_ID: (eventId: string, templateId: string) => `/api/emails/events/${eventId}/templates/${templateId}`,
-    RESET_TEMPLATE: (eventId: string, templateId: string) => `/api/emails/events/${eventId}/templates/${templateId}/reset`,
+    TEMPLATE_BY_ID: (eventId: string, templateId: string) =>
+      `/api/emails/events/${eventId}/templates/${templateId}`,
+    RESET_TEMPLATE: (eventId: string, templateId: string) =>
+      `/api/emails/events/${eventId}/templates/${templateId}/reset`,
     VARIABLES: (eventId: string) => `/api/emails/events/${eventId}/variables`,
     SEND_TEST: (eventId: string) => `/api/emails/events/${eventId}/send-test`,
     SEND_BATCH: (eventId: string) => `/api/emails/events/${eventId}/send-batch`,

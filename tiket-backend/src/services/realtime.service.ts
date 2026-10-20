@@ -23,14 +23,12 @@ export async function issueConnectionTicket(eventId: string, userId: string) {
   if (!(await canSubscribe(eventId, userId)))
     throw new HttpError(403, "Dashboard permission is required.");
   const value = randomBytes(32).toString("base64url");
-  await db
-    .insert(connectionTickets)
-    .values({
-      hash: hash(value),
-      eventId,
-      userId,
-      expiresAt: new Date(Date.now() + 30000),
-    });
+  await db.insert(connectionTickets).values({
+    hash: hash(value),
+    eventId,
+    userId,
+    expiresAt: new Date(Date.now() + 30000),
+  });
   return { ticket: value, expiresIn: 30 };
 }
 const hash = (value: string) =>

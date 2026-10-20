@@ -62,8 +62,15 @@ export const getTicketPass = async (
     const isTicketOwner = row.ticket.userId === user.id;
     const isEventOrganizer = row.event.organizationId === user.id;
 
-    const isTeamMember = await verifyEventPermission(row.event.id, user.id, "view_guests");
-    const [item] = await db.select().from(orderItems).where(eq(orderItems.ticketId, ticketId));
+    const isTeamMember = await verifyEventPermission(
+      row.event.id,
+      user.id,
+      "view_guests",
+    );
+    const [item] = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.ticketId, ticketId));
 
     if (!isTicketOwner && !isEventOrganizer && !isTeamMember) {
       return reply
@@ -102,7 +109,8 @@ export const getTicketPass = async (
         name: item?.name ?? row.ticketType.name,
         price: item ? fromPaise(item.unitPricePaise) : row.ticketType.price,
         description: row.ticketType.description,
-        isTransferable: item?.policy.isTransferable ?? row.ticketType.isTransferable,
+        isTransferable:
+          item?.policy.isTransferable ?? row.ticketType.isTransferable,
         isRefundable: item?.policy.isRefundable ?? row.ticketType.isRefundable,
       },
       attendee: {

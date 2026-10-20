@@ -11,7 +11,11 @@ interface Props {
   onDelete: () => void;
 }
 
-export default function SortableTicketCard({ ticket, onEdit, onDelete }: Props) {
+export default function SortableTicketCard({
+  ticket,
+  onEdit,
+  onDelete,
+}: Props) {
   const {
     attributes,
     listeners,
@@ -37,7 +41,10 @@ export default function SortableTicketCard({ ticket, onEdit, onDelete }: Props) 
         <div className={styles.dragHandle} {...attributes} {...listeners}>
           <GripVertical size={18} />
         </div>
-        <div className={styles.ticketInfo} style={{ flex: 1, marginLeft: "0.5rem" }}>
+        <div
+          className={styles.ticketInfo}
+          style={{ flex: 1, marginLeft: "0.5rem" }}
+        >
           <div className={styles.ticketHeader}>
             <span className={styles.ticketName}>{ticket.name}</span>
             <span className={styles.ticketPrice}>
@@ -57,7 +64,9 @@ export default function SortableTicketCard({ ticket, onEdit, onDelete }: Props) 
             </div>
           )}
           <div className={styles.ticketMeta}>
-            {ticket.quantityLimit ? `Limit: ${ticket.quantityLimit}` : "Unlimited"}
+            {ticket.quantityLimit
+              ? `Limit: ${ticket.quantityLimit}`
+              : "Unlimited"}
             {ticket.isTransferable ? " • Transferable" : " • Non-transferable"}
           </div>
         </div>

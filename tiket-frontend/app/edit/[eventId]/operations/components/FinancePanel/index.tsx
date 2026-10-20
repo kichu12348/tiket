@@ -208,7 +208,9 @@ export default function FinancePanel({
                     <div className={styles.orderDetails}>
                       <div className={styles.orderMetaRow}>
                         <span>Order ID: {order.id}</span>
-                        <span>Provider: {order.paymentProvider || "Direct"}</span>
+                        <span>
+                          Provider: {order.paymentProvider || "Direct"}
+                        </span>
                         <span>
                           Created:{" "}
                           {new Date(order.createdAt).toLocaleString(undefined, {
@@ -233,7 +235,9 @@ export default function FinancePanel({
                         ) : (
                           items.map((item) => (
                             <div key={item.id} className={styles.itemRow}>
-                              <span className={styles.itemName}>{item.name}</span>
+                              <span className={styles.itemName}>
+                                {item.name}
+                              </span>
                               <span className={styles.itemFormula}>
                                 {formatMoney(item.unitPricePaise)} (Base)
                                 {item.discountPaise > 0 &&

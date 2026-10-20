@@ -1,10 +1,5 @@
 export type EmailTemplateType =
-  | "invitation"
-  | "confirmation"
-  | "checkin"
-  | "thank_you"
-  | "sorry"
-  | "custom";
+  "invitation" | "confirmation" | "checkin" | "thank_you" | "sorry" | "custom";
 
 export interface EmailTemplate {
   id: string;

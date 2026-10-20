@@ -1,6 +1,5 @@
 "use client";
 
-
 import * as React from "react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { CircleIcon } from "lucide-react";
@@ -28,7 +27,7 @@ function RadioGroupItem({
       data-slot="radio-group-item"
       className={cn(
         "aspect-square size-4 shrink-0 rounded-full border border-white/20 text-white shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-black",
-        className
+        className,
       )}
       {...props}
     >

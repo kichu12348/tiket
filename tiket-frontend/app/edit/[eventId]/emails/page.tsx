@@ -1,7 +1,6 @@
 "use client";
 import { getErrorMessage } from "@/lib/errors";
 
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useEventStore } from "@/store/useEventStore";
 import type {
@@ -37,12 +36,15 @@ import {
 
 export default function EditEmailsPage() {
   const { event } = useEventStore();
-  const [activeType, setActiveType] = useState<EmailTemplateType>("confirmation");
+  const [activeType, setActiveType] =
+    useState<EmailTemplateType>("confirmation");
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loadedTemplatesMap, setLoadedTemplatesMap] = useState<
     Record<string, EmailTemplate>
   >({});
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
   const [variables, setVariables] = useState<AvailableVariables | null>(null);
   const [logs, setLogs] = useState<EmailLog[]>([]);
 
@@ -56,26 +58,29 @@ export default function EditEmailsPage() {
 
   // 1. Initial load: Fetch template types list, variables & logs
   const loadInitialData = useCallback(async (eventId: string) => {
-    return (Promise.all([
-        getEmailTemplates(eventId),
-        getAvailableVariables(eventId),
-        getEmailLogs(eventId),
-      ])).then(async ([tplData, varData, logData]) => {
+    return Promise.all([
+      getEmailTemplates(eventId),
+      getAvailableVariables(eventId),
+      getEmailLogs(eventId),
+    ])
+      .then(async ([tplData, varData, logData]) => {
+        setTemplates(tplData);
+        setVariables(varData);
+        setLogs(logData);
 
-      setTemplates(tplData);
-      setVariables(varData);
-      setLogs(logData);
-
-      // Select first template matching activeType
-      const match = tplData.find((t) => t.type === "confirmation") || tplData[0];
-      if (match) {
-        setSelectedTemplateId(match.id);
-      }
-    }).catch((err: unknown) => {
-      toast.error(getErrorMessage(err) || "Failed to load email templates");
-    }).finally(() => {
-      setIsInitialLoading(false);
-    });
+        // Select first template matching activeType
+        const match =
+          tplData.find((t) => t.type === "confirmation") || tplData[0];
+        if (match) {
+          setSelectedTemplateId(match.id);
+        }
+      })
+      .catch((err: unknown) => {
+        toast.error(getErrorMessage(err) || "Failed to load email templates");
+      })
+      .finally(() => {
+        setIsInitialLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -89,16 +94,19 @@ export default function EditEmailsPage() {
     async (eventId: string, templateId: string) => {
       if (loadedTemplatesMap[templateId]) return;
 
-      return (getEmailTemplateById(eventId, templateId)).then(async (fetched) => {
-        setLoadedTemplatesMap((prev) => ({
-          ...prev,
-          [templateId]: fetched,
-        }));
-      }).catch((err: unknown) => {
-        toast.error(getErrorMessage(err) || "Failed to load email template");
-      }).finally(() => {
-        setIsTemplateLoading(false);
-      });
+      return getEmailTemplateById(eventId, templateId)
+        .then(async (fetched) => {
+          setLoadedTemplatesMap((prev) => ({
+            ...prev,
+            [templateId]: fetched,
+          }));
+        })
+        .catch((err: unknown) => {
+          toast.error(getErrorMessage(err) || "Failed to load email template");
+        })
+        .finally(() => {
+          setIsTemplateLoading(false);
+        });
     },
     [loadedTemplatesMap],
   );
@@ -109,7 +117,12 @@ export default function EditEmailsPage() {
         fetchTemplateOnDemand(event.id, selectedTemplateId);
       }
     }
-  }, [event?.id, selectedTemplateId, loadedTemplatesMap, fetchTemplateOnDemand]);
+  }, [
+    event?.id,
+    selectedTemplateId,
+    loadedTemplatesMap,
+    fetchTemplateOnDemand,
+  ]);
 
   // When active category changes, select the first matching template
   const handleSelectType = (type: EmailTemplateType) => {
@@ -229,7 +242,10 @@ export default function EditEmailsPage() {
   };
 
   // Send Test email
-  const handleSendTest = async (recipientEmail: string, recipientName: string) => {
+  const handleSendTest = async (
+    recipientEmail: string,
+    recipientName: string,
+  ) => {
     if (!event?.id || !currentTemplate) return;
     try {
       const res = await sendTestEmail(event.id, {
@@ -278,7 +294,8 @@ export default function EditEmailsPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>Event Email Management</h1>
         <p className={styles.subtitle}>
-          Design white-theme email templates and send automated booking confirmations, check-ins, or targeted broadcasts.
+          Design white-theme email templates and send automated booking
+          confirmations, check-ins, or targeted broadcasts.
         </p>
       </div>
 
@@ -327,7 +344,9 @@ export default function EditEmailsPage() {
             />
           ) : (
             <div className={styles.loadingCard}>
-              <p className={styles.loadingText}>No template found for this section.</p>
+              <p className={styles.loadingText}>
+                No template found for this section.
+              </p>
             </div>
           )}
 

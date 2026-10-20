@@ -1,5 +1,9 @@
 import { emitEvent, lockEvent } from "../services/inventory.service";
-import { createCheckout, checkoutStatus, commandKey } from "../services/checkout.service";
+import {
+  createCheckout,
+  checkoutStatus,
+  commandKey,
+} from "../services/checkout.service";
 import { handleControllerError } from "../utils/errors";
 import { verifyEventPermission } from "../utils/permissions";
 import { changeAdmission } from "../utils/admission";
@@ -18,9 +22,18 @@ import {
   formFields,
   eventTeamMembers,
 } from "@db/schema";
-import { eq, and, like, or, sql, desc, count, inArray, isNotNull } from "drizzle-orm";
+import {
+  eq,
+  and,
+  like,
+  or,
+  sql,
+  desc,
+  count,
+  inArray,
+  isNotNull,
+} from "drizzle-orm";
 import { verifyEventOwner } from "@utils";
-
 
 export const getAttendees = async (
   request: FastifyRequest<{
@@ -41,7 +54,11 @@ export const getAttendees = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const hasAccess = await verifyEventPermission(eventId, user.id, "view_guests");
+    const hasAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_guests",
+    );
     if (!hasAccess) {
       return reply
         .status(403)
@@ -63,16 +80,26 @@ export const getAttendees = async (
 
     // Conditions
     const conditions = [eq(tickets.eventId, eventId)];
-    if (!status) conditions.push(inArray(tickets.status, ["active", "used", "pending_approval"]));
+    if (!status)
+      conditions.push(
+        inArray(tickets.status, ["active", "used", "pending_approval"]),
+      );
 
     if (ticketTypeId) {
       conditions.push(eq(tickets.ticketTypeId, ticketTypeId));
     }
     if (status) {
-      conditions.push(eq(tickets.status, status as typeof tickets.$inferSelect.status));
+      conditions.push(
+        eq(tickets.status, status as typeof tickets.$inferSelect.status),
+      );
     }
     if (paymentStatus) {
-      conditions.push(eq(orders.paymentStatus, paymentStatus as typeof orders.$inferSelect.paymentStatus));
+      conditions.push(
+        eq(
+          orders.paymentStatus,
+          paymentStatus as typeof orders.$inferSelect.paymentStatus,
+        ),
+      );
     }
 
     if (search && search.trim()) {
@@ -94,7 +121,8 @@ export const getAttendees = async (
       .from(tickets)
       .innerJoin(users, eq(tickets.userId, users.id))
       .innerJoin(orders, eq(tickets.orderId, orders.id))
-      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id)).leftJoin(orderItems, eq(orderItems.ticketId, tickets.id))
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .leftJoin(orderItems, eq(orderItems.ticketId, tickets.id))
       .where(whereClause);
 
     const total = totalResult[0]?.count || 0;
@@ -123,7 +151,8 @@ export const getAttendees = async (
       .from(tickets)
       .innerJoin(users, eq(tickets.userId, users.id))
       .innerJoin(orders, eq(tickets.orderId, orders.id))
-      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id)).leftJoin(orderItems, eq(orderItems.ticketId, tickets.id))
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .leftJoin(orderItems, eq(orderItems.ticketId, tickets.id))
       .where(whereClause)
       .orderBy(desc(tickets.createdAt))
       .limit(limitNum)
@@ -150,7 +179,11 @@ export const getAttendees = async (
       }
     }
 
-    const canViewFinance = await verifyEventPermission(eventId, user.id, "view_payments");
+    const canViewFinance = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_payments",
+    );
     const attendees = rows.map((r) => ({
       id: r.ticket.id,
       qrCode: r.ticket.qrCode,
@@ -188,7 +221,11 @@ export const getAttendeeStats = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const hasAccess = await verifyEventPermission(eventId, user.id, "view_analytics");
+    const hasAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_analytics",
+    );
     if (!hasAccess) {
       return reply
         .status(403)
@@ -199,22 +236,47 @@ export const getAttendeeStats = async (
     const totalAttendeesResult = await db
       .select({ count: count() })
       .from(tickets)
-      .where(and(eq(tickets.eventId, eventId), inArray(tickets.status, ["active", "used", "pending_approval"])));
+      .where(
+        and(
+          eq(tickets.eventId, eventId),
+          inArray(tickets.status, ["active", "used", "pending_approval"]),
+        ),
+      );
 
     const totalAttendees = totalAttendeesResult[0]?.count || 0;
 
     // Checked in count (status === 'used' or check_ins recorded)
     const checkedInResult = await db
       .select({ count: count() })
-      .from(checkIns).innerJoin(tickets, eq(tickets.id, checkIns.ticketId))
+      .from(checkIns)
+      .innerJoin(tickets, eq(tickets.id, checkIns.ticketId))
       .where(and(eq(checkIns.eventId, eventId), eq(tickets.status, "used")));
 
     const checkedInCount = checkedInResult[0]?.count || 0;
     const pendingCount = Math.max(0, totalAttendees - checkedInCount);
 
-    const [gross] = await db.select({ value: sql<string>`coalesce(sum(${orders.totalPaise}), 0)` }).from(orders).where(and(eq(orders.eventId, eventId), isNotNull(orders.paymentId)));
-    const [returned] = await db.select({ value: sql<string>`coalesce(sum(${refunds.amountPaise}), 0)` }).from(refunds).innerJoin(orders, and(eq(refunds.orderId, orders.id), eq(refunds.paymentId, orders.paymentId))).where(and(eq(orders.eventId, eventId), eq(refunds.status, "processed")));
-    const totalRevenue = await verifyEventPermission(eventId, user.id, "view_payments") ? (Number(gross?.value || 0) - Number(returned?.value || 0)) / 100 : 0;
+    const [gross] = await db
+      .select({ value: sql<string>`coalesce(sum(${orders.totalPaise}), 0)` })
+      .from(orders)
+      .where(and(eq(orders.eventId, eventId), isNotNull(orders.paymentId)));
+    const [returned] = await db
+      .select({ value: sql<string>`coalesce(sum(${refunds.amountPaise}), 0)` })
+      .from(refunds)
+      .innerJoin(
+        orders,
+        and(
+          eq(refunds.orderId, orders.id),
+          eq(refunds.paymentId, orders.paymentId),
+        ),
+      )
+      .where(and(eq(orders.eventId, eventId), eq(refunds.status, "processed")));
+    const totalRevenue = (await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_payments",
+    ))
+      ? (Number(gross?.value || 0) - Number(returned?.value || 0)) / 100
+      : 0;
 
     // Breakdown by ticket type
     const types = await db
@@ -282,7 +344,11 @@ export const getAttendeeById = async (
     const user = request.user as { id: string };
     const { eventId, ticketId } = request.params;
 
-    const hasAccess = await verifyEventPermission(eventId, user.id, "view_guests");
+    const hasAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_guests",
+    );
     if (!hasAccess) {
       return reply
         .status(403)
@@ -312,7 +378,8 @@ export const getAttendeeById = async (
       .from(tickets)
       .innerJoin(users, eq(tickets.userId, users.id))
       .innerJoin(orders, eq(tickets.orderId, orders.id))
-      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id)).leftJoin(orderItems, eq(orderItems.ticketId, tickets.id))
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .leftJoin(orderItems, eq(orderItems.ticketId, tickets.id))
       .where(and(eq(tickets.id, ticketId), eq(tickets.eventId, eventId)));
 
     if (!rows || rows.length === 0 || !rows[0]) {
@@ -339,7 +406,11 @@ export const getAttendeeById = async (
     const checkedInAt =
       checkInLogs.length > 0 ? checkInLogs[0]!.checkedInAt.toISOString() : null;
 
-    const canViewFinance = await verifyEventPermission(eventId, user.id, "view_payments");
+    const canViewFinance = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_payments",
+    );
     const attendee = {
       id: row.ticket.id,
       qrCode: row.ticket.qrCode,
@@ -361,7 +432,9 @@ export const getAttendeeById = async (
       checkIns: checkInLogs.map((c) => ({
         id: c.id,
         checkedInAt: c.checkedInAt.toISOString(),
-        loggedBy: c.loggedBy ? { id: c.loggedBy.id, name: c.loggedBy.name } : null,
+        loggedBy: c.loggedBy
+          ? { id: c.loggedBy.id, name: c.loggedBy.name }
+          : null,
       })),
     });
   } catch (error) {
@@ -380,15 +453,23 @@ export const getAttendeeFormResponses = async (
     const user = request.user as { id: string };
     const { eventId, ticketId } = request.params;
 
-    const hasAccess = await verifyEventPermission(eventId, user.id, "view_guests");
+    const hasAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_guests",
+    );
     if (!hasAccess) {
       return reply
         .status(403)
         .send({ error: "You do not have permission to view form responses." });
     }
 
-    const [boundTicket] = await db.select({ id: tickets.id }).from(tickets).where(and(eq(tickets.id, ticketId), eq(tickets.eventId, eventId)));
-    if (!boundTicket) return reply.status(404).send({ error: "Ticket not found." });
+    const [boundTicket] = await db
+      .select({ id: tickets.id })
+      .from(tickets)
+      .where(and(eq(tickets.id, ticketId), eq(tickets.eventId, eventId)));
+    if (!boundTicket)
+      return reply.status(404).send({ error: "Ticket not found." });
     const formResRows = await db
       .select({
         fieldId: formFields.id,
@@ -426,15 +507,29 @@ export const toggleCheckIn = async (
     const user = request.user as { id: string };
     const { eventId, ticketId } = request.params;
 
-    const hasAccess = await verifyEventPermission(eventId, user.id, "scan_tickets");
+    const hasAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "scan_tickets",
+    );
     if (!hasAccess) {
       return reply
         .status(403)
         .send({ error: "You do not have permission to check in attendees." });
     }
 
-    const [ticket] = await db.select().from(tickets).where(and(eq(tickets.id, ticketId), eq(tickets.eventId, eventId)));
-    return reply.send(await changeAdmission(eventId, ticketId, user.id, request.body.action === "undo"));
+    const [ticket] = await db
+      .select()
+      .from(tickets)
+      .where(and(eq(tickets.id, ticketId), eq(tickets.eventId, eventId)));
+    return reply.send(
+      await changeAdmission(
+        eventId,
+        ticketId,
+        user.id,
+        request.body.action === "undo",
+      ),
+    );
   } catch (error) {
     return handleControllerError(request, reply, error);
   }
@@ -451,7 +546,11 @@ export const cancelTicket = async (
     const user = request.user as { id: string };
     const { eventId, ticketId } = request.params;
 
-    const hasAccess = await verifyEventPermission(eventId, user.id, "manage_guests");
+    const hasAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_guests",
+    );
     if (!hasAccess) {
       return reply
         .status(403)
@@ -468,7 +567,14 @@ export const cancelTicket = async (
       return reply.status(404).send({ error: "Ticket not found." });
     }
 
-    await db.transaction(async tx => { await lockEvent(tx, eventId); await tx.update(tickets).set({ status: "cancelled", updatedAt: new Date() }).where(and(eq(tickets.id, ticketId), eq(tickets.eventId, eventId))); await emitEvent(tx, eventId, "registration.changed"); });
+    await db.transaction(async (tx) => {
+      await lockEvent(tx, eventId);
+      await tx
+        .update(tickets)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(and(eq(tickets.id, ticketId), eq(tickets.eventId, eventId)));
+      await emitEvent(tx, eventId, "registration.changed");
+    });
 
     return reply.status(200).send({
       message: "Ticket cancelled successfully.",
@@ -479,16 +585,48 @@ export const cancelTicket = async (
   }
 };
 
-export const manualRegister = async (request: FastifyRequest<{ Params: { eventId: string }; Body: { name: string; email: string; ticketTypeId: string } }>, reply: FastifyReply) => {
- try {
-  await request.jwtVerify(); const actor = (request.user as { id: string }).id;
-  if (!await verifyEventPermission(request.params.eventId, actor, "manage_guests")) return reply.status(403).send({ error: "Permission denied." });
-  const email = request.body.email.trim().toLowerCase();
-  await db.insert(users).values({ email, name: request.body.name, slug: crypto.randomUUID() }).onConflictDoNothing();
-  const [user] = await db.select().from(users).where(eq(users.email, email));
-  const order = await createCheckout({ eventId: request.params.eventId, purchases: [{ ticketTypeId: request.body.ticketTypeId }] }, user!.id, commandKey(request.headers["idempotency-key"]), true);
-  return reply.status(201).send({ message: "Complimentary registration created.", ticket: (await checkoutStatus(order.id, user!.id)).tickets[0] });
- } catch (error) { return handleControllerError(request, reply, error); }
+export const manualRegister = async (
+  request: FastifyRequest<{
+    Params: { eventId: string };
+    Body: { name: string; email: string; ticketTypeId: string };
+  }>,
+  reply: FastifyReply,
+) => {
+  try {
+    await request.jwtVerify();
+    const actor = (request.user as { id: string }).id;
+    if (
+      !(await verifyEventPermission(
+        request.params.eventId,
+        actor,
+        "manage_guests",
+      ))
+    )
+      return reply.status(403).send({ error: "Permission denied." });
+    const email = request.body.email.trim().toLowerCase();
+    await db
+      .insert(users)
+      .values({ email, name: request.body.name, slug: crypto.randomUUID() })
+      .onConflictDoNothing();
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const order = await createCheckout(
+      {
+        eventId: request.params.eventId,
+        purchases: [{ ticketTypeId: request.body.ticketTypeId }],
+      },
+      user!.id,
+      commandKey(request.headers["idempotency-key"]),
+      true,
+    );
+    return reply
+      .status(201)
+      .send({
+        message: "Complimentary registration created.",
+        ticket: (await checkoutStatus(order.id, user!.id)).tickets[0],
+      });
+  } catch (error) {
+    return handleControllerError(request, reply, error);
+  }
 };
 
 export const exportAttendees = async (
@@ -504,7 +642,11 @@ export const exportAttendees = async (
     const { eventId } = request.params;
     const format = request.query.format || "csv";
 
-    const hasAccess = await verifyEventPermission(eventId, user.id, "view_guests");
+    const hasAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_guests",
+    );
     if (!hasAccess) {
       return reply
         .status(403)
@@ -526,7 +668,8 @@ export const exportAttendees = async (
       .from(tickets)
       .innerJoin(users, eq(tickets.userId, users.id))
       .innerJoin(orders, eq(tickets.orderId, orders.id))
-      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id)).leftJoin(orderItems, eq(orderItems.ticketId, tickets.id))
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .leftJoin(orderItems, eq(orderItems.ticketId, tickets.id))
       .where(eq(tickets.eventId, eventId))
       .orderBy(desc(tickets.createdAt));
 

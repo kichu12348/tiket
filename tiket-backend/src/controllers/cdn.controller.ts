@@ -88,7 +88,10 @@ export async function serveImage(
         objectResponse = await getImageObject(tryKey);
         if (objectResponse) break;
       } catch (err: unknown) {
-        const error = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+        const error = err as {
+          name?: string;
+          $metadata?: { httpStatusCode?: number };
+        };
         if (
           error.name !== "NoSuchKey" &&
           error.$metadata?.httpStatusCode !== 404

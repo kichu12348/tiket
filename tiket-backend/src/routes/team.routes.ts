@@ -26,5 +26,9 @@ export default async function teamRoutes(fastify: FastifyInstance) {
 
   fastify.post("/:eventId/members", addMemberSchema, addTeamMember);
   fastify.get("/:eventId/members", getMembersSchema, getTeamMembers);
-  fastify.delete("/:eventId/members/:memberId", removeMemberSchema, removeTeamMember);
+  fastify.delete(
+    "/:eventId/members/:memberId",
+    removeMemberSchema,
+    removeTeamMember,
+  );
 }

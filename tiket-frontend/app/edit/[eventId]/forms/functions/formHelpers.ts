@@ -37,7 +37,10 @@ export function getPagesFromFields(fields: LocalField[]): number[] {
   return Array.from(pageNums).sort((a, b) => a - b);
 }
 
-export function getActivePageFields(fields: LocalField[], activePage: number): LocalField[] {
+export function getActivePageFields(
+  fields: LocalField[],
+  activePage: number,
+): LocalField[] {
   return fields
     .filter((f) => f.page === activePage)
     .sort((a, b) => a.sortOrder - b.sortOrder);

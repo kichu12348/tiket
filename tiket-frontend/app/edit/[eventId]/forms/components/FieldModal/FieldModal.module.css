@@ -372,7 +372,11 @@
 .fileDropzone.dragOver {
   border-color: var(--color-text-primary);
   background-color: var(--color-soft-bg-hover);
-  background-image: radial-gradient(circle at center, rgba(118, 147, 184, 0.3) 0%, transparent 70%);
+  background-image: radial-gradient(
+    circle at center,
+    rgba(118, 147, 184, 0.3) 0%,
+    transparent 70%
+  );
 }
 
 .uploadIcon {

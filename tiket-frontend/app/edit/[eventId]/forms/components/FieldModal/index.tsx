@@ -1,5 +1,24 @@
 import React, { useState, useRef } from "react";
-import { ChevronLeft, Type, AlignLeft, List, CheckSquare, Calendar, Mail, Hash, X, Trash2, Phone, ChevronDown, CircleDot, CalendarClock, Star, Clock, Link, Upload } from "lucide-react";
+import {
+  ChevronLeft,
+  Type,
+  AlignLeft,
+  List,
+  CheckSquare,
+  Calendar,
+  Mail,
+  Hash,
+  X,
+  Trash2,
+  Phone,
+  ChevronDown,
+  CircleDot,
+  CalendarClock,
+  Star,
+  Clock,
+  Link,
+  Upload,
+} from "lucide-react";
 import Modal from "@/components/Modal";
 import { confirm } from "@/components/ConfirmModal";
 import Switch from "@/components/Switch";
@@ -63,25 +82,36 @@ function FieldModalContent({
   onSave,
   onDelete,
 }: Props) {
-  const [step, setStep] = useState<"type" | "details">(mode === "edit" ? "details" : "type");
-  const [fieldType, setFieldType] = useState<FieldType>(initialField?.fieldType ?? "text");
+  const [step, setStep] = useState<"type" | "details">(
+    mode === "edit" ? "details" : "type",
+  );
+  const [fieldType, setFieldType] = useState<FieldType>(
+    initialField?.fieldType ?? "text",
+  );
   const [label, setLabel] = useState(initialField?.label ?? "");
-  const [isRequired, setIsRequired] = useState(initialField?.isRequired ?? false);
+  const [isRequired, setIsRequired] = useState(
+    initialField?.isRequired ?? false,
+  );
 
   const [options, setOptions] = useState<string[]>(initialField?.options ?? []);
   const [tagInput, setTagInput] = useState("");
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
 
-  const [minOptions, setMinOptions] = useState<number | "">(initialField?.minOptions ?? 0);
-  const [maxOptions, setMaxOptions] = useState<number | "">(initialField?.maxOptions ?? "");
+  const [minOptions, setMinOptions] = useState<number | "">(
+    initialField?.minOptions ?? 0,
+  );
+  const [maxOptions, setMaxOptions] = useState<number | "">(
+    initialField?.maxOptions ?? "",
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const optionSetRef = useRef<Set<string>>(new Set(initialField?.options ?? []));
-
+  const optionSetRef = useRef<Set<string>>(
+    new Set(initialField?.options ?? []),
+  );
 
   const handleTypeSelect = (type: FieldType) => {
     setFieldType(type);
@@ -245,7 +275,7 @@ function FieldModalContent({
 
   const handleDeleteClick = async () => {
     if (!onDelete) return;
-    
+
     await confirm(
       "Are you sure you want to delete this question? This action cannot be undone.",
       {
@@ -260,11 +290,10 @@ function FieldModalContent({
           } finally {
             setIsDeleting(false);
           }
-        }
-      }
+        },
+      },
     );
   };
-
 
   if (!isOpen) return null;
 
@@ -360,7 +389,9 @@ function FieldModalContent({
                 </button>
               </div>
 
-              <div className={`${styles.expandableContainer} ${isBulkAdding ? styles.expanded : ""}`}>
+              <div
+                className={`${styles.expandableContainer} ${isBulkAdding ? styles.expanded : ""}`}
+              >
                 <div className={styles.expandableInner}>
                   <div
                     className={`${styles.fileDropzone} ${isDraggingFile ? styles.dragOver : ""}`}
@@ -370,7 +401,9 @@ function FieldModalContent({
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload size={20} className={styles.uploadIcon} />
-                    <p>Click or drag a CSV or JSON file here to import options</p>
+                    <p>
+                      Click or drag a CSV or JSON file here to import options
+                    </p>
                     <input
                       type="file"
                       accept=".csv,.json,.txt"
@@ -382,7 +415,9 @@ function FieldModalContent({
                 </div>
               </div>
 
-              <div className={`${styles.expandableContainer} ${!isBulkAdding ? styles.expanded : ""}`}>
+              <div
+                className={`${styles.expandableContainer} ${!isBulkAdding ? styles.expanded : ""}`}
+              >
                 <div className={styles.expandableInner}>
                   <div
                     className={styles.tagInputWrapper}
@@ -500,5 +535,7 @@ function FieldModalContent({
 }
 
 export default function FieldModal(props: Props) {
-  return props.isOpen ? <FieldModalContent key={props.initialField?.localId ?? "new"} {...props} /> : null;
+  return props.isOpen ? (
+    <FieldModalContent key={props.initialField?.localId ?? "new"} {...props} />
+  ) : null;
 }

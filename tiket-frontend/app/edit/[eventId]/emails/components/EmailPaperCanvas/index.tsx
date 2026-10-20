@@ -1,7 +1,6 @@
 "use client";
 import { NodeSelection } from "@tiptap/pm/state";
 
-
 import React, { useState, useEffect } from "react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -139,7 +138,6 @@ function EmailPaperCanvasContent({
 
   // Sync external template updates safely
 
-
   useEffect(() => {
     if (editor && template.body) {
       if (editor.getHTML() !== template.body) {
@@ -274,7 +272,9 @@ function EmailPaperCanvasContent({
   const currentPadding = editor.getAttributes("paragraph").padding || "0px";
 
   // Active Image & Link Getters
-  const isImageNodeSelected = editor.state.selection instanceof NodeSelection && editor.state.selection.node.type.name === "image";
+  const isImageNodeSelected =
+    editor.state.selection instanceof NodeSelection &&
+    editor.state.selection.node.type.name === "image";
 
   const isImageActive = editor.isActive("image") || isImageNodeSelected;
 
@@ -292,7 +292,8 @@ function EmailPaperCanvasContent({
     if (!editor) return null;
     const { selection } = editor.state;
     if (
-      selection instanceof NodeSelection && selection.node.type.name === "image"
+      selection instanceof NodeSelection &&
+      selection.node.type.name === "image"
     ) {
       return selection.from;
     }
@@ -506,5 +507,10 @@ function EmailPaperCanvasContent({
 }
 
 export default function EmailPaperCanvas(props: EmailPaperCanvasProps) {
-  return <EmailPaperCanvasContent key={props.template.id + props.template.updatedAt} {...props} />;
+  return (
+    <EmailPaperCanvasContent
+      key={props.template.id + props.template.updatedAt}
+      {...props}
+    />
+  );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { useToken } from "@/hooks/useToken";
 import { useEffect } from "react";
@@ -60,7 +59,11 @@ export default function EditEventLayout({
       <div className={styles.pageWrapper}>
         <div className={styles.background} />
         {!isDetailsPage && (
-          <Navbar isAuthenticated={true} borderBottom={true} onSignOut={logout} />
+          <Navbar
+            isAuthenticated={true}
+            borderBottom={true}
+            onSignOut={logout}
+          />
         )}
         <div className={styles.layout}>
           {!isDetailsPage && <SidebarNav eventId={eventId} />}
@@ -77,7 +80,11 @@ export default function EditEventLayout({
       <div className={styles.background} />
       <div style={{ position: "relative", zIndex: 20 }}>
         {!isDetailsPage && (
-          <Navbar isAuthenticated={true} borderBottom={true} onSignOut={logout} />
+          <Navbar
+            isAuthenticated={true}
+            borderBottom={true}
+            onSignOut={logout}
+          />
         )}
       </div>
       <div className={styles.layout}>

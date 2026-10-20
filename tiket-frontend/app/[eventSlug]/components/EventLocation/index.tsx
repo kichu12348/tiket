@@ -17,7 +17,10 @@ interface EventLocationProps {
   };
 }
 
-export default function EventLocation({ event, locationData }: EventLocationProps) {
+export default function EventLocation({
+  event,
+  locationData,
+}: EventLocationProps) {
   if (event.locationType === "online") return null;
 
   const { address, placeId, lat, lng, state, country } = locationData;

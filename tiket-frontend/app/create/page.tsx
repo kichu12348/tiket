@@ -2,7 +2,6 @@
 import type { LocationDetails } from "@/types/event";
 import { getErrorMessage } from "@/lib/errors";
 
-
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -47,23 +46,26 @@ export default function CreateEventPage() {
 
   // Date/Time State
   const [startDate, setStartDate] = useState(() => new Date().toISOString());
-  const [endDate, setEndDate] = useState(
-    () => new Date(Date.now() + 86400000).toISOString(),
+  const [endDate, setEndDate] = useState(() =>
+    new Date(Date.now() + 86400000).toISOString(),
   );
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
 
   // Registration Date/Time State
-  const [regStartDate, setRegStartDate] = useState(() => new Date().toISOString());
-  const [regEndDate, setRegEndDate] = useState(
-    () => new Date(Date.now() + 3600000).toISOString(),
+  const [regStartDate, setRegStartDate] = useState(() =>
+    new Date().toISOString(),
+  );
+  const [regEndDate, setRegEndDate] = useState(() =>
+    new Date(Date.now() + 3600000).toISOString(),
   );
 
   const [locationType, setLocationType] = useState<
     "online" | "offline" | "hybrid"
   >("offline");
-  const [locationDetails, setLocationDetails] = useState<LocationDetails | null>(null);
+  const [locationDetails, setLocationDetails] =
+    useState<LocationDetails | null>(null);
   const [virtualLink, setVirtualLink] = useState("");
   const [description, setDescription] = useState("");
   const [isDescModalOpen, setIsDescModalOpen] = useState(false);
@@ -174,8 +176,7 @@ export default function CreateEventPage() {
     } catch (error: unknown) {
       console.error("Error creating event:", error);
       const errorMessage =
-        getErrorMessage(error) ||
-        "An error occurred while creating the event.";
+        getErrorMessage(error) || "An error occurred while creating the event.";
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);

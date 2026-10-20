@@ -138,24 +138,29 @@ export default function CouponPanel({
                         ? `Max ${coupon.maxUses} uses`
                         : "Unlimited uses"}
                     </span>
-                    {coupon.ticketTypeIds && coupon.ticketTypeIds.length > 0 && (
-                      <>
-                        <span className={styles.metaDot}>•</span>
-                        <span>
-                          {coupon.ticketTypeIds.length} tier
-                          {coupon.ticketTypeIds.length === 1 ? "" : "s"} restricted
-                        </span>
-                      </>
-                    )}
+                    {coupon.ticketTypeIds &&
+                      coupon.ticketTypeIds.length > 0 && (
+                        <>
+                          <span className={styles.metaDot}>•</span>
+                          <span>
+                            {coupon.ticketTypeIds.length} tier
+                            {coupon.ticketTypeIds.length === 1 ? "" : "s"}{" "}
+                            restricted
+                          </span>
+                        </>
+                      )}
                     {coupon.endsAt && (
                       <>
                         <span className={styles.metaDot}>•</span>
                         <span>
                           Expires{" "}
-                          {new Date(coupon.endsAt).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {new Date(coupon.endsAt).toLocaleDateString(
+                            undefined,
+                            {
+                              month: "short",
+                              day: "numeric",
+                            },
+                          )}
                         </span>
                       </>
                     )}
@@ -238,7 +243,9 @@ export default function CouponPanel({
           {kind !== "access" && (
             <div className={styles.inputGroup}>
               <label className={styles.inputLabel}>
-                {kind === "percent" ? "Discount Value (%)" : "Discount Amount (₹)"}
+                {kind === "percent"
+                  ? "Discount Value (%)"
+                  : "Discount Amount (₹)"}
               </label>
               <input
                 className={styles.input}

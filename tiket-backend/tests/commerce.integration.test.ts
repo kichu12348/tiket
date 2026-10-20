@@ -32,7 +32,12 @@ import {
 } from "../src/services/gateway.service";
 import { processRefunds, requestRefund } from "../src/services/refund.service";
 import { changeAdmission } from "../src/utils/admission";
-import { eventRoles, eventTeamMembers, webhookInbox, orderItems } from "../src/db/schema";
+import {
+  eventRoles,
+  eventTeamMembers,
+  webhookInbox,
+  orderItems,
+} from "../src/db/schema";
 import { cleanupExpiredHolds } from "../src/services/inventory.service";
 import { reconcilePayments } from "../src/services/payment-lifecycle.service";
 
@@ -227,11 +232,18 @@ integration("commerce against PostgreSQL", () => {
   });
   test("20 concurrent buyers cannot oversell the final event/tier spot", async () => {
     const f = await fixture("100.00", 1);
-    const buyers = await db.insert(users).values(Array.from({ length: 20 }, () => ({ name: "Concurrent buyer", email: `${randomUUID()}@example.test`, slug: randomUUID() }))).returning();
+    const buyers = await db
+      .insert(users)
+      .values(
+        Array.from({ length: 20 }, () => ({
+          name: "Concurrent buyer",
+          email: `${randomUUID()}@example.test`,
+          slug: randomUUID(),
+        })),
+      )
+      .returning();
     const results = await Promise.allSettled(
-        buyers.map(record =>
-          createCheckout(f.body, record.id, randomUUID()),
-      ),
+      buyers.map((record) => createCheckout(f.body, record.id, randomUUID())),
     );
     expect(
       results.filter((result) => result.status === "fulfilled"),
@@ -239,15 +251,13 @@ integration("commerce against PostgreSQL", () => {
   });
   test("coupon usage is reserved atomically and released on abandonment", async () => {
     const f = await fixture();
-    await db
-      .insert(coupons)
-      .values({
-        eventId: f.event.id,
-        code: "EARLY",
-        kind: "fixed",
-        value: 2000,
-        maxUses: 1,
-      });
+    await db.insert(coupons).values({
+      eventId: f.event.id,
+      code: "EARLY",
+      kind: "fixed",
+      value: 2000,
+      maxUses: 1,
+    });
     const body = { ...f.body, code: "early" };
     const first = await createCheckout(body, buyer, randomUUID());
     expect(first.totalPaise).toBe(8000);
@@ -531,87 +541,318 @@ integration("commerce against PostgreSQL", () => {
   });
   test("multi-instance socket updates and revocation keep scanner data minimal", async () => {
     const f = await fixture("0.00");
-    const [role] = await db.insert(eventRoles).values({ eventId: f.event.id, name: "Scanner", permissions: ["scan_tickets"] }).returning();
-    const [member] = await db.insert(eventTeamMembers).values({ eventId: f.event.id, userId: stranger, roleId: role!.id }).returning();
-    const second = buildApp(); await second.ready();
+    const [role] = await db
+      .insert(eventRoles)
+      .values({
+        eventId: f.event.id,
+        name: "Scanner",
+        permissions: ["scan_tickets"],
+      })
+      .returning();
+    const [member] = await db
+      .insert(eventTeamMembers)
+      .values({ eventId: f.event.id, userId: stranger, roleId: role!.id })
+      .returning();
+    const second = buildApp();
+    await second.ready();
     const address = await second.listen({ port: 0, host: "127.0.0.1" });
     try {
-      expect((await second.inject({ url: "/api/realtime/ws", headers: { origin: "https://unrelated.example" } })).statusCode).toBe(403);
-      expect((await second.inject({ url: `/api/commerce/${f.event.id}/finance`, headers: token(stranger) })).statusCode).toBe(403);
-      const response = await app.inject({ method: "POST", url: `/api/realtime/events/${f.event.id}/connect`, headers: token(stranger) });
-      const socket = new WebSocketClient(address.replace("http:", "ws:") + "/api/realtime/ws", { headers: { Origin: "http://localhost:3000" } });
-      await new Promise<void>(resolve => socket.once("open", resolve));
-      const ready = new Promise<string>(resolve => socket.once("message", data => resolve(data.toString())));
-      socket.send(JSON.stringify(response.json())); expect(JSON.parse(await ready).type).toBe("ready");
-      const changed = new Promise<string>(resolve => socket.once("message", data => resolve(data.toString())));
-      const registration = await app.inject({ method: "POST", url: "/api/orders", headers: { ...token(buyer), "idempotency-key": randomUUID() }, payload: f.body }); expect(registration.statusCode).toBe(201);
-      const message = JSON.parse(await changed) as Record<string, unknown>; expect(Object.keys(message).sort()).toEqual(["eventId", "type", "version"]);
-      const closed = new Promise<number>(resolve => socket.once("close", resolve));
-      await db.delete(eventTeamMembers).where(eq(eventTeamMembers.id, member!.id)); expect(await closed).toBe(4003);
-    } finally { await second.close(); }
+      expect(
+        (
+          await second.inject({
+            url: "/api/realtime/ws",
+            headers: { origin: "https://unrelated.example" },
+          })
+        ).statusCode,
+      ).toBe(403);
+      expect(
+        (
+          await second.inject({
+            url: `/api/commerce/${f.event.id}/finance`,
+            headers: token(stranger),
+          })
+        ).statusCode,
+      ).toBe(403);
+      const response = await app.inject({
+        method: "POST",
+        url: `/api/realtime/events/${f.event.id}/connect`,
+        headers: token(stranger),
+      });
+      const socket = new WebSocketClient(
+        address.replace("http:", "ws:") + "/api/realtime/ws",
+        { headers: { Origin: "http://localhost:3000" } },
+      );
+      await new Promise<void>((resolve) => socket.once("open", resolve));
+      const ready = new Promise<string>((resolve) =>
+        socket.once("message", (data) => resolve(data.toString())),
+      );
+      socket.send(JSON.stringify(response.json()));
+      expect(JSON.parse(await ready).type).toBe("ready");
+      const changed = new Promise<string>((resolve) =>
+        socket.once("message", (data) => resolve(data.toString())),
+      );
+      const registration = await app.inject({
+        method: "POST",
+        url: "/api/orders",
+        headers: { ...token(buyer), "idempotency-key": randomUUID() },
+        payload: f.body,
+      });
+      expect(registration.statusCode).toBe(201);
+      const message = JSON.parse(await changed) as Record<string, unknown>;
+      expect(Object.keys(message).sort()).toEqual([
+        "eventId",
+        "type",
+        "version",
+      ]);
+      const closed = new Promise<number>((resolve) =>
+        socket.once("close", resolve),
+      );
+      await db
+        .delete(eventTeamMembers)
+        .where(eq(eventTeamMembers.id, member!.id));
+      expect(await closed).toBe(4003);
+    } finally {
+      await second.close();
+    }
   });
   test("refund-before-capture inbox retries converge and reject wrong amounts", async () => {
-    const f = await fixture(); const order = await createCheckout(f.body, buyer, randomUUID()); await initializeGatewayOrder(order.id);
+    const f = await fixture();
+    const order = await createCheckout(f.body, buyer, randomUUID());
+    await initializeGatewayOrder(order.id);
     const status = await checkoutStatus(order.id, buyer);
-    const payment = { id: `pay_${randomUUID()}`, order_id: status.order!.paymentIntentId!, amount: order.totalPaise, currency: "INR", status: "captured", amount_refunded: order.totalPaise };
-    const refund = { id: `rfnd_${randomUUID()}`, payment_id: payment.id, amount: order.totalPaise, status: "processed", notes: {} };
+    const payment = {
+      id: `pay_${randomUUID()}`,
+      order_id: status.order!.paymentIntentId!,
+      amount: order.totalPaise,
+      currency: "INR",
+      status: "captured",
+      amount_refunded: order.totalPaise,
+    };
+    const refund = {
+      id: `rfnd_${randomUUID()}`,
+      payment_id: payment.id,
+      amount: order.totalPaise,
+      status: "processed",
+      notes: {},
+    };
     const id = randomUUID();
-    await db.insert(webhookInbox).values({ id, payload: { event: "refund.processed", payload: { refund: { entity: refund } } } });
-    await processInbox(); expect((await db.select().from(webhookInbox).where(eq(webhookInbox.id, id)))[0]?.processedAt).toBeNull();
-    await expect(db.transaction(tx => applyPayment(tx, { ...payment, amount: 1 }))).rejects.toMatchObject({ statusCode: 409 });
-    await db.transaction(tx => applyPayment(tx, payment)); await processInbox();
-    expect((await checkoutStatus(order.id, buyer)).order?.paymentStatus).toBe("refunded");
+    await db
+      .insert(webhookInbox)
+      .values({
+        id,
+        payload: {
+          event: "refund.processed",
+          payload: { refund: { entity: refund } },
+        },
+      });
+    await processInbox();
+    expect(
+      (await db.select().from(webhookInbox).where(eq(webhookInbox.id, id)))[0]
+        ?.processedAt,
+    ).toBeNull();
+    await expect(
+      db.transaction((tx) => applyPayment(tx, { ...payment, amount: 1 })),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    await db.transaction((tx) => applyPayment(tx, payment));
+    await processInbox();
+    expect((await checkoutStatus(order.id, buyer)).order?.paymentStatus).toBe(
+      "refunded",
+    );
   });
   test("capture/cancel/cleanup races preserve capacity and never resurrect voided passes", async () => {
-    const f = await fixture("100.00", 1); const order = await createCheckout(f.body, buyer, randomUUID()); await initializeGatewayOrder(order.id);
-    await db.update(orders).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(orders.id, order.id));
-    await Promise.all([capture(order.id), cancelCheckout(order.id, buyer), cleanupExpiredHolds(), cleanupExpiredHolds()]);
-    await processRefunds(); const status = await checkoutStatus(order.id, buyer);
-    expect(status.order?.reservationState).toBe("released"); expect(status.tickets[0]?.status).toBe("refunded");
-    expect((await createCheckout(f.body, stranger, randomUUID())).reservationState).toBe("held");
+    const f = await fixture("100.00", 1);
+    const order = await createCheckout(f.body, buyer, randomUUID());
+    await initializeGatewayOrder(order.id);
+    await db
+      .update(orders)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(orders.id, order.id));
+    await Promise.all([
+      capture(order.id),
+      cancelCheckout(order.id, buyer),
+      cleanupExpiredHolds(),
+      cleanupExpiredHolds(),
+    ]);
+    await processRefunds();
+    const status = await checkoutStatus(order.id, buyer);
+    expect(status.order?.reservationState).toBe("released");
+    expect(status.tickets[0]?.status).toBe("refunded");
+    expect(
+      (await createCheckout(f.body, stranger, randomUUID())).reservationState,
+    ).toBe("held");
   });
   test("authorized payments do not issue tickets; reconciliation repairs a lost callback", async () => {
-    const f = await fixture(); const order = await createCheckout(f.body, buyer, randomUUID()); await initializeGatewayOrder(order.id);
+    const f = await fixture();
+    const order = await createCheckout(f.body, buyer, randomUUID());
+    await initializeGatewayOrder(order.id);
     const status = await checkoutStatus(order.id, buyer);
-    const payment = { id: `pay_${randomUUID()}`, order_id: status.order!.paymentIntentId!, amount: order.totalPaise, currency: "INR", status: "authorized", amount_refunded: 0 };
-    await db.transaction(tx => applyPayment(tx, payment)); expect((await checkoutStatus(order.id, buyer)).tickets[0]?.status).toBe("pending");
-    payments.set(payment.id, { ...payment, status: "captured" }); await reconcilePayments();
-    expect((await checkoutStatus(order.id, buyer)).tickets[0]?.status).toBe("active");
+    const payment = {
+      id: `pay_${randomUUID()}`,
+      order_id: status.order!.paymentIntentId!,
+      amount: order.totalPaise,
+      currency: "INR",
+      status: "authorized",
+      amount_refunded: 0,
+    };
+    await db.transaction((tx) => applyPayment(tx, payment));
+    expect((await checkoutStatus(order.id, buyer)).tickets[0]?.status).toBe(
+      "pending",
+    );
+    payments.set(payment.id, { ...payment, status: "captured" });
+    await reconcilePayments();
+    expect((await checkoutStatus(order.id, buyer)).tickets[0]?.status).toBe(
+      "active",
+    );
   });
   test("event capacity edits cannot cut into existing allocations", async () => {
-    const f = await fixture("0.00", 2); await createCheckout({ ...f.body, purchases: [f.body.purchases[0]!, f.body.purchases[0]!] }, buyer, randomUUID());
-    expect((await app.inject({ method: "PATCH", url: `/api/events/${f.event.id}`, headers: token(owner), payload: { capacity: 1 } })).statusCode).toBe(409);
+    const f = await fixture("0.00", 2);
+    await createCheckout(
+      { ...f.body, purchases: [f.body.purchases[0]!, f.body.purchases[0]!] },
+      buyer,
+      randomUUID(),
+    );
+    expect(
+      (
+        await app.inject({
+          method: "PATCH",
+          url: `/api/events/${f.event.id}`,
+          headers: token(owner),
+          payload: { capacity: 1 },
+        })
+      ).statusCode,
+    ).toBe(409);
   });
   test("custom SMTP configuration validates and returns no secrets", async () => {
-    const f = await fixture(); process.env.CREDENTIAL_ENCRYPTION_KEY = "ab".repeat(32);
+    const f = await fixture();
+    process.env.CREDENTIAL_ENCRYPTION_KEY = "ab".repeat(32);
     const url = `/api/connections/events/${f.event.id}/mail`;
-    const response = await app.inject({ method: "PUT", url, headers: token(owner), payload: { provider: "smtp", host: "smtp.example.test", port: 587, secure: false, username: "fixture", password: "fixture-secret", fromEmail: "test@example.test" } });
+    const response = await app.inject({
+      method: "PUT",
+      url,
+      headers: token(owner),
+      payload: {
+        provider: "smtp",
+        host: "smtp.example.test",
+        port: 587,
+        secure: false,
+        username: "fixture",
+        password: "fixture-secret",
+        fromEmail: "test@example.test",
+      },
+    });
     expect(response.statusCode).toBe(200);
-    const visible = await app.inject({ url, headers: token(owner) }); expect(visible.body).not.toContain("fixture-secret"); expect(visible.json().custom).toBe(true);
+    const visible = await app.inject({ url, headers: token(owner) });
+    expect(visible.body).not.toContain("fixture-secret");
+    expect(visible.json().custom).toBe(true);
   });
   test("order line snapshots survive tier edits and reject direct mutations", async () => {
-    const f = await fixture(); const order = await createCheckout(f.body, buyer, randomUUID());
-    await db.update(ticketTypes).set({ price: "999.00", name: "Renamed" }).where(eq(ticketTypes.id, f.tier.id));
-    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
-    expect(line?.unitPricePaise).toBe(10000); expect(line?.name).toBe("General");
-    await expect(Promise.resolve(db.update(orderItems).set({ unitPricePaise: 123, totalPaise: 123 }).where(eq(orderItems.id, line!.id)))).rejects.toThrow();
+    const f = await fixture();
+    const order = await createCheckout(f.body, buyer, randomUUID());
+    await db
+      .update(ticketTypes)
+      .set({ price: "999.00", name: "Renamed" })
+      .where(eq(ticketTypes.id, f.tier.id));
+    const [line] = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.orderId, order.id));
+    expect(line?.unitPricePaise).toBe(10000);
+    expect(line?.name).toBe("General");
+    await expect(
+      Promise.resolve(
+        db
+          .update(orderItems)
+          .set({ unitPricePaise: 123, totalPaise: 123 })
+          .where(eq(orderItems.id, line!.id)),
+      ),
+    ).rejects.toThrow();
   });
   test("organizer roster, analytics, finance and door APIs share the ledger", async () => {
-    const f = await fixture("0.00"); const order = await createCheckout(f.body, buyer, randomUUID()); const state = await checkoutStatus(order.id, buyer);
-    const roster = await app.inject({ url: `/api/attendees/${f.event.id}`, headers: token(owner) }); expect(roster.statusCode).toBe(200); expect(roster.json().total).toBe(1);
-    const stats = await app.inject({ url: `/api/attendees/${f.event.id}/stats`, headers: token(owner) }); expect(stats.statusCode).toBe(200); expect(stats.json().totalAttendees).toBe(1);
-    expect((await app.inject({ url: `/api/commerce/${f.event.id}/finance`, headers: token(owner) })).statusCode).toBe(200);
-    const pass = await app.inject({ url: `/api/tickets/${state.tickets[0]!.id}`, headers: token(buyer) }); expect(pass.statusCode).toBe(200); expect(pass.json().ticketType.price).toBe("0.00");
-    const scan = await app.inject({ method: "POST", url: "/api/check-ins/scan", headers: token(owner), payload: { eventId: f.event.id, qrCode: state.tickets[0]!.qrCode } }); expect(scan.statusCode).toBe(201); expect(scan.json().ticket.status).toBe("used");
+    const f = await fixture("0.00");
+    const order = await createCheckout(f.body, buyer, randomUUID());
+    const state = await checkoutStatus(order.id, buyer);
+    const roster = await app.inject({
+      url: `/api/attendees/${f.event.id}`,
+      headers: token(owner),
+    });
+    expect(roster.statusCode).toBe(200);
+    expect(roster.json().total).toBe(1);
+    const stats = await app.inject({
+      url: `/api/attendees/${f.event.id}/stats`,
+      headers: token(owner),
+    });
+    expect(stats.statusCode).toBe(200);
+    expect(stats.json().totalAttendees).toBe(1);
+    expect(
+      (
+        await app.inject({
+          url: `/api/commerce/${f.event.id}/finance`,
+          headers: token(owner),
+        })
+      ).statusCode,
+    ).toBe(200);
+    const pass = await app.inject({
+      url: `/api/tickets/${state.tickets[0]!.id}`,
+      headers: token(buyer),
+    });
+    expect(pass.statusCode).toBe(200);
+    expect(pass.json().ticketType.price).toBe("0.00");
+    const scan = await app.inject({
+      method: "POST",
+      url: "/api/check-ins/scan",
+      headers: token(owner),
+      payload: { eventId: f.event.id, qrCode: state.tickets[0]!.qrCode },
+    });
+    expect(scan.statusCode).toBe(201);
+    expect(scan.json().ticket.status).toBe("used");
   });
   test("inventory configuration broadcasts and preserves order history", async () => {
     const f = await fixture("0.00");
-    const extra = await app.inject({ method: "POST", url: `/api/ticket-types/${f.event.id}`, headers: token(owner), payload: { name: "Additional", price: 0 } }); expect(extra.statusCode).toBe(201);
-    expect((await db.select().from(events).where(eq(events.id, f.event.id)))[0]!.version).toBeGreaterThan(0);
+    const extra = await app.inject({
+      method: "POST",
+      url: `/api/ticket-types/${f.event.id}`,
+      headers: token(owner),
+      payload: { name: "Additional", price: 0 },
+    });
+    expect(extra.statusCode).toBe(201);
+    expect(
+      (await db.select().from(events).where(eq(events.id, f.event.id)))[0]!
+        .version,
+    ).toBeGreaterThan(0);
     await createCheckout(f.body, buyer, randomUUID());
-    expect((await app.inject({ method: "DELETE", url: `/api/ticket-types/${f.event.id}/${f.tier.id}`, headers: token(owner) })).statusCode).toBe(409);
-    expect((await app.inject({ method: "DELETE", url: `/api/events/${f.event.id}`, headers: token(owner) })).statusCode).toBe(409);
-    const unsold = await fixture("0.00"); await app.inject({ method: "PATCH", url: `/api/events/${unsold.event.id}`, headers: token(owner), payload: { title: "Updated unsold event" } });
-    expect((await app.inject({ method: "DELETE", url: `/api/events/${unsold.event.id}`, headers: token(owner) })).statusCode).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: "DELETE",
+          url: `/api/ticket-types/${f.event.id}/${f.tier.id}`,
+          headers: token(owner),
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(
+      (
+        await app.inject({
+          method: "DELETE",
+          url: `/api/events/${f.event.id}`,
+          headers: token(owner),
+        })
+      ).statusCode,
+    ).toBe(409);
+    const unsold = await fixture("0.00");
+    await app.inject({
+      method: "PATCH",
+      url: `/api/events/${unsold.event.id}`,
+      headers: token(owner),
+      payload: { title: "Updated unsold event" },
+    });
+    expect(
+      (
+        await app.inject({
+          method: "DELETE",
+          url: `/api/events/${unsold.event.id}`,
+          headers: token(owner),
+        })
+      ).statusCode,
+    ).toBe(200);
   });
 });

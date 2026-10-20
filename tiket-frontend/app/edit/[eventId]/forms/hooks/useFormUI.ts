@@ -3,7 +3,10 @@ import { toast } from "sonner";
 import { confirm } from "@/components/ConfirmModal";
 import type { LocalField } from "../types";
 
-export function useFormUI(pages: number[], deletePageFromDB: (pageNum: number) => Promise<void>) {
+export function useFormUI(
+  pages: number[],
+  deletePageFromDB: (pageNum: number) => Promise<void>,
+) {
   const [activePage, setActivePage] = useState(1);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
@@ -11,7 +14,6 @@ export function useFormUI(pages: number[], deletePageFromDB: (pageNum: number) =
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [editingField, setEditingField] = useState<LocalField | null>(null);
-
 
   const addPage = () => {
     const maxPage = pages.length > 0 ? Math.max(...pages) : 0;
@@ -39,7 +41,7 @@ export function useFormUI(pages: number[], deletePageFromDB: (pageNum: number) =
           }
           toast.success(`Page ${pageNum} deleted.`);
         },
-      }
+      },
     );
   };
 

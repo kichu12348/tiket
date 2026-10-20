@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -64,18 +63,37 @@ export default function TicketPassPage() {
                   />
 
                   {/* Attendee, Date & Time, Location Details */}
-                  <PassDetails attendee={ticket.attendee} event={ticket.event} />
+                  <PassDetails
+                    attendee={ticket.attendee}
+                    event={ticket.event}
+                  />
 
                   {/* Horizontal Perforation Divider with Inward SVG Bite Cutout Notches */}
                   <div className={styles.perforationWrapper}>
-                    <svg width="12" height="24" viewBox="0 0 12 24" className={styles.notchLeftSvg}>
-                      <path d="M 0 0 A 12 12 0 0 1 0 24 Z" fill="var(--color-bg-base, #121316)" />
+                    <svg
+                      width="12"
+                      height="24"
+                      viewBox="0 0 12 24"
+                      className={styles.notchLeftSvg}
+                    >
+                      <path
+                        d="M 0 0 A 12 12 0 0 1 0 24 Z"
+                        fill="var(--color-bg-base, #121316)"
+                      />
                     </svg>
 
                     <div className={styles.dashedLine} />
 
-                    <svg width="12" height="24" viewBox="0 0 12 24" className={styles.notchRightSvg}>
-                      <path d="M 12 0 A 12 12 0 0 0 12 24 Z" fill="var(--color-bg-base, #121316)" />
+                    <svg
+                      width="12"
+                      height="24"
+                      viewBox="0 0 12 24"
+                      className={styles.notchRightSvg}
+                    >
+                      <path
+                        d="M 12 0 A 12 12 0 0 0 12 24 Z"
+                        fill="var(--color-bg-base, #121316)"
+                      />
                     </svg>
                   </div>
 

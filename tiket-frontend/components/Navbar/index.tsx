@@ -18,9 +18,24 @@ export default function Navbar({
         Tiket<span className={styles.dot}>.</span>
       </Link>
       {isAuthenticated ? (
-        <><Link href="/home" className={styles.avatarBtn} aria-label="Go to Home">
-          :)
-        </Link>{onSignOut && <button type="button" onClick={onSignOut} className={styles.signInBtn}>Sign out</button>}</>
+        <>
+          <Link
+            href="/home"
+            className={styles.avatarBtn}
+            aria-label="Go to Home"
+          >
+            :)
+          </Link>
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className={styles.signInBtn}
+            >
+              Sign out
+            </button>
+          )}
+        </>
       ) : (
         <Link href="/signin" className={styles.signInBtn}>
           Sign In

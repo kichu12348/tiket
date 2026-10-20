@@ -14,8 +14,8 @@ const ticketResponseObj = {
   properties: {
     id: { type: "string" },
     status: { type: "string" },
-    userId: { type: "string" }, 
-  }
+    userId: { type: "string" },
+  },
 };
 
 const errorResponseSchema = {
@@ -39,8 +39,8 @@ export const scanTicketSchema = {
         properties: {
           message: { type: "string" },
           checkIn: checkInResponseObj,
-          ticket: ticketResponseObj
-        }
+          ticket: ticketResponseObj,
+        },
       },
       400: errorResponseSchema,
       401: errorResponseSchema,

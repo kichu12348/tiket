@@ -28,7 +28,7 @@ export function proxy(request: NextRequest) {
   if (editMatch) {
     const eventId = editMatch[1];
     return NextResponse.redirect(
-      new URL(`/edit/${eventId}/overview`, request.url)
+      new URL(`/edit/${eventId}/overview`, request.url),
     );
   }
 

@@ -30,7 +30,15 @@ export default async function attendeeRoutes(fastify: FastifyInstance) {
     getAttendeeFormResponsesSchema,
     getAttendeeFormResponses,
   );
-  fastify.post("/:eventId/:ticketId/check-in", toggleCheckInSchema, toggleCheckIn);
+  fastify.post(
+    "/:eventId/:ticketId/check-in",
+    toggleCheckInSchema,
+    toggleCheckIn,
+  );
   fastify.post("/:eventId/:ticketId/cancel", cancelTicketSchema, cancelTicket);
-  fastify.post("/:eventId/manual-register", manualRegisterSchema, manualRegister);
+  fastify.post(
+    "/:eventId/manual-register",
+    manualRegisterSchema,
+    manualRegister,
+  );
 }

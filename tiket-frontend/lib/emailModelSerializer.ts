@@ -60,9 +60,12 @@ export class EmailModelSerializer {
           } else if (mark.type === "textStyle") {
             const styles: string[] = [];
             if (mark.attrs?.color) styles.push(`color: ${mark.attrs.color}`);
-            if (mark.attrs?.fontFamily) styles.push(`font-family: ${mark.attrs.fontFamily}`);
-            if (mark.attrs?.fontWeight) styles.push(`font-weight: ${mark.attrs.fontWeight}`);
-            if (mark.attrs?.fontSize) styles.push(`font-size: ${mark.attrs.fontSize}`);
+            if (mark.attrs?.fontFamily)
+              styles.push(`font-family: ${mark.attrs.fontFamily}`);
+            if (mark.attrs?.fontWeight)
+              styles.push(`font-weight: ${mark.attrs.fontWeight}`);
+            if (mark.attrs?.fontSize)
+              styles.push(`font-size: ${mark.attrs.fontSize}`);
             if (styles.length > 0) {
               text = `<span style="${styles.join("; ")}">${text}</span>`;
             }
@@ -83,20 +86,31 @@ export class EmailModelSerializer {
 
     // Node-level inline style attributes
     const nodeStyles: string[] = [];
-    if (node.attrs?.textAlign) nodeStyles.push(`text-align: ${node.attrs.textAlign}`);
-    if (node.attrs?.fontFamily) nodeStyles.push(`font-family: ${node.attrs.fontFamily}`);
-    if (node.attrs?.fontWeight) nodeStyles.push(`font-weight: ${node.attrs.fontWeight}`);
+    if (node.attrs?.textAlign)
+      nodeStyles.push(`text-align: ${node.attrs.textAlign}`);
+    if (node.attrs?.fontFamily)
+      nodeStyles.push(`font-family: ${node.attrs.fontFamily}`);
+    if (node.attrs?.fontWeight)
+      nodeStyles.push(`font-weight: ${node.attrs.fontWeight}`);
     if (node.attrs?.color) nodeStyles.push(`color: ${node.attrs.color}`);
-    if (node.attrs?.backgroundColor) nodeStyles.push(`background-color: ${node.attrs.backgroundColor}`);
-    if (node.attrs?.borderColor) nodeStyles.push(`border-color: ${node.attrs.borderColor}`);
-    if (node.attrs?.borderWidth) nodeStyles.push(`border-width: ${node.attrs.borderWidth}`);
-    if (node.attrs?.borderStyle) nodeStyles.push(`border-style: ${node.attrs.borderStyle}`);
-    if (node.attrs?.borderRadius) nodeStyles.push(`border-radius: ${node.attrs.borderRadius}`);
+    if (node.attrs?.backgroundColor)
+      nodeStyles.push(`background-color: ${node.attrs.backgroundColor}`);
+    if (node.attrs?.borderColor)
+      nodeStyles.push(`border-color: ${node.attrs.borderColor}`);
+    if (node.attrs?.borderWidth)
+      nodeStyles.push(`border-width: ${node.attrs.borderWidth}`);
+    if (node.attrs?.borderStyle)
+      nodeStyles.push(`border-style: ${node.attrs.borderStyle}`);
+    if (node.attrs?.borderRadius)
+      nodeStyles.push(`border-radius: ${node.attrs.borderRadius}`);
     if (node.attrs?.padding) nodeStyles.push(`padding: ${node.attrs.padding}`);
-    if (node.attrs?.marginTop) nodeStyles.push(`margin-top: ${node.attrs.marginTop}`);
-    if (node.attrs?.marginBottom) nodeStyles.push(`margin-bottom: ${node.attrs.marginBottom}`);
+    if (node.attrs?.marginTop)
+      nodeStyles.push(`margin-top: ${node.attrs.marginTop}`);
+    if (node.attrs?.marginBottom)
+      nodeStyles.push(`margin-bottom: ${node.attrs.marginBottom}`);
 
-    const inlineStyleStr = nodeStyles.length > 0 ? nodeStyles.join("; ") + ";" : "";
+    const inlineStyleStr =
+      nodeStyles.length > 0 ? nodeStyles.join("; ") + ";" : "";
 
     switch (node.type) {
       case "paragraph":

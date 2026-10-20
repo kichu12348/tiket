@@ -1,7 +1,10 @@
 import axios from "axios";
 
 export function getErrorMessage(error: unknown): string {
-  if (axios.isAxiosError<{ error?: string }>(error) && error.response?.data?.error) {
+  if (
+    axios.isAxiosError<{ error?: string }>(error) &&
+    error.response?.data?.error
+  ) {
     return error.response.data.error;
   }
   return error instanceof Error ? error.message : "";

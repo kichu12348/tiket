@@ -1,12 +1,19 @@
 "use client";
 import { getErrorMessage } from "@/lib/errors";
 
-
 import { useState, useEffect, useCallback } from "react";
 import { getRoles, createRole, updateRole, deleteRole } from "@/api/team";
 import type { EventRole } from "@/types/team";
 import { toast } from "sonner";
-import { CheckCircle2, Edit2, Plus, ShieldAlert, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  CheckCircle2,
+  Edit2,
+  Plus,
+  ShieldAlert,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import styles from "./RolesTab.module.css";
 import { confirm } from "@/components/ConfirmModal";
 import Modal from "@/components/Modal";
@@ -38,16 +45,21 @@ export default function RolesTab({ eventId }: { eventId: string }) {
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 
   const fetchRoles = useCallback(async () => {
-    return (getRoles(eventId)).then(async (data) => {
-      setRoles(data);
-    }).catch((error: unknown) => {
-      toast.error("Failed to load roles");
-    }).finally(() => {
-      setIsLoading(false);
-    });
+    return getRoles(eventId)
+      .then(async (data) => {
+        setRoles(data);
+      })
+      .catch((error: unknown) => {
+        toast.error("Failed to load roles");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [eventId]);
 
-  useEffect(() => { void fetchRoles(); }, [fetchRoles]);
+  useEffect(() => {
+    void fetchRoles();
+  }, [fetchRoles]);
 
   const toggleExpand = (roleId: string) => {
     setExpandedRoles((prev) =>

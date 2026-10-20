@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useEventRevision } from "@/hooks/useLiveEvent";
 import { useAvailability } from "@/hooks/useAvailability";
 import { useEffect, useState } from "react";
@@ -11,7 +10,14 @@ import type { EventHost } from "@/api/events";
 import { getEventHosts } from "@/api/events";
 import { getAttendees } from "@/api/attendees";
 import type { AttendeeItem } from "@/types/attendee";
-import { Calendar, MapPin, Users, ExternalLink, Edit2, Clock } from "lucide-react";
+import {
+  Calendar,
+  MapPin,
+  Users,
+  ExternalLink,
+  Edit2,
+  Clock,
+} from "lucide-react";
 import styles from "./Overview.module.css";
 
 export default function EditOverviewPage() {
@@ -180,7 +186,12 @@ export default function EditOverviewPage() {
           <div>
             <h2 className={styles.sectionTitle}>At a Glance</h2>
             <span className={styles.sectionSubtitle}>
-              Registration progress and capacity. {availability?.remaining === null ? "Unlimited capacity" : availability ? `${availability.remaining} spots available (including checkout holds).` : ""}
+              Registration progress and capacity.{" "}
+              {availability?.remaining === null
+                ? "Unlimited capacity"
+                : availability
+                  ? `${availability.remaining} spots available (including checkout holds).`
+                  : ""}
             </span>
           </div>
         </div>
@@ -232,7 +243,9 @@ export default function EditOverviewPage() {
               <div key={item.id} className={styles.listItem}>
                 <div className={styles.userInfo}>
                   <div className={styles.avatar}>
-                    {item.user?.name ? item.user.name.charAt(0).toUpperCase() : "U"}
+                    {item.user?.name
+                      ? item.user.name.charAt(0).toUpperCase()
+                      : "U"}
                   </div>
                   <div className={styles.userDetails}>
                     <span className={styles.userName}>
@@ -265,7 +278,9 @@ export default function EditOverviewPage() {
           ) : (
             <div className={styles.emptyState}>
               <Clock size={32} color="var(--border-strong)" />
-              <span className={styles.emptyStateText}>No registrations yet.</span>
+              <span className={styles.emptyStateText}>
+                No registrations yet.
+              </span>
             </div>
           )}
         </div>
@@ -280,9 +295,7 @@ export default function EditOverviewPage() {
               Manage who has admin access to this event.
             </span>
           </div>
-          <button className={styles.btnSecondary}>
-            + Add Host
-          </button>
+          <button className={styles.btnSecondary}>+ Add Host</button>
         </div>
 
         <div className={styles.listContainer}>

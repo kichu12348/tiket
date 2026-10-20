@@ -34,10 +34,14 @@ export default function SkeletonLoader() {
             <div className={`${styles.skeleton} ${styles.contentBlock}`} />
 
             <div className={`${styles.skeleton} ${styles.labelBlock}`} />
-            <div className={`${styles.skeleton} ${styles.contentBlockLocation}`} />
+            <div
+              className={`${styles.skeleton} ${styles.contentBlockLocation}`}
+            />
 
             <div className={`${styles.skeleton} ${styles.labelBlock}`} />
-            <div className={`${styles.skeleton} ${styles.contentBlockDescription}`} />
+            <div
+              className={`${styles.skeleton} ${styles.contentBlockDescription}`}
+            />
 
             <div className={`${styles.skeleton} ${styles.buttonBlock}`} />
           </div>

@@ -1,6 +1,5 @@
 "use client";
 
-
 import React, { useState } from "react";
 import Modal from "@/components/Modal";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -88,7 +87,8 @@ export default function SendBatchModal({
     >
       <form onSubmit={handleSubmit} className={styles.formBody}>
         <p className={styles.infoText}>
-          Send email template <strong>&quot;{templateName}&quot;</strong> to a targeted group of attendees.
+          Send email template <strong>&quot;{templateName}&quot;</strong> to a
+          targeted group of attendees.
         </p>
 
         <div className={styles.fieldGroup}>
@@ -133,10 +133,18 @@ export default function SendBatchModal({
         )}
 
         <div className={styles.footer}>
-          <button type="button" className={styles.btnSecondary} onClick={onClose}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={onClose}
+          >
             Cancel
           </button>
-          <button type="submit" className={styles.btnPrimary} disabled={isSending}>
+          <button
+            type="submit"
+            className={styles.btnPrimary}
+            disabled={isSending}
+          >
             <Send size={16} />
             <span>{isSending ? "Dispatching..." : "Send Email Blast"}</span>
           </button>

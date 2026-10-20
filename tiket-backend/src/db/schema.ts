@@ -297,7 +297,7 @@ export const orders = pgTable(
       }>()
       .notNull(),
     lastReconciledAt: timestamp("last_reconciled_at", { withTimezone: true }),
-  paymentId: varchar("payment_id", { length: 255 }).unique(),
+    paymentId: varchar("payment_id", { length: 255 }).unique(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -310,8 +310,14 @@ export const orders = pgTable(
     uniqueIndex("order_gateway_id").on(table.paymentIntentId),
     index("order_expiry").on(table.reservationState, table.expiresAt),
     check("order_total_nonnegative", sql`${table.totalPaise} >= 0`),
-    check("order_reservation_state", sql`${table.reservationState} in ('held', 'confirmed', 'released')`),
-    check("order_registration_state", sql`${table.registrationStatus} in ('checkout', 'confirmed', 'pending_approval', 'declined', 'cancelled', 'expired', 'refund_pending')`),
+    check(
+      "order_reservation_state",
+      sql`${table.reservationState} in ('held', 'confirmed', 'released')`,
+    ),
+    check(
+      "order_registration_state",
+      sql`${table.registrationStatus} in ('checkout', 'confirmed', 'pending_approval', 'declined', 'cancelled', 'expired', 'refund_pending')`,
+    ),
   ],
 );
 
@@ -694,34 +700,43 @@ export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
 }));
 
 // Snapshot UPDATE/DELETE guards are installed by drizzle/0000_baseline.sql and must be preserved in future migrations.
-export const orderItems = pgTable("order_items", {
-  id: uuid("id").primaryKey().$defaultFn(uuidv7),
-  orderId: uuid("order_id")
-    .references(() => orders.id)
-    .notNull(),
-  ticketId: uuid("ticket_id")
-    .references(() => tickets.id)
-    .unique()
-    .notNull(),
-  ticketTypeId: uuid("ticket_type_id")
-    .references(() => ticketTypes.id)
-    .notNull(),
-  name: text("name").notNull(),
-  unitPricePaise: integer("unit_price_paise").notNull(),
-  discountPaise: integer("discount_paise").notNull().default(0),
-  ticketTaxPaise: integer("ticket_tax_paise").notNull().default(0),
-  platformFeePaise: integer("platform_fee_paise").notNull().default(0),
-  feeTaxPaise: integer("fee_tax_paise").notNull().default(0),
-  totalPaise: integer("total_paise").notNull(),
-  policy: jsonb("policy")
-    .$type<{
-      isRefundable: boolean;
-      refundableUntil: string | null;
-      isTransferable: boolean;
-      maxTransfers: number;
-    }>()
-    .notNull(),
-}, table => [check("order_item_amounts", sql`${table.unitPricePaise} >= 0 and ${table.discountPaise} >= 0 and ${table.discountPaise} <= ${table.unitPricePaise} and ${table.ticketTaxPaise} >= 0 and ${table.platformFeePaise} >= 0 and ${table.feeTaxPaise} >= 0 and ${table.totalPaise} = ${table.unitPricePaise} - ${table.discountPaise} + ${table.ticketTaxPaise} + ${table.platformFeePaise} + ${table.feeTaxPaise}`)]);
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: uuid("id").primaryKey().$defaultFn(uuidv7),
+    orderId: uuid("order_id")
+      .references(() => orders.id)
+      .notNull(),
+    ticketId: uuid("ticket_id")
+      .references(() => tickets.id)
+      .unique()
+      .notNull(),
+    ticketTypeId: uuid("ticket_type_id")
+      .references(() => ticketTypes.id)
+      .notNull(),
+    name: text("name").notNull(),
+    unitPricePaise: integer("unit_price_paise").notNull(),
+    discountPaise: integer("discount_paise").notNull().default(0),
+    ticketTaxPaise: integer("ticket_tax_paise").notNull().default(0),
+    platformFeePaise: integer("platform_fee_paise").notNull().default(0),
+    feeTaxPaise: integer("fee_tax_paise").notNull().default(0),
+    totalPaise: integer("total_paise").notNull(),
+    policy: jsonb("policy")
+      .$type<{
+        isRefundable: boolean;
+        refundableUntil: string | null;
+        isTransferable: boolean;
+        maxTransfers: number;
+      }>()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "order_item_amounts",
+      sql`${table.unitPricePaise} >= 0 and ${table.discountPaise} >= 0 and ${table.discountPaise} <= ${table.unitPricePaise} and ${table.ticketTaxPaise} >= 0 and ${table.platformFeePaise} >= 0 and ${table.feeTaxPaise} >= 0 and ${table.totalPaise} = ${table.unitPricePaise} - ${table.discountPaise} + ${table.ticketTaxPaise} + ${table.platformFeePaise} + ${table.feeTaxPaise}`,
+    ),
+  ],
+);
 export const paymentAttempts = pgTable("payment_attempts", {
   id: varchar("id", { length: 255 }).primaryKey(),
   orderId: uuid("order_id")
@@ -859,9 +874,17 @@ export const uploads = pgTable("uploads", {
 
 export const admissionAudits = pgTable("admission_audits", {
   id: uuid("id").primaryKey().$defaultFn(uuidv7),
-  eventId: uuid("event_id").references(() => events.id).notNull(),
-  ticketId: uuid("ticket_id").references(() => tickets.id).notNull(),
-  actorId: uuid("actor_id").references(() => users.id).notNull(),
+  eventId: uuid("event_id")
+    .references(() => events.id)
+    .notNull(),
+  ticketId: uuid("ticket_id")
+    .references(() => tickets.id)
+    .notNull(),
+  actorId: uuid("actor_id")
+    .references(() => users.id)
+    .notNull(),
   action: varchar("action", { enum: ["checkin", "undo"] }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });

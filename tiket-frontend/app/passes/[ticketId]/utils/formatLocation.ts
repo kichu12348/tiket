@@ -2,7 +2,7 @@ import type { LocationDetails } from "@/types/ticket";
 
 export function formatLocation(
   locationType?: "online" | "offline" | "hybrid",
-  locationDetails?: LocationDetails | string | null
+  locationDetails?: LocationDetails | string | null,
 ): string {
   if (locationType === "online") {
     return "Online Event";
@@ -15,7 +15,11 @@ export function formatLocation(
     const city = locationDetails.city?.trim();
     const state = locationDetails.state?.trim();
 
-    const placeName = name || (locationDetails.address ? locationDetails.address.split(",")[0]?.trim() : "");
+    const placeName =
+      name ||
+      (locationDetails.address
+        ? locationDetails.address.split(",")[0]?.trim()
+        : "");
     const region = [city, state].filter(Boolean).join(", ");
 
     if (placeName && region) {
@@ -35,7 +39,8 @@ export function formatLocation(
   } else if (typeof locationDetails === "string" && locationDetails.trim()) {
     // If it's a long raw address string, limit to place + region (first 2 comma parts)
     const parts = locationDetails.split(",").map((p) => p.trim());
-    formattedLocation = parts.length > 2 ? parts.slice(0, 2).join(", ") : locationDetails;
+    formattedLocation =
+      parts.length > 2 ? parts.slice(0, 2).join(", ") : locationDetails;
   }
 
   if (!formattedLocation) {

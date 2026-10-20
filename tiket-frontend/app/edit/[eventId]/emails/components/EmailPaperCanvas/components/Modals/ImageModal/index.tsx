@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import Modal from "@/components/Modal";
 import styles from "./ImageModal.module.css";
@@ -70,8 +69,8 @@ export default function ImageModal({
             onChange={(e) => setImageLinkUrl(e.target.value)}
           />
           <span className={styles.inspectorInstructionText}>
-            When set, recipients clicking this image in their email will open this
-            URL.
+            When set, recipients clicking this image in their email will open
+            this URL.
           </span>
         </div>
 

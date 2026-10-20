@@ -7,7 +7,11 @@ import Modal from "@/components/Modal";
 import Switch from "@/components/Switch";
 import styles from "./TicketEditModal.module.css";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { format } from "date-fns";
 import Dropdown from "@/components/Dropdown";
 
@@ -71,15 +75,31 @@ function TicketEditModalContent({
   const [name, setName] = useState(ticket?.name ?? "");
   const [description, setDescription] = useState(ticket?.description ?? "");
   const [price, setPrice] = useState(ticket?.price.toString() ?? "0");
-  const [quantityLimit, setQuantityLimit] = useState(ticket?.quantityLimit?.toString() ?? "");
+  const [quantityLimit, setQuantityLimit] = useState(
+    ticket?.quantityLimit?.toString() ?? "",
+  );
   const [isHidden, setIsHidden] = useState(ticket?.isHidden ?? false);
-  const [isRefundable, setIsRefundable] = useState(ticket?.isRefundable ?? false);
-  const [isTransferable, setIsTransferable] = useState(ticket?.isTransferable ?? true);
-  const [maxTransfers, setMaxTransfers] = useState(ticket?.maxTransfers?.toString() ?? "1");
-  const [saleStart, setSaleStart] = useState(() => ticket?.saleStart || eventRegistrationStart || new Date().toISOString());
-  const [saleEnd, setSaleEnd] = useState(() => ticket?.saleEnd || eventRegistrationEnd || eventEndDate || new Date(Date.now() + 86400000).toISOString());
+  const [isRefundable, setIsRefundable] = useState(
+    ticket?.isRefundable ?? false,
+  );
+  const [isTransferable, setIsTransferable] = useState(
+    ticket?.isTransferable ?? true,
+  );
+  const [maxTransfers, setMaxTransfers] = useState(
+    ticket?.maxTransfers?.toString() ?? "1",
+  );
+  const [saleStart, setSaleStart] = useState(
+    () =>
+      ticket?.saleStart || eventRegistrationStart || new Date().toISOString(),
+  );
+  const [saleEnd, setSaleEnd] = useState(
+    () =>
+      ticket?.saleEnd ||
+      eventRegistrationEnd ||
+      eventEndDate ||
+      new Date(Date.now() + 86400000).toISOString(),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
-
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -326,7 +346,8 @@ function TicketEditModalContent({
             </div>
           </div>
           <div className={styles.switchRow}>
-            <span>Require an access code</span><Switch checked={isHidden} onChange={setIsHidden} />
+            <span>Require an access code</span>
+            <Switch checked={isHidden} onChange={setIsHidden} />
           </div>
           <div className={styles.switchRow}>
             <span>Allow Refunds</span>
@@ -369,5 +390,7 @@ function TicketEditModalContent({
 }
 
 export default function TicketEditModal(props: TicketEditModalProps) {
-  return props.isOpen ? <TicketEditModalContent key={props.ticket?.id ?? "new"} {...props} /> : null;
+  return props.isOpen ? (
+    <TicketEditModalContent key={props.ticket?.id ?? "new"} {...props} />
+  ) : null;
 }

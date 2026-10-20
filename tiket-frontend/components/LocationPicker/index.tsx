@@ -3,8 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import styles from "./LocationPicker.module.css";
 import Dropdown from "../Dropdown";
 import { MapPin, Link as LinkIcon, Plus, Minus } from "lucide-react";
-import type {
-  MapMouseEvent} from "@vis.gl/react-google-maps";
+import type { MapMouseEvent } from "@vis.gl/react-google-maps";
 import {
   APIProvider,
   Map,
@@ -103,15 +102,25 @@ function LocationPickerInner({
   const [mapCenter, setMapCenter] = useState<{
     lat: number;
     lng: number;
-  } | null>(() => locationDetails?.lat !== undefined && locationDetails?.lng !== undefined ? { lat: locationDetails.lat, lng: locationDetails.lng } : null);
+  } | null>(() =>
+    locationDetails?.lat !== undefined && locationDetails?.lng !== undefined
+      ? { lat: locationDetails.lat, lng: locationDetails.lng }
+      : null,
+  );
   const [markerPosition, setMarkerPosition] = useState<{
     lat: number;
     lng: number;
-  } | null>(() => locationDetails?.lat !== undefined && locationDetails?.lng !== undefined ? { lat: locationDetails.lat, lng: locationDetails.lng } : null);
+  } | null>(() =>
+    locationDetails?.lat !== undefined && locationDetails?.lng !== undefined
+      ? { lat: locationDetails.lat, lng: locationDetails.lng }
+      : null,
+  );
   const [zoomAction, setZoomAction] = useState<"in" | "out" | null>(null);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState(locationDetails?.address || locationDetails?.name || "");
+  const [searchValue, setSearchValue] = useState(
+    locationDetails?.address || locationDetails?.name || "",
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(true);
@@ -127,8 +136,10 @@ function LocationPickerInner({
   if (locationDetails !== previousDetails) {
     setPreviousDetails(locationDetails);
     setSearchValue(locationDetails?.address || locationDetails?.name || "");
-    const pos = locationDetails?.lat !== undefined && locationDetails.lng !== undefined
-      ? { lat: locationDetails.lat, lng: locationDetails.lng } : null;
+    const pos =
+      locationDetails?.lat !== undefined && locationDetails.lng !== undefined
+        ? { lat: locationDetails.lat, lng: locationDetails.lng }
+        : null;
     setMarkerPosition(pos);
     setMapCenter(pos);
   }
@@ -207,10 +218,8 @@ function LocationPickerInner({
 
         if (status === "OK" && results && results[0]) {
           const loc = results[0].geometry.location;
-          const lat =
-            loc.lat();
-          const lng =
-            loc.lng();
+          const lat = loc.lat();
+          const lng = loc.lng();
           const newPos = { lat, lng };
           setMarkerPosition(newPos);
           setMapCenter(newPos);
@@ -349,7 +358,11 @@ function LocationPickerInner({
       <Dropdown
         options={TYPE_OPTIONS}
         value={locationType}
-        onChange={(val) => onChangeLocationType(val === "online" || val === "hybrid" ? val : "offline")}
+        onChange={(val) =>
+          onChangeLocationType(
+            val === "online" || val === "hybrid" ? val : "offline",
+          )
+        }
         className={styles.typeDropdown}
         alignSelf="flex-end"
         popoverAlign="right"

@@ -37,7 +37,7 @@ export const createTicketTypeSchema = {
       required: ["name"],
       properties: {
         isHidden: { type: "boolean" },
-    name: { type: "string", minLength: 2 },
+        name: { type: "string", minLength: 2 },
         description: { type: "string" },
         price: { type: "number", minimum: 0, maximum: 10000000 },
         quantityLimit: { type: ["integer", "null"], minimum: 1 },
@@ -84,14 +84,14 @@ export const updateTicketTypeSchema = {
       required: ["eventId", "ticketTypeId"],
       properties: {
         eventId: { type: "string" },
-        ticketTypeId: { type: "string" }
+        ticketTypeId: { type: "string" },
       },
     },
     body: {
       type: "object",
       properties: {
         isHidden: { type: "boolean" },
-    name: { type: "string", minLength: 2 },
+        name: { type: "string", minLength: 2 },
         description: { type: "string" },
         price: { type: "number", minimum: 0, maximum: 10000000 },
         quantityLimit: { type: ["integer", "null"], minimum: 1 },
@@ -121,7 +121,7 @@ export const deleteTicketTypeSchema = {
       required: ["eventId", "ticketTypeId"],
       properties: {
         eventId: { type: "string" },
-        ticketTypeId: { type: "string" }
+        ticketTypeId: { type: "string" },
       },
     },
     response: {

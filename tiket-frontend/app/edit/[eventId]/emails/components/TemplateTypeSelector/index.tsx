@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import type { EmailTemplateType, EmailTemplate } from "@/types/email";
 import {

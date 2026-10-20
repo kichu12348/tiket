@@ -9,7 +9,23 @@ import { verifyEventOwner } from "@utils";
 interface CreateFieldBody {
   name: string;
   label: string;
-  fieldType: "text" | "long_text" | "email" | "phone" | "number" | "single_select" | "multi_select" | "radio" | "checkbox" | "date" | "datetime" | "time" | "rating" | "file" | "url" | "select";
+  fieldType:
+    | "text"
+    | "long_text"
+    | "email"
+    | "phone"
+    | "number"
+    | "single_select"
+    | "multi_select"
+    | "radio"
+    | "checkbox"
+    | "date"
+    | "datetime"
+    | "time"
+    | "rating"
+    | "file"
+    | "url"
+    | "select";
   isRequired?: boolean;
   options?: string[];
   sortOrder?: number;
@@ -30,7 +46,11 @@ export const createField = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_forms");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_forms",
+    );
     if (!isOwner) {
       return reply
         .status(403)
@@ -98,7 +118,11 @@ export const updateField = async (
     const { eventId, fieldId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_forms");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_forms",
+    );
     if (!isOwner) {
       return reply
         .status(403)
@@ -140,7 +164,11 @@ export const deleteField = async (
     const user = request.user as { id: string };
     const { eventId, fieldId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_forms");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_forms",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
@@ -169,7 +197,11 @@ export const deletePage = async (
     const user = request.user as { id: string };
     const { eventId, pageNum } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_forms");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_forms",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
@@ -179,16 +211,22 @@ export const deletePage = async (
       // 1. Delete all fields on this page
       await tx
         .delete(formFields)
-        .where(and(eq(formFields.eventId, eventId), eq(formFields.page, pageNum)));
+        .where(
+          and(eq(formFields.eventId, eventId), eq(formFields.page, pageNum)),
+        );
 
       // 2. Shift subsequent pages down by 1
       await tx
         .update(formFields)
         .set({ page: sql`${formFields.page} - 1` })
-        .where(and(eq(formFields.eventId, eventId), gt(formFields.page, pageNum)));
+        .where(
+          and(eq(formFields.eventId, eventId), gt(formFields.page, pageNum)),
+        );
     });
 
-    return reply.send({ message: `Page ${pageNum} successfully deleted and subsequent pages shifted.` });
+    return reply.send({
+      message: `Page ${pageNum} successfully deleted and subsequent pages shifted.`,
+    });
   } catch (error) {
     return handleControllerError(request, reply, error);
   }

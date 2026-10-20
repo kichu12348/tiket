@@ -24,9 +24,7 @@ export default function ManualRegisterModal({
 }: ManualRegisterModalProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [ticketTypeId, setTicketTypeId] = useState(
-    ticketTypes[0]?.id || "",
-  );
+  const [ticketTypeId, setTicketTypeId] = useState(ticketTypes[0]?.id || "");
   const [notes, setNotes] = useState("");
 
   const ticketTypeOptions = ticketTypes.map((t) => ({
@@ -79,7 +77,8 @@ export default function ManualRegisterModal({
           {/* Email Address */}
           <div className={styles.fieldGroup}>
             <label className={styles.label}>
-              <Mail size={13} /> Email Address <span className={styles.req}>*</span>
+              <Mail size={13} /> Email Address{" "}
+              <span className={styles.req}>*</span>
             </label>
             <Input
               type="email"
@@ -93,7 +92,8 @@ export default function ManualRegisterModal({
           {/* Ticket Type Dropdown */}
           <div className={styles.fieldGroup}>
             <label className={styles.label}>
-              <Ticket size={13} /> Ticket Type <span className={styles.req}>*</span>
+              <Ticket size={13} /> Ticket Type{" "}
+              <span className={styles.req}>*</span>
             </label>
             <Dropdown
               options={ticketTypeOptions}

@@ -7,7 +7,9 @@ export interface EventValidationData {
   capacity?: string | number | null;
 }
 
-export const validateEventPayload = (data: EventValidationData): string | null => {
+export const validateEventPayload = (
+  data: EventValidationData,
+): string | null => {
   if (!data.title.trim()) {
     return "Event title is required.";
   }
@@ -29,7 +31,10 @@ export const validateEventPayload = (data: EventValidationData): string | null =
   }
 
   if (data.capacity) {
-    const parsedCapacity = typeof data.capacity === 'string' ? parseInt(data.capacity, 10) : data.capacity;
+    const parsedCapacity =
+      typeof data.capacity === "string"
+        ? parseInt(data.capacity, 10)
+        : data.capacity;
     if (isNaN(parsedCapacity) || parsedCapacity <= 0) {
       return "Capacity must be a valid number greater than 0.";
     }

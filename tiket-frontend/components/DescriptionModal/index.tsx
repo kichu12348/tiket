@@ -19,8 +19,6 @@ function DescriptionModalContent({
 }: DescriptionModalProps) {
   const [value, setValue] = useState(initialValue);
 
-
-
   if (!isOpen) return null;
 
   const handleSave = () => {

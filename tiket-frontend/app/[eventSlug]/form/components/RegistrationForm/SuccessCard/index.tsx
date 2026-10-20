@@ -3,7 +3,10 @@ import { Check, ChevronLeft } from "lucide-react";
 import type { SuccessCardProps } from "../types";
 import styles from "./SuccessCard.module.css";
 
-export default function SuccessCard({ event, createdTicketId }: SuccessCardProps) {
+export default function SuccessCard({
+  event,
+  createdTicketId,
+}: SuccessCardProps) {
   const isApproval = event.requireApproval;
 
   return (
@@ -24,7 +27,10 @@ export default function SuccessCard({ event, createdTicketId }: SuccessCardProps
 
       <div className={styles.successActions}>
         {createdTicketId && !isApproval && (
-          <Link href={`/passes/${createdTicketId}`} className={styles.btnPrimary}>
+          <Link
+            href={`/passes/${createdTicketId}`}
+            className={styles.btnPrimary}
+          >
             View My Ticket
           </Link>
         )}

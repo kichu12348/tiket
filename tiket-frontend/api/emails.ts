@@ -8,7 +8,9 @@ import type {
   EmailLog,
 } from "@/types/email";
 
-export const getEmailTemplates = async (eventId: string): Promise<EmailTemplate[]> => {
+export const getEmailTemplates = async (
+  eventId: string,
+): Promise<EmailTemplate[]> => {
   const response = await api.get(API_ENDPOINTS.EMAILS.TEMPLATES(eventId));
   return response.data;
 };
@@ -23,12 +25,14 @@ export const getEmailTemplateById = async (
   return response.data;
 };
 
-
 export const createEmailTemplate = async (
   eventId: string,
   payload: Partial<EmailTemplate>,
 ): Promise<EmailTemplate> => {
-  const response = await api.post(API_ENDPOINTS.EMAILS.TEMPLATES(eventId), payload);
+  const response = await api.post(
+    API_ENDPOINTS.EMAILS.TEMPLATES(eventId),
+    payload,
+  );
   return response.data;
 };
 export const createCustomEmailTemplate = createEmailTemplate;
@@ -77,7 +81,10 @@ export const sendTestEmail = async (
   eventId: string,
   payload: SendTestEmailPayload,
 ): Promise<{ message: string; log: EmailLog }> => {
-  const response = await api.post(API_ENDPOINTS.EMAILS.SEND_TEST(eventId), payload);
+  const response = await api.post(
+    API_ENDPOINTS.EMAILS.SEND_TEST(eventId),
+    payload,
+  );
   return response.data;
 };
 
@@ -85,7 +92,10 @@ export const sendBatchEmail = async (
   eventId: string,
   payload: SendBatchEmailPayload,
 ): Promise<{ message: string; sentCount: number }> => {
-  const response = await api.post(API_ENDPOINTS.EMAILS.SEND_BATCH(eventId), payload);
+  const response = await api.post(
+    API_ENDPOINTS.EMAILS.SEND_BATCH(eventId),
+    payload,
+  );
   return response.data;
 };
 

@@ -74,8 +74,21 @@ async function cart(
 ) {
   const event = await lockEvent(tx, body.eventId);
   if (!complimentary) {
-    const [member] = await tx.select({ id: eventTeamMembers.id }).from(eventTeamMembers).where(and(eq(eventTeamMembers.eventId, event.id), eq(eventTeamMembers.userId, userId))).limit(1);
-    if (event.organizationId === userId || member) throw new HttpError(403, "Event organizers and team members must use manual registration.");
+    const [member] = await tx
+      .select({ id: eventTeamMembers.id })
+      .from(eventTeamMembers)
+      .where(
+        and(
+          eq(eventTeamMembers.eventId, event.id),
+          eq(eventTeamMembers.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (event.organizationId === userId || member)
+      throw new HttpError(
+        403,
+        "Event organizers and team members must use manual registration.",
+      );
   }
   registrationOpen(event);
   await expireHolds(tx, event.id);
@@ -217,7 +230,12 @@ export async function createCheckout(
         );
     }
     const isFree = result.totalPaise === 0;
-    if (!isFree && process.env.NODE_ENV !== "test" && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) throw new HttpError(503, "Paid registration is not configured yet.");
+    if (
+      !isFree &&
+      process.env.NODE_ENV !== "test" &&
+      (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)
+    )
+      throw new HttpError(503, "Paid registration is not configured yet.");
     const requireApproval = !complimentary && result.event.requireApproval;
     const [order] = await tx
       .insert(orders)
@@ -267,29 +285,25 @@ export async function createCheckout(
             : "pending",
         })
         .returning();
-      await tx
-        .insert(orderItems)
-        .values({
-          ...line,
-          orderId: order.id,
-          ticketId: ticket!.id,
-          name: tier.name,
-          policy: {
-            isRefundable: tier.isRefundable,
-            refundableUntil: tier.refundableUntil?.toISOString() ?? null,
-            isTransferable: tier.isTransferable,
-            maxTransfers: tier.maxTransfers,
-          },
-        });
+      await tx.insert(orderItems).values({
+        ...line,
+        orderId: order.id,
+        ticketId: ticket!.id,
+        name: tier.name,
+        policy: {
+          isRefundable: tier.isRefundable,
+          refundableUntil: tier.refundableUntil?.toISOString() ?? null,
+          isTransferable: tier.isTransferable,
+          maxTransfers: tier.maxTransfers,
+        },
+      });
       if (purchase.formResponses?.length)
-        await tx
-          .insert(ticketFormResponses)
-          .values(
-            purchase.formResponses.map((response) => ({
-              ...response,
-              ticketId: ticket!.id,
-            })),
-          );
+        await tx.insert(ticketFormResponses).values(
+          purchase.formResponses.map((response) => ({
+            ...response,
+            ticketId: ticket!.id,
+          })),
+        );
     }
     if (isFree)
       await enqueueOrderEmail(

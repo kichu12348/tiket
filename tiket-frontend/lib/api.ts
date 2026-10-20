@@ -12,9 +12,11 @@ const api = axios.create({
   },
 });
 // Cookie-authenticated requests to Next.js route handlers stay on the frontend origin.
-export const frontendApi = axios.create({ baseURL: "/", timeout: 10000, withCredentials: true });
-
-
+export const frontendApi = axios.create({
+  baseURL: "/",
+  timeout: 10000,
+  withCredentials: true,
+});
 
 api.interceptors.request.use(
   async (config) => {

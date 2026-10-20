@@ -1,6 +1,5 @@
 "use client";
 
-
 import React, { useState } from "react";
 import Modal from "@/components/Modal";
 import { CheckCircle2 } from "lucide-react";
@@ -47,7 +46,8 @@ export default function SendTestModal({
     >
       <form onSubmit={handleSubmit} className={styles.formBody}>
         <p className={styles.infoText}>
-          Test email template <strong>&quot;{templateName}&quot;</strong> with sample event and attendee data.
+          Test email template <strong>&quot;{templateName}&quot;</strong> with
+          sample event and attendee data.
         </p>
 
         <div className={styles.fieldGroup}>
@@ -74,10 +74,18 @@ export default function SendTestModal({
         </div>
 
         <div className={styles.footer}>
-          <button type="button" className={styles.btnSecondary} onClick={onClose}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={onClose}
+          >
             Cancel
           </button>
-          <button type="submit" className={styles.btnPrimary} disabled={isSending}>
+          <button
+            type="submit"
+            className={styles.btnPrimary}
+            disabled={isSending}
+          >
             <CheckCircle2 size={16} />
             <span>{isSending ? "Sending..." : "Dispatch Test Email"}</span>
           </button>

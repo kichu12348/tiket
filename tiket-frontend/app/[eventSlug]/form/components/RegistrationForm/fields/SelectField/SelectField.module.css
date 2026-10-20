@@ -44,7 +44,8 @@
   overflow-y: auto;
   padding-right: 0.25rem;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.15)) transparent;
+  scrollbar-color: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.15))
+    transparent;
 }
 
 .checkboxList::-webkit-scrollbar {

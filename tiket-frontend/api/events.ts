@@ -1,6 +1,10 @@
 import api from "@/lib/api";
 import { API_ENDPOINTS, CDN_URL } from "@/constants/config";
-import type { CreateEventPayload, Event, UpdateEventPayload } from "@/types/event";
+import type {
+  CreateEventPayload,
+  Event,
+  UpdateEventPayload,
+} from "@/types/event";
 
 export const getSignedUrl = async (filename: string, contentType: string) => {
   const response = await api.post(API_ENDPOINTS.EVENTS.GET_SIGNED_URL, {

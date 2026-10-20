@@ -1,7 +1,6 @@
 "use client";
 import { getErrorMessage } from "@/lib/errors";
 
-
 import { useState } from "react";
 import { useEventStore } from "@/store/useEventStore";
 import { updateEvent, updateEventSlug } from "@/api/events";
@@ -23,7 +22,6 @@ function SettingsForm({ event }: { event: Event }) {
   const [status, setStatus] = useState<EventStatus>(event.status);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingSlug, setIsSubmittingSlug] = useState(false);
-
 
   const hasChanges = () => {
     if (!event) return false;
@@ -112,9 +110,7 @@ function SettingsForm({ event }: { event: Event }) {
         <div className={styles.formGroup}>
           <div className={styles.slugContainer}>
             <div className={styles.slugInputWrapper}>
-              <span className={styles.slugPrefix}>
-                {"Event URL /"}
-              </span>
+              <span className={styles.slugPrefix}>{"Event URL /"}</span>
               <input
                 type="text"
                 className={styles.slugInput}
@@ -207,6 +203,6 @@ function SettingsForm({ event }: { event: Event }) {
 }
 
 export default function EditSettingsPage() {
-  const event = useEventStore(state => state.event);
+  const event = useEventStore((state) => state.event);
   return event ? <SettingsForm key={event.id} event={event} /> : null;
 }

@@ -1,8 +1,12 @@
 "use client";
 
-
 import { useState, useEffect, useCallback } from "react";
-import { getFormFields, createFormField, updateFormField, deleteFormField } from "@/api/forms";
+import {
+  getFormFields,
+  createFormField,
+  updateFormField,
+  deleteFormField,
+} from "@/api/forms";
 import { FIELD_TYPES, type FieldType, type FormField } from "@/types/form";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -14,7 +18,6 @@ import styles from "./RegistrationFormPanel.module.css";
 interface Props {
   eventId: string;
 }
-
 
 export default function RegistrationFormPanel({ eventId }: Props) {
   const [fields, setFields] = useState<FormField[]>([]);
@@ -31,17 +34,22 @@ export default function RegistrationFormPanel({ eventId }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchFields = useCallback(async () => {
-    return (getFormFields(eventId)).then(async (data) => {
-      setFields(data?.sort((a, b) => a.sortOrder - b.sortOrder) || []);
-    }).catch((error: unknown) => {
-      console.error("Failed to fetch form fields", error);
-      toast.error("Failed to load registration form fields.");
-    }).finally(() => {
-      setIsLoading(false);
-    });
+    return getFormFields(eventId)
+      .then(async (data) => {
+        setFields(data?.sort((a, b) => a.sortOrder - b.sortOrder) || []);
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to fetch form fields", error);
+        toast.error("Failed to load registration form fields.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [eventId]);
 
-  useEffect(() => { void fetchFields(); }, [fetchFields]);
+  useEffect(() => {
+    void fetchFields();
+  }, [fetchFields]);
 
   const openModal = (field?: FormField) => {
     if (field) {
@@ -50,7 +58,12 @@ export default function RegistrationFormPanel({ eventId }: Props) {
       setLabel(field.label);
       setFieldType(field.fieldType);
       setIsRequired(field.isRequired);
-      setOptionsStr((Array.isArray(field.options) ? field.options : field.options?.choices)?.join(", ") || "");
+      setOptionsStr(
+        (Array.isArray(field.options)
+          ? field.options
+          : field.options?.choices
+        )?.join(", ") || "",
+      );
     } else {
       setEditingId(null);
       setName("");
@@ -70,9 +83,13 @@ export default function RegistrationFormPanel({ eventId }: Props) {
 
     try {
       setIsSubmitting(true);
-      const optionsArray = fieldType === "select" && optionsStr.trim()
-        ? optionsStr.split(",").map(s => s.trim()).filter(Boolean)
-        : null;
+      const optionsArray =
+        fieldType === "select" && optionsStr.trim()
+          ? optionsStr
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : null;
 
       const payload = {
         name,
@@ -80,7 +97,9 @@ export default function RegistrationFormPanel({ eventId }: Props) {
         fieldType,
         isRequired,
         options: optionsArray,
-        sortOrder: editingId ? fields.find(f => f.id === editingId)?.sortOrder || 0 : fields.length,
+        sortOrder: editingId
+          ? fields.find((f) => f.id === editingId)?.sortOrder || 0
+          : fields.length,
       };
 
       if (editingId) {
@@ -128,25 +147,40 @@ export default function RegistrationFormPanel({ eventId }: Props) {
 
       <div className={styles.list}>
         {fields.length === 0 ? (
-          <div className={styles.empty}>No custom fields added yet. Default Name and Email will be collected.</div>
+          <div className={styles.empty}>
+            No custom fields added yet. Default Name and Email will be
+            collected.
+          </div>
         ) : (
           fields.map((field) => (
             <div key={field.id} className={styles.fieldCard}>
               <div className={styles.fieldInfo}>
                 <div className={styles.fieldHeader}>
                   <span className={styles.fieldLabel}>{field.label}</span>
-                  {field.isRequired && <span className={styles.requiredBadge}>Required</span>}
+                  {field.isRequired && (
+                    <span className={styles.requiredBadge}>Required</span>
+                  )}
                 </div>
                 <div className={styles.fieldMeta}>
-                  Type: {FIELD_TYPES.find(t => t.value === field.fieldType)?.label || field.fieldType}
-                  {field.fieldType === 'select' && field.options && ` • Options: ${(Array.isArray(field.options) ? field.options : field.options.choices).length}`}
+                  Type:{" "}
+                  {FIELD_TYPES.find((t) => t.value === field.fieldType)
+                    ?.label || field.fieldType}
+                  {field.fieldType === "select" &&
+                    field.options &&
+                    ` • Options: ${(Array.isArray(field.options) ? field.options : field.options.choices).length}`}
                 </div>
               </div>
               <div className={styles.fieldActions}>
-                <button className={styles.iconBtn} onClick={() => openModal(field)}>
+                <button
+                  className={styles.iconBtn}
+                  onClick={() => openModal(field)}
+                >
                   <Edit2 size={16} />
                 </button>
-                <button className={styles.iconBtnDanger} onClick={() => handleDelete(field.id)}>
+                <button
+                  className={styles.iconBtnDanger}
+                  onClick={() => handleDelete(field.id)}
+                >
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -155,7 +189,11 @@ export default function RegistrationFormPanel({ eventId }: Props) {
         )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Edit Field" : "Add Field"}>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingId ? "Edit Field" : "Add Field"}
+      >
         <div className={styles.form}>
           <div className={styles.formGroup}>
             <label>Label (Shown to Attendee)</label>
@@ -174,7 +212,9 @@ export default function RegistrationFormPanel({ eventId }: Props) {
               className={styles.input}
               placeholder="e.g. t_shirt_size"
               value={name}
-              onChange={(e) => setName(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+              onChange={(e) =>
+                setName(e.target.value.toLowerCase().replace(/\s+/g, "_"))
+              }
             />
           </div>
           <div className={styles.formGroup}>
@@ -182,10 +222,15 @@ export default function RegistrationFormPanel({ eventId }: Props) {
             <Dropdown
               options={FIELD_TYPES}
               value={fieldType}
-              onChange={(val) => setFieldType(FIELD_TYPES.find(type => type.value === val)?.value ?? "text")}
+              onChange={(val) =>
+                setFieldType(
+                  FIELD_TYPES.find((type) => type.value === val)?.value ??
+                    "text",
+                )
+              }
             />
           </div>
-          {fieldType === 'select' && (
+          {fieldType === "select" && (
             <div className={styles.formGroup}>
               <label>Options (Comma separated)</label>
               <input
@@ -201,7 +246,11 @@ export default function RegistrationFormPanel({ eventId }: Props) {
             <label>Required Field</label>
             <Switch checked={isRequired} onChange={setIsRequired} />
           </div>
-          <button className={styles.saveBtn} onClick={handleSave} disabled={isSubmitting}>
+          <button
+            className={styles.saveBtn}
+            onClick={handleSave}
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Saving..." : "Save Field"}
           </button>
         </div>

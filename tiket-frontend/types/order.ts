@@ -23,8 +23,16 @@ export interface Order {
   totalPaise: number;
   expiresAt: string | null;
   reservationState: "held" | "confirmed" | "released";
-  registrationStatus: "checkout" | "confirmed" | "pending_approval" | "declined" | "cancelled" | "expired" | "refund_pending";
-  paymentStatus: "pending" | "success" | "failed" | "refunded" | "partially_refunded";
+  registrationStatus:
+    | "checkout"
+    | "confirmed"
+    | "pending_approval"
+    | "declined"
+    | "cancelled"
+    | "expired"
+    | "refund_pending";
+  paymentStatus:
+    "pending" | "success" | "failed" | "refunded" | "partially_refunded";
   paymentProvider: string | null;
   paymentIntentId: string | null;
   createdAt: string;
@@ -38,7 +46,14 @@ export interface Ticket {
   userId: string;
   eventId: string;
   qrCode: string;
-  status: "active" | "cancelled" | "transferred" | "used" | "pending" | "pending_approval" | "refunded";
+  status:
+    | "active"
+    | "cancelled"
+    | "transferred"
+    | "used"
+    | "pending"
+    | "pending_approval"
+    | "refunded";
   transferCount: number;
   createdAt: string;
   updatedAt: string;

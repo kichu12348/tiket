@@ -16,7 +16,7 @@ export default function SkeletonList({ count = 2 }: { count: number }) {
               <div className={styles.skeletonInfo}>
                 <div className={styles.skeletonLine}></div>
                 <div className={`${styles.skeletonLine} ${styles.short}`}></div>
-                
+
                 <div className={styles.skeletonMetaGroup}>
                   <div className={styles.skeletonIconRow}>
                     <div className={styles.skeletonIcon}></div>

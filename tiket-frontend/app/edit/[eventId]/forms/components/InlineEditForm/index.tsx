@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Switch from "@/components/Switch";
 import Dropdown from "@/components/Dropdown";
-import type { LocalField, FieldType} from "../../types";
+import type { LocalField, FieldType } from "../../types";
 import { FIELD_TYPES } from "../../types";
 import styles from "./InlineEditForm.module.css";
 

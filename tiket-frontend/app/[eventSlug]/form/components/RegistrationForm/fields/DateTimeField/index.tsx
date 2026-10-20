@@ -1,7 +1,11 @@
 import { Controller } from "react-hook-form";
 import { CalendarIcon, Clock } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import Dropdown from "@/components/Dropdown";
 import { format } from "date-fns";
 import type { FieldRendererProps } from "../../types";
@@ -38,7 +42,7 @@ export default function DateTimeField({
           baseDate.setFullYear(
             newDate.getFullYear(),
             newDate.getMonth(),
-            newDate.getDate()
+            newDate.getDate(),
           );
           f.onChange(baseDate.toISOString());
         };
@@ -53,8 +57,8 @@ export default function DateTimeField({
         const currentTimeString = isTimeOnly
           ? f.value || "09:00"
           : validDate
-          ? format(validDate, "HH:mm")
-          : "09:00";
+            ? format(validDate, "HH:mm")
+            : "09:00";
 
         return (
           <div className={styles.pickersBox}>

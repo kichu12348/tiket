@@ -1,11 +1,19 @@
 "use client";
 import { getErrorMessage } from "@/lib/errors";
 
-
 import { useState, useRef } from "react";
 
 import Link from "next/link";
-import { ImagePlus, MapPin, Users, CheckCircle, Type, CalendarClock, CalendarCheck, ChevronLeft } from "lucide-react";
+import {
+  ImagePlus,
+  MapPin,
+  Users,
+  CheckCircle,
+  Type,
+  CalendarClock,
+  CalendarCheck,
+  ChevronLeft,
+} from "lucide-react";
 import styles from "./Details.module.css";
 import { getSignedUrl, uploadToCDN, updateEvent } from "@/api/events";
 import { getBackgroundColor } from "@/lib/color";
@@ -34,7 +42,9 @@ function DetailsForm({ event }: { event: Event }) {
 
   // State
   const [bgColor, setBgColor] = useState<string>(event.color || "");
-  const [coverImageUrl, setCoverImageUrl] = useState<string>(event.coverImage ? getImageUrl(event.coverImage) : "");
+  const [coverImageUrl, setCoverImageUrl] = useState<string>(
+    event.coverImage ? getImageUrl(event.coverImage) : "",
+  );
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [title, setTitle] = useState(event.title);
   const [titleFont, setTitleFont] = useState(event.fontFamily);
@@ -45,21 +55,26 @@ function DetailsForm({ event }: { event: Event }) {
   const [timezone, setTimezone] = useState(event.timezone);
 
   // Registration Date/Time State
-  const [regStartDate, setRegStartDate] = useState(event.registrationStart || event.startDate);
-  const [regEndDate, setRegEndDate] = useState(event.registrationEnd || event.startDate);
+  const [regStartDate, setRegStartDate] = useState(
+    event.registrationStart || event.startDate,
+  );
+  const [regEndDate, setRegEndDate] = useState(
+    event.registrationEnd || event.startDate,
+  );
 
   const [locationType, setLocationType] = useState<
     "online" | "offline" | "hybrid"
   >(event.locationType);
   const [locationDetails, setLocationDetails] =
     useState<LocationDetails | null>(event.locationDetails);
-  const [virtualLink, setVirtualLink] = useState(event.locationDetails?.link || "");
+  const [virtualLink, setVirtualLink] = useState(
+    event.locationDetails?.link || "",
+  );
   const [description, setDescription] = useState(event.description || "");
   const [isDescModalOpen, setIsDescModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requireApproval, setRequireApproval] = useState(event.requireApproval);
   const [capacity, setCapacity] = useState(event.capacity?.toString() || "");
-
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -178,8 +193,7 @@ function DetailsForm({ event }: { event: Event }) {
     } catch (error: unknown) {
       console.error("Error updating event:", error);
       toast.error(
-        getErrorMessage(error) ||
-          "An error occurred while saving the event.",
+        getErrorMessage(error) || "An error occurred while saving the event.",
       );
     } finally {
       setIsSubmitting(false);
@@ -223,7 +237,11 @@ function DetailsForm({ event }: { event: Event }) {
                     className={styles.uploadedImage}
                   />
                 ) : (
-                  <Image alt="Event cover" src={coverImageUrl} className={styles.uploadedImage} />
+                  <Image
+                    alt="Event cover"
+                    src={coverImageUrl}
+                    className={styles.uploadedImage}
+                  />
                 )}
               </div>
             ) : (
@@ -398,6 +416,6 @@ function DetailsForm({ event }: { event: Event }) {
 }
 
 export default function EditDetailsPage() {
-  const event = useEventStore(state => state.event);
+  const event = useEventStore((state) => state.event);
   return event ? <DetailsForm key={event.id} event={event} /> : null;
 }

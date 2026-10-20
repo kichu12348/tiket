@@ -1,13 +1,27 @@
 "use client";
 
-
 import { useMemo } from "react";
 import { useEventStore } from "@/store/useEventStore";
 import { Plus, User, HelpCircle, X, Layers } from "lucide-react";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
 
 import styles from "./Forms.module.css";
 import type { LocalField } from "./types";

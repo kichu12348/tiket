@@ -1,7 +1,6 @@
 import { useEventRevision } from "./useLiveEvent";
 import { getErrorMessage } from "@/lib/errors";
 
-
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type {
@@ -58,32 +57,35 @@ export function useAttendees(eventId: string) {
   // Fetch Stats & Ticket Types once
   const fetchMetadata = useCallback(async () => {
     if (!eventId) return;
-    return (Promise.all([
-        getAttendeeStats(eventId),
-        getTicketTypes(eventId),
-      ])).then(async ([statsData, typesData]) => {
-      setStats(statsData);
-      setTicketTypes(typesData);
-    }).catch((err: unknown) => {
-      console.error("Failed to load metadata stats:", err);
-    }).finally(() => {
-      setIsStatsLoading(false);
-    });
+    return Promise.all([getAttendeeStats(eventId), getTicketTypes(eventId)])
+      .then(async ([statsData, typesData]) => {
+        setStats(statsData);
+        setTicketTypes(typesData);
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to load metadata stats:", err);
+      })
+      .finally(() => {
+        setIsStatsLoading(false);
+      });
   }, [eventId]);
 
   // Fetch Attendees List
   const fetchAttendeesList = useCallback(async () => {
     if (!eventId) return;
-    return (getAttendees(eventId, filters)).then(async (res) => {
-      setAttendees(res.attendees);
-      setTotal(res.total);
-      setTotalPages(res.totalPages);
-    }).catch((err: unknown) => {
-      console.error("Failed to fetch attendees:", err);
-      toast.error(getErrorMessage(err) || "Failed to load attendees.");
-    }).finally(() => {
-      setIsLoading(false);
-    });
+    return getAttendees(eventId, filters)
+      .then(async (res) => {
+        setAttendees(res.attendees);
+        setTotal(res.total);
+        setTotalPages(res.totalPages);
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to fetch attendees:", err);
+        toast.error(getErrorMessage(err) || "Failed to load attendees.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [eventId, filters]);
 
   useEffect(() => {
@@ -102,9 +104,7 @@ export function useAttendees(eventId: string) {
       const data = await getAttendeeDetail(eventId, ticketId);
       setAttendeeDetail(data);
     } catch (err: unknown) {
-      toast.error(
-        getErrorMessage(err) || "Failed to load attendee details.",
-      );
+      toast.error(getErrorMessage(err) || "Failed to load attendee details.");
       setSelectedTicketId(null);
     } finally {
       setIsDetailLoading(false);
@@ -119,7 +119,13 @@ export function useAttendees(eventId: string) {
   // Check In Toggle Handler
   const handleToggleCheckIn = async (ticketId: string) => {
     try {
-      const res = await toggleCheckIn(eventId, ticketId, (attendees.find(att => att.id === ticketId)?.status === "used" ? "undo" : "checkin"));
+      const res = await toggleCheckIn(
+        eventId,
+        ticketId,
+        attendees.find((att) => att.id === ticketId)?.status === "used"
+          ? "undo"
+          : "checkin",
+      );
       toast.success(res.message);
 
       // Optimistic update in list
@@ -151,9 +157,7 @@ export function useAttendees(eventId: string) {
       // Refresh stats
       fetchMetadata();
     } catch (err: unknown) {
-      toast.error(
-        getErrorMessage(err) || "Failed to update check-in status.",
-      );
+      toast.error(getErrorMessage(err) || "Failed to update check-in status.");
     }
   };
 

@@ -23,7 +23,10 @@ export function PassDetails({ attendee, event }: PassDetailsProps) {
     }
   })();
 
-  const formattedLocation = formatLocation(event.locationType, event.locationDetails);
+  const formattedLocation = formatLocation(
+    event.locationType,
+    event.locationDetails,
+  );
 
   return (
     <div className={styles.detailsGrid}>

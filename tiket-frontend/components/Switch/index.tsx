@@ -8,7 +8,12 @@ interface SwitchProps {
   id?: string;
 }
 
-export default function Switch({ checked, onChange, className, id }: SwitchProps) {
+export default function Switch({
+  checked,
+  onChange,
+  className,
+  id,
+}: SwitchProps) {
   const state = checked ? "checked" : "unchecked";
 
   return (

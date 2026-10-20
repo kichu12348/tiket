@@ -1,7 +1,5 @@
 "use client";
 
-
-
 import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +18,6 @@ import { TicketSelector, AutoSelectedBadge } from "./TicketSelector";
 import FormFieldsSection from "./FormFieldsSection";
 import AttendeePreview from "./AttendeePreview";
 
-
 import styles from "./RegistrationForm.module.css";
 
 /**
@@ -37,7 +34,9 @@ export default function RegistrationForm({
   const checkout = useCheckout(event.id, user);
   const [code, setCode] = useState("");
   const availability = useAvailability(event.id, code);
-  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<string | null>(null);
+  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<
+    string | null
+  >(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [submitStep, setSubmitStep] = useState<SubmitStep>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -48,8 +47,6 @@ export default function RegistrationForm({
     [ticketTypes, availability],
   );
   const needsTicketSelection = activeTicketTypes.length > 1;
-
-
 
   // ── Normalize 0-indexed page numbers & sort fields ─────────────────────────
   const normalizedFormFields = useMemo(() => {
@@ -92,7 +89,7 @@ export default function RegistrationForm({
   // ── Zod + react-hook-form ──────────────────────────────────────────────────
   const schema = useMemo(
     () => buildZodSchema(normalizedFormFields),
-    [normalizedFormFields]
+    [normalizedFormFields],
   );
 
   const defaultValues = useMemo(() => {
@@ -136,10 +133,30 @@ export default function RegistrationForm({
       return;
     }
 
-    await checkout.prepare({ eventId: event.id, code: code.trim() || undefined, purchases: [{ ticketTypeId: effectiveTypeId, formResponses: buildFormResponses(normalizedFormFields, data) }] });
+    await checkout.prepare({
+      eventId: event.id,
+      code: code.trim() || undefined,
+      purchases: [
+        {
+          ticketTypeId: effectiveTypeId,
+          formResponses: buildFormResponses(normalizedFormFields, data),
+        },
+      ],
+    });
   };
 
-  if (checkout.checkout) return <CheckoutReview data={checkout.checkout} remaining={checkout.remaining} busy={checkout.busy} error={checkout.error} pay={checkout.pay} cancel={checkout.cancel} restart={checkout.restart} />;
+  if (checkout.checkout)
+    return (
+      <CheckoutReview
+        data={checkout.checkout}
+        remaining={checkout.remaining}
+        busy={checkout.busy}
+        error={checkout.error}
+        pay={checkout.pay}
+        cancel={checkout.cancel}
+        restart={checkout.restart}
+      />
+    );
   const selectedTicket = activeTicketTypes.find(
     (t) => t.id === (selectedTicketTypeId ?? activeTicketTypes[0]?.id),
   );
@@ -154,9 +171,26 @@ export default function RegistrationForm({
       onSubmit={handleSubmit(onSubmit as Parameters<typeof handleSubmit>[0])}
     >
       {event.requireApproval && <ApprovalBanner />}
-      <label>Coupon or access code<Input value={code} onChange={event => setCode(event.target.value)} placeholder="Enter a code" maxLength={64} /></label>
-      {availability && <p>{availability.remaining === null ? "Unlimited capacity" : availability.remaining + " spots available"}. A spot is held for 12 minutes after you review your order.</p>}
-      {activeTicketTypes.length === 0 && <p>No tickets are on sale. Enter an access code if you have one.</p>}
+      <label>
+        Coupon or access code
+        <Input
+          value={code}
+          onChange={(event) => setCode(event.target.value)}
+          placeholder="Enter a code"
+          maxLength={64}
+        />
+      </label>
+      {availability && (
+        <p>
+          {availability.remaining === null
+            ? "Unlimited capacity"
+            : availability.remaining + " spots available"}
+          . A spot is held for 12 minutes after you review your order.
+        </p>
+      )}
+      {activeTicketTypes.length === 0 && (
+        <p>No tickets are on sale. Enter an access code if you have one.</p>
+      )}
       {checkout.error && <p role="alert">{checkout.error}</p>}
 
       {needsTicketSelection && (

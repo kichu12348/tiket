@@ -8,20 +8,24 @@
 ## 1. Core Aesthetic Principles
 
 ### 1.1 Dark Glassmorphic Soft-UI Aesthetic
+
 - **Base Background**: Deep dark base background (`#121316` / `var(--color-bg-base)`).
 - **Background Glows**: Fixed radial ambient gradients (`var(--glow-bottom-right)` and `var(--glow-bottom-left)`).
 - **Glass Surfaces**: Translucent container layers (`backdrop-filter: blur(12px)` to `blur(16px)` with subtle white tint `rgba(255, 255, 255, 0.02)` to `rgba(255, 255, 255, 0.05)`).
 
 ### 1.2 The "No-Border Card" Rule
+
 - **CRITICAL**: Container cards, overview panels, dashboard blocks, and list item cards **MUST NOT have structural outer borders** (`border: none`).
 - Visual boundaries are created strictly through background opacity contrast (e.g. `rgba(255, 255, 255, 0.02)` card background against `#121316` page background), backdrop blurs, and generous internal padding.
-- *Exception*: Form input focus rings, inner dividers (`1px solid var(--border-subtle)`), and modal popup containers may use subtle borders.
+- _Exception_: Form input focus rings, inner dividers (`1px solid var(--border-subtle)`), and modal popup containers may use subtle borders.
 
 ### 1.3 Chevron Back-Navigation Mandate
+
 - **CRITICAL**: **NEVER** use horizontal arrow icons (`ArrowLeft` / `ArrowRight`) for back navigation or back buttons.
 - **ALWAYS** use `<ChevronLeft size={18} />` from `lucide-react` for all back-navigation links and buttons.
 
 ### 1.4 Contrast & Typography Hierarchy
+
 - **Primary Text (`#ffffff`)**: Page titles, card headings, active tab labels, primary buttons.
 - **Secondary Text (`rgba(255, 255, 255, 0.7)`)**: Subtitles, body copy, list item labels.
 - **Muted Text (`rgba(255, 255, 255, 0.4)` / `#9ea0a5`)**: Placeholders, timestamps, helper text, inactive icons.
@@ -80,6 +84,7 @@
 ## 3. Reusable Component Patterns & Code Snippets
 
 ### 3.1. Standard Back Button Component
+
 Always use `ChevronLeft` for back navigation:
 
 ```tsx
@@ -109,7 +114,9 @@ export function BackButton({ href, label }: { href: string; label: string }) {
   font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
   text-decoration: none;
   border: none;
 }
@@ -123,6 +130,7 @@ export function BackButton({ href, label }: { href: string; label: string }) {
 ---
 
 ### 3.2. Borderless Glass Card (`.card`)
+
 Container card for feature sections, forms, overview panels, and modal containers:
 
 ```css
@@ -144,6 +152,7 @@ Container card for feature sections, forms, overview panels, and modal container
 ### 3.3. Button System
 
 #### Primary Button (Solid White)
+
 Used for main submit, save, or action triggers:
 
 ```css
@@ -176,6 +185,7 @@ Used for main submit, save, or action triggers:
 ```
 
 #### Secondary Button (Soft Translucent)
+
 Used for secondary actions, modals, and "Add Item" triggers:
 
 ```css
@@ -189,7 +199,9 @@ Used for secondary actions, modals, and "Add Item" triggers:
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -202,6 +214,7 @@ Used for secondary actions, modals, and "Add Item" triggers:
 ```
 
 #### Icon Action Buttons (36px x 36px)
+
 Used for inline item actions (Edit, Delete, More options):
 
 ```css

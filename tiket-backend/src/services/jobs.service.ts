@@ -10,8 +10,23 @@ export function startJobs(app: FastifyInstance) {
   // Independent loops keep a slow mail/provider response from delaying expiry or webhooks.
   const schedule = (work: () => Promise<void>, interval: number) => {
     let busy = false;
-    const tick = async () => { if (busy) return; busy = true; try { await work(); } catch (error) { app.log.error(error); } finally { busy = false; } };
-    const timer = setInterval(() => { void tick(); }, interval); timer.unref(); timers.push(timer); void tick();
+    const tick = async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        await work();
+      } catch (error) {
+        app.log.error(error);
+      } finally {
+        busy = false;
+      }
+    };
+    const timer = setInterval(() => {
+      void tick();
+    }, interval);
+    timer.unref();
+    timers.push(timer);
+    void tick();
   };
   schedule(cleanupExpiredHolds, 5000);
   schedule(processInbox, 1000);
@@ -19,5 +34,7 @@ export function startJobs(app: FastifyInstance) {
   schedule(processDeliveries, 5000);
   schedule(reconcilePayments, 60000);
   schedule(cleanupConnectionTickets, 60000);
-  app.addHook("onClose", async () => { timers.forEach(clearInterval); });
+  app.addHook("onClose", async () => {
+    timers.forEach(clearInterval);
+  });
 }

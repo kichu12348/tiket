@@ -95,7 +95,9 @@ export const updateTemplate = async (
       });
     }
 
-    const payload: Partial<typeof documentTemplates.$inferInsert> = { updatedAt: new Date() };
+    const payload: Partial<typeof documentTemplates.$inferInsert> = {
+      updatedAt: new Date(),
+    };
     if (body.name !== undefined) payload.name = body.name;
     if (body.backgroundImageUrl !== undefined)
       payload.backgroundImageUrl = body.backgroundImageUrl;

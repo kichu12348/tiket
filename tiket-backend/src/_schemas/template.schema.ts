@@ -31,7 +31,7 @@ export const createTemplateSchema = {
         name: { type: "string", minLength: 1 },
         type: { type: "string", enum: ["ticket", "certificate"] },
         backgroundImageUrl: { type: "string" },
-        elementsJson: { type: ["array", "object"] }, 
+        elementsJson: { type: ["array", "object"] },
       },
     },
     response: {

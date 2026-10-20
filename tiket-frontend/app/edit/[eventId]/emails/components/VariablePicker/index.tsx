@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import type { AvailableVariables, VariableItem } from "@/types/email";
 import { Tag, Sparkles } from "lucide-react";
@@ -32,7 +31,8 @@ export default function VariablePicker({
           <h4 className={styles.title}>Dynamic Variable Placeholders</h4>
         </div>
         <p className={styles.subtitle}>
-          Click any tag to insert variable placeholders into your email subject or body.
+          Click any tag to insert variable placeholders into your email subject
+          or body.
         </p>
       </div>
 

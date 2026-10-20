@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import type { Event } from '@/types/event';
+import { create } from "zustand";
+import type { Event } from "@/types/event";
 
 interface EventState {
   event: Event | null;
@@ -13,8 +13,9 @@ export const useEventStore = create<EventState>((set) => ({
   event: null,
   isLoading: true,
   setEvent: (event) => set({ event, isLoading: false }),
-  updateEventLocally: (partialEvent) => set((state) => ({
-    event: state.event ? { ...state.event, ...partialEvent } : null
-  })),
+  updateEventLocally: (partialEvent) =>
+    set((state) => ({
+      event: state.event ? { ...state.event, ...partialEvent } : null,
+    })),
   setIsLoading: (isLoading) => set({ isLoading }),
 }));

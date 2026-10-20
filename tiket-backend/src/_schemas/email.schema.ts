@@ -74,7 +74,6 @@ export const getEmailTemplatesSchema = {
   },
 };
 
-
 export const getEmailTemplateByIdSchema = {
   schema: {
     params: {
@@ -93,7 +92,6 @@ export const getEmailTemplateByIdSchema = {
     },
   },
 };
-
 
 export const createEmailTemplateSchema = {
   schema: {

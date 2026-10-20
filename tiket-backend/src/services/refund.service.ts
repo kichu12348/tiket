@@ -85,9 +85,25 @@ export async function queueRefund(
       .update(tickets)
       .set({ status: "cancelled", updatedAt: new Date() })
       .where(inArray(tickets.id, voidIds));
-  if (paymentId === order.paymentId && command.amountPaise + Number(reserved?.amount || 0) === order.totalPaise) {
-    await tx.update(orders).set({ reservationState: "released", registrationStatus: order.registrationStatus === "declined" ? "declined" : "refund_pending", updatedAt: new Date() }).where(eq(orders.id, order.id));
-    await tx.update(tickets).set({ status: "cancelled", updatedAt: new Date() }).where(eq(tickets.orderId, order.id));
+  if (
+    paymentId === order.paymentId &&
+    command.amountPaise + Number(reserved?.amount || 0) === order.totalPaise
+  ) {
+    await tx
+      .update(orders)
+      .set({
+        reservationState: "released",
+        registrationStatus:
+          order.registrationStatus === "declined"
+            ? "declined"
+            : "refund_pending",
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, order.id));
+    await tx
+      .update(tickets)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(tickets.orderId, order.id));
   }
   await emitEvent(tx, order.eventId, "refund.requested");
   return refund!;
@@ -238,13 +254,20 @@ export async function processRefunds() {
       );
       await applyRemote(refund.orderId, remote);
     } catch (error) {
-      const rejected = Boolean(error && typeof error === "object" && "statusCode" in error && typeof error.statusCode === "number" && [400, 401, 403, 404, 422, 429].includes(error.statusCode));
+      const rejected = Boolean(
+        error &&
+        typeof error === "object" &&
+        "statusCode" in error &&
+        typeof error.statusCode === "number" &&
+        [400, 401, 403, 404, 422, 429].includes(error.statusCode),
+      );
       await db
         .update(refunds)
         .set({
           status: rejected ? "failed" : "uncertain",
-          error:
-            rejected ? "Gateway rejected the refund request. Correct the configuration or request and retry." : error instanceof Error
+          error: rejected
+            ? "Gateway rejected the refund request. Correct the configuration or request and retry."
+            : error instanceof Error
               ? error.message
               : "Refund outcome requires reconciliation.",
           updatedAt: new Date(),

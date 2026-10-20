@@ -68,7 +68,9 @@
   font-family: inherit;
   outline: none;
   resize: vertical;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .textarea:focus {
@@ -118,7 +120,9 @@
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .btnSecondary:hover {

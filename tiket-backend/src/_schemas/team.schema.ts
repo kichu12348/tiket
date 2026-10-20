@@ -6,7 +6,22 @@ const roleResponseObj = {
     name: { type: "string" },
     permissions: {
       type: "array",
-      items: { type: "string", enum: ["manage_tickets", "manage_forms", "view_guests", "manage_guests", "scan_tickets", "manage_settings", "view_analytics", "manage_team", "view_payments", "manage_refunds", "manage_emails"] },
+      items: {
+        type: "string",
+        enum: [
+          "manage_tickets",
+          "manage_forms",
+          "view_guests",
+          "manage_guests",
+          "scan_tickets",
+          "manage_settings",
+          "view_analytics",
+          "manage_team",
+          "view_payments",
+          "manage_refunds",
+          "manage_emails",
+        ],
+      },
     },
     createdAt: { type: "string", format: "date-time" },
   },
@@ -42,7 +57,22 @@ export const createRoleSchema = {
         name: { type: "string", minLength: 2 },
         permissions: {
           type: "array",
-          items: { type: "string", enum: ["manage_tickets", "manage_forms", "view_guests", "manage_guests", "scan_tickets", "manage_settings", "view_analytics", "manage_team", "view_payments", "manage_refunds", "manage_emails"] },
+          items: {
+            type: "string",
+            enum: [
+              "manage_tickets",
+              "manage_forms",
+              "view_guests",
+              "manage_guests",
+              "scan_tickets",
+              "manage_settings",
+              "view_analytics",
+              "manage_team",
+              "view_payments",
+              "manage_refunds",
+              "manage_emails",
+            ],
+          },
         },
       },
     },
@@ -110,29 +140,29 @@ export const getMembersSchema = {
       200: {
         type: "array",
         items: {
-            type: "object",
-            properties: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            eventId: { type: "string" },
+            userId: { type: "string" },
+            roleId: { type: "string" },
+            createdAt: { type: "string", format: "date-time" },
+            user: {
+              type: "object",
+              properties: {
                 id: { type: "string" },
-                eventId: { type: "string" },
-                userId: { type: "string" },
-                roleId: { type: "string" },
-                createdAt: { type: "string", format: "date-time" },
-                user: {
-                    type: "object",
-                    properties: {
-                        id: { type: "string" },
-                        name: { type: "string" },
-                        email: { type: "string" },
-                    }
-                },
-                role: {
-                    type: "object",
-                    properties: {
-                        id: { type: "string" },
-                        name: { type: "string" },
-                    }
-                }
-            }
+                name: { type: "string" },
+                email: { type: "string" },
+              },
+            },
+            role: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                name: { type: "string" },
+              },
+            },
+          },
         },
       },
       401: errorResponseSchema,
@@ -154,7 +184,22 @@ export const updateRoleSchema = {
         name: { type: "string", minLength: 2 },
         permissions: {
           type: "array",
-          items: { type: "string", enum: ["manage_tickets", "manage_forms", "view_guests", "manage_guests", "scan_tickets", "manage_settings", "view_analytics", "manage_team", "view_payments", "manage_refunds", "manage_emails"] },
+          items: {
+            type: "string",
+            enum: [
+              "manage_tickets",
+              "manage_forms",
+              "view_guests",
+              "manage_guests",
+              "scan_tickets",
+              "manage_settings",
+              "view_analytics",
+              "manage_team",
+              "view_payments",
+              "manage_refunds",
+              "manage_emails",
+            ],
+          },
         },
       },
       minProperties: 1,

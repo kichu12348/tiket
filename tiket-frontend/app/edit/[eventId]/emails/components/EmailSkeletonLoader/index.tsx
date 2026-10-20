@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import styles from "./EmailSkeletonLoader.module.css";
 
@@ -24,16 +23,26 @@ export function EmailEditorSkeleton() {
       <div className={styles.topBarSkeleton}>
         <div className={`${styles.titleBoxSkeleton} ${styles.skeletonPulse}`} />
         <div className={styles.deviceControlsSkeleton}>
-          <div className={`${styles.controlPillSkeleton} ${styles.skeletonPulse}`} />
-          <div className={`${styles.controlPillSkeleton} ${styles.skeletonPulse}`} />
-          <div className={`${styles.controlPillSkeleton} ${styles.skeletonPulse}`} />
+          <div
+            className={`${styles.controlPillSkeleton} ${styles.skeletonPulse}`}
+          />
+          <div
+            className={`${styles.controlPillSkeleton} ${styles.skeletonPulse}`}
+          />
+          <div
+            className={`${styles.controlPillSkeleton} ${styles.skeletonPulse}`}
+          />
         </div>
       </div>
 
       {/* Subject Box */}
       <div className={styles.subjectBoxSkeleton}>
-        <div className={`${styles.subjectLabelSkeleton} ${styles.skeletonPulse}`} />
-        <div className={`${styles.subjectInputSkeleton} ${styles.skeletonPulse}`} />
+        <div
+          className={`${styles.subjectLabelSkeleton} ${styles.skeletonPulse}`}
+        />
+        <div
+          className={`${styles.subjectInputSkeleton} ${styles.skeletonPulse}`}
+        />
       </div>
 
       {/* Body: Sidebar + Canvas */}
@@ -47,16 +56,24 @@ export function EmailEditorSkeleton() {
           ))}
         </div>
         <div className={styles.paperCanvasSkeleton}>
-          <div className={`${styles.paperSheetSkeleton} ${styles.skeletonPulse}`} />
+          <div
+            className={`${styles.paperSheetSkeleton} ${styles.skeletonPulse}`}
+          />
         </div>
       </div>
 
       {/* Footer */}
       <div className={styles.footerSkeleton}>
-        <div className={`${styles.footerBtnSkeleton} ${styles.skeletonPulse}`} />
+        <div
+          className={`${styles.footerBtnSkeleton} ${styles.skeletonPulse}`}
+        />
         <div style={{ display: "flex", gap: "0.5rem" }}>
-          <div className={`${styles.footerBtnSkeleton} ${styles.skeletonPulse}`} />
-          <div className={`${styles.footerBtnSkeleton} ${styles.skeletonPulse}`} />
+          <div
+            className={`${styles.footerBtnSkeleton} ${styles.skeletonPulse}`}
+          />
+          <div
+            className={`${styles.footerBtnSkeleton} ${styles.skeletonPulse}`}
+          />
         </div>
       </div>
     </div>

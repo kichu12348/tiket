@@ -3,7 +3,11 @@ import styles from "./PassSkeleton.module.css";
 
 export function PassSkeleton() {
   return (
-    <div className={styles.skeletonCard} aria-busy="true" aria-label="Loading ticket pass">
+    <div
+      className={styles.skeletonCard}
+      aria-busy="true"
+      aria-label="Loading ticket pass"
+    >
       <div className={styles.mainSkeleton}>
         <div className={styles.headerSkeleton}>
           <div className={`${styles.badgeSkeleton} ${styles.shimmer}`} />

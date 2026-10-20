@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import type { EmailLog } from "@/types/email";
 import { History, CheckCircle, AlertTriangle, Clock } from "lucide-react";
@@ -11,7 +10,10 @@ interface EmailLogsTableProps {
   isLoading: boolean;
 }
 
-export default function EmailLogsTable({ logs, isLoading }: EmailLogsTableProps) {
+export default function EmailLogsTable({
+  logs,
+  isLoading,
+}: EmailLogsTableProps) {
   if (isLoading) {
     return (
       <div className={styles.card}>
@@ -29,17 +31,22 @@ export default function EmailLogsTable({ logs, isLoading }: EmailLogsTableProps)
       <div className={styles.header}>
         <div className={styles.titleRow}>
           <History size={16} className={styles.icon} />
-          <h4 className={styles.title}>Email Delivery History Logs ({logs.length})</h4>
+          <h4 className={styles.title}>
+            Email Delivery History Logs ({logs.length})
+          </h4>
         </div>
         <p className={styles.subtitle}>
-          Track sent invitations, confirmations, test messages, and automated email dispatches.
+          Track sent invitations, confirmations, test messages, and automated
+          email dispatches.
         </p>
       </div>
 
       {logs.length === 0 ? (
         <div className={styles.emptyState}>
           <Clock size={32} className={styles.emptyIcon} />
-          <p className={styles.emptyText}>No email logs recorded yet for this event.</p>
+          <p className={styles.emptyText}>
+            No email logs recorded yet for this event.
+          </p>
         </div>
       ) : (
         <div className={`${styles.tableWrapper} scrollbar`}>
@@ -60,14 +67,19 @@ export default function EmailLogsTable({ logs, isLoading }: EmailLogsTableProps)
                       <span className={styles.recipientName}>
                         {log.recipientName || "Attendee"}
                       </span>
-                      <span className={styles.recipientEmail}>{log.recipientEmail}</span>
+                      <span className={styles.recipientEmail}>
+                        {log.recipientEmail}
+                      </span>
                     </div>
                   </td>
                   <td>
                     <span className={styles.subjectText}>{log.subject}</span>
                   </td>
                   <td>
-                    <span className={styles.statusBadge} data-status={log.status}>
+                    <span
+                      className={styles.statusBadge}
+                      data-status={log.status}
+                    >
                       {log.status === "sent" ? (
                         <CheckCircle size={12} />
                       ) : (

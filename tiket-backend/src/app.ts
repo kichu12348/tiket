@@ -71,11 +71,9 @@ export function buildApp() {
   fastify.setErrorHandler<FastifyError>((error, request, reply) => {
     const statusCode = error.statusCode ?? 500;
     if (statusCode >= 500) request.log.error(error);
-    reply
-      .status(statusCode)
-      .send({
-        error: statusCode >= 500 ? "Internal Server Error" : error.message,
-      });
+    reply.status(statusCode).send({
+      error: statusCode >= 500 ? "Internal Server Error" : error.message,
+    });
   });
   return fastify;
 }

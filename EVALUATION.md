@@ -6,10 +6,10 @@ Evaluated locally on 19 October 2026. Application source was evaluated without c
 
 ## Running locally
 
-| Service | Address |
-| --- | --- |
-| Frontend development server | http://localhost:3000 |
-| Backend API | http://localhost:3001 |
+| Service                      | Address                              |
+| ---------------------------- | ------------------------------------ |
+| Frontend development server  | http://localhost:3000                |
+| Backend API                  | http://localhost:3001                |
 | Isolated PostgreSQL database | 127.0.0.1:55432 / `tiket_evaluation` |
 
 Installed a workspace-local Bun runtime and the existing locked dependencies. Created ignored development environment files for both apps and a separate PostgreSQL database. No existing database or real user data was used. `.evaluation/` contains the local runtime, database, scripts, logs, and sample accounts; the root `.gitignore` excludes it.
@@ -18,21 +18,21 @@ The local database contains evaluation fixtures, including deliberately invalid 
 
 ## Checks
 
-| Check | Result |
-| --- | --- |
-| Frozen Bun dependency install, both apps | Pass |
-| Backend bundle build | Pass |
-| Backend TypeScript check | Pass |
-| Database schema push into isolated database | Pass |
-| Frontend production build | **Fail** during TypeScript checking |
-| Frontend standalone TypeScript check | **3 errors** |
-| Frontend ESLint | **79 errors, 42 warnings** |
-| Browser landing page and password sign-in through BFF cookie | Pass |
-| Browser organizer dashboard, overview, public event | Rendered successfully |
-| API event creation, publication, ticket tier and required form-field creation | Pass |
-| Attendee pass access / unrelated user access | 200 / 403 as expected |
-| Anonymous draft-event access | 404 as expected |
-| Repeated sequential check-in | Rejected with 400 |
+| Check                                                                         | Result                              |
+| ----------------------------------------------------------------------------- | ----------------------------------- |
+| Frozen Bun dependency install, both apps                                      | Pass                                |
+| Backend bundle build                                                          | Pass                                |
+| Backend TypeScript check                                                      | Pass                                |
+| Database schema push into isolated database                                   | Pass                                |
+| Frontend production build                                                     | **Fail** during TypeScript checking |
+| Frontend standalone TypeScript check                                          | **3 errors**                        |
+| Frontend ESLint                                                               | **79 errors, 42 warnings**          |
+| Browser landing page and password sign-in through BFF cookie                  | Pass                                |
+| Browser organizer dashboard, overview, public event                           | Rendered successfully               |
+| API event creation, publication, ticket tier and required form-field creation | Pass                                |
+| Attendee pass access / unrelated user access                                  | 200 / 403 as expected               |
+| Anonymous draft-event access                                                  | 404 as expected                     |
+| Repeated sequential check-in                                                  | Rejected with 400                   |
 
 ## Release blockers and reproduced defects
 

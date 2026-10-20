@@ -132,16 +132,27 @@ const platformGateway: PaymentGateway = {
 let currentGateway = platformGateway;
 function bounded<T>(request: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
-  const expiry = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error("Gateway response timed out; reconcile before retrying.")), 15000); timer.unref(); });
+  const expiry = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error("Gateway response timed out; reconcile before retrying."),
+        ),
+      15000,
+    );
+    timer.unref();
+  });
   return Promise.race([request, expiry]).finally(() => clearTimeout(timer));
 }
 export const gateway = (): PaymentGateway => ({
-  createOrder: (amount, receipt) => bounded(currentGateway.createOrder(amount, receipt)),
-  findOrder: receipt => bounded(currentGateway.findOrder(receipt)),
-  fetchPayment: id => bounded(currentGateway.fetchPayment(id)),
-  orderPayments: id => bounded(currentGateway.orderPayments(id)),
-  createRefund: (id, amount, command) => bounded(currentGateway.createRefund(id, amount, command)),
-  refunds: id => bounded(currentGateway.refunds(id)),
+  createOrder: (amount, receipt) =>
+    bounded(currentGateway.createOrder(amount, receipt)),
+  findOrder: (receipt) => bounded(currentGateway.findOrder(receipt)),
+  fetchPayment: (id) => bounded(currentGateway.fetchPayment(id)),
+  orderPayments: (id) => bounded(currentGateway.orderPayments(id)),
+  createRefund: (id, amount, command) =>
+    bounded(currentGateway.createRefund(id, amount, command)),
+  refunds: (id) => bounded(currentGateway.refunds(id)),
 });
 export function setTestGateway(replacement: PaymentGateway) {
   if (process.env.NODE_ENV !== "test")

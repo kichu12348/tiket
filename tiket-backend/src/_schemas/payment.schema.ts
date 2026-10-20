@@ -1,2 +1,21 @@
-export const verifyPaymentSchema = { schema: { body: { type: "object", additionalProperties: false, required: ["orderId", "razorpayOrderId", "razorpayPaymentId", "razorpaySignature"], properties: { orderId: { type: "string", format: "uuid" }, razorpayOrderId: { type: "string", maxLength: 255 }, razorpayPaymentId: { type: "string", maxLength: 255 }, razorpaySignature: { type: "string", pattern: "^[a-fA-F0-9]{64}$" } } } } };
+export const verifyPaymentSchema = {
+  schema: {
+    body: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "orderId",
+        "razorpayOrderId",
+        "razorpayPaymentId",
+        "razorpaySignature",
+      ],
+      properties: {
+        orderId: { type: "string", format: "uuid" },
+        razorpayOrderId: { type: "string", maxLength: 255 },
+        razorpayPaymentId: { type: "string", maxLength: 255 },
+        razorpaySignature: { type: "string", pattern: "^[a-fA-F0-9]{64}$" },
+      },
+    },
+  },
+};
 export const webhookSchema = { bodyLimit: 1048576 };

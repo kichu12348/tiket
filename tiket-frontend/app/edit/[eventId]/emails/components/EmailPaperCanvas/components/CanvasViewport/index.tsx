@@ -1,8 +1,7 @@
 "use client";
 
-
 import React from "react";
-import type { Editor} from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { toast } from "sonner";
 import styles from "./CanvasViewport.module.css";
@@ -51,10 +50,7 @@ export default function CanvasViewport({
         <div className={styles.paperDocumentCard} data-device={deviceView}>
           <div className={styles.paperBodyArea}>
             {canvasMode === "edit" ? (
-              <EditorContent
-                editor={editor}
-                className={styles.tiptapEditor}
-              />
+              <EditorContent editor={editor} className={styles.tiptapEditor} />
             ) : (
               <div
                 className={styles.previewRenderedBody}
@@ -68,10 +64,7 @@ export default function CanvasViewport({
             <p className={styles.footerQueryText}>
               If you have any questions or queries regarding this event, feel
               free to reply directly to this email or reach out to us at{" "}
-              <a
-                href="mailto:support@tiket.com"
-                className={styles.footerLink}
-              >
+              <a href="mailto:support@tiket.com" className={styles.footerLink}>
                 support@tiket.com
               </a>
               .

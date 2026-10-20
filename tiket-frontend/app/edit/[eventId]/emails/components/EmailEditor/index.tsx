@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import type { EmailTemplate } from "@/types/email";
 import { Save, RotateCcw, Send, Users, Power, Trash2 } from "lucide-react";
@@ -174,5 +173,10 @@ function EmailEditorContent({
 }
 
 export default function EmailEditor(props: EmailEditorProps) {
-  return <EmailEditorContent key={props.template.id + props.template.updatedAt} {...props} />;
+  return (
+    <EmailEditorContent
+      key={props.template.id + props.template.updatedAt}
+      {...props}
+    />
+  );
 }

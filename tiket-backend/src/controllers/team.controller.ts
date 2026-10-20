@@ -28,7 +28,11 @@ export const createRole = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_team",
+    );
     if (!isOwner) {
       return reply
         .status(403)
@@ -67,7 +71,11 @@ export const getRoles = async (
     const { eventId } = request.params;
 
     // We restrict roles fetching to the event creator
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_team",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized." });
     }
@@ -92,7 +100,11 @@ export const addTeamMember = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_team",
+    );
     if (!isOwner) {
       return reply
         .status(403)
@@ -176,7 +188,11 @@ export const getTeamMembers = async (
     const user = request.user as { id: string };
     const { eventId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_team",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized." });
     }
@@ -223,15 +239,18 @@ export const updateRole = async (
     const { eventId, roleId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_team",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized." });
     }
 
     const payload: Partial<typeof eventRoles.$inferInsert> = {};
     if (body.name !== undefined) payload.name = body.name;
-    if (body.permissions !== undefined)
-      payload.permissions = body.permissions;
+    if (body.permissions !== undefined) payload.permissions = body.permissions;
 
     const updatedRoleList = await db
       .update(eventRoles)
@@ -261,7 +280,11 @@ export const deleteRole = async (
     const user = request.user as { id: string };
     const { eventId, roleId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_team",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized." });
     }
@@ -304,7 +327,11 @@ export const removeTeamMember = async (
     const user = request.user as { id: string };
     const { eventId, memberId } = request.params;
 
-    const isOwner = await verifyEventPermission(eventId, user.id, "manage_team");
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_team",
+    );
     if (!isOwner) {
       return reply.status(403).send({ error: "Unauthorized." });
     }

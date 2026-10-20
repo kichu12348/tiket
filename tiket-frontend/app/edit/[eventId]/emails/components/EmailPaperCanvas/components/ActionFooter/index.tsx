@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import { RotateCcw, Trash2, Send, Users, Save } from "lucide-react";
 import styles from "./ActionFooter.module.css";
@@ -67,11 +66,7 @@ export default function ActionFooter({
           <span>Send Blast</span>
         </button>
 
-        <button
-          type="submit"
-          className={styles.btnPrimary}
-          disabled={isSaving}
-        >
+        <button type="submit" className={styles.btnPrimary} disabled={isSaving}>
           <Save size={16} />
           <span>{isSaving ? "Saving..." : "Save Template"}</span>
         </button>

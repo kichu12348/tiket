@@ -17,7 +17,9 @@ export default function RegistrationFormSkeleton() {
         <div className={styles.skeletonFieldList}>
           {[0, 1, 2].map((i) => (
             <div key={i} className={styles.skeletonField}>
-              <div className={`${styles.skeletonLine} ${styles.skeletonLineLabel}`} />
+              <div
+                className={`${styles.skeletonLine} ${styles.skeletonLineLabel}`}
+              />
               <div className={styles.skeletonInput} />
             </div>
           ))}

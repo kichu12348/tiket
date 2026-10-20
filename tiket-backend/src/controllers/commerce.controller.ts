@@ -121,10 +121,17 @@ export async function getFinance(request: EventRequest) {
     .orderBy(desc(orders.createdAt))
     .limit(500);
   const ids = list.map((row) => row.order.id);
-  const attempts = ids.length ? await db.select().from(paymentAttempts).where(inArray(paymentAttempts.orderId, ids)) : [];
+  const attempts = ids.length
+    ? await db
+        .select()
+        .from(paymentAttempts)
+        .where(inArray(paymentAttempts.orderId, ids))
+    : [];
   return {
     orders: list,
-    capturedPaise: attempts.filter(attempt => attempt.status === "captured").reduce((sum, attempt) => sum + attempt.amountPaise, 0),
+    capturedPaise: attempts
+      .filter((attempt) => attempt.status === "captured")
+      .reduce((sum, attempt) => sum + attempt.amountPaise, 0),
     refunds: ids.length
       ? await db.select().from(refunds).where(inArray(refunds.orderId, ids))
       : [],

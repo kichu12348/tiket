@@ -13,14 +13,22 @@ export interface AttendeeTicketType {
 export interface AttendeeOrder {
   id: string;
   totalAmount: string;
-  paymentStatus: "pending" | "success" | "failed" | "refunded" | "partially_refunded";
+  paymentStatus:
+    "pending" | "success" | "failed" | "refunded" | "partially_refunded";
   createdAt: string;
 }
 
 export interface AttendeeItem {
   id: string;
   qrCode: string;
-  status: "pending" | "pending_approval" | "active" | "used" | "transferred" | "refunded" | "cancelled";
+  status:
+    | "pending"
+    | "pending_approval"
+    | "active"
+    | "used"
+    | "transferred"
+    | "refunded"
+    | "cancelled";
   createdAt: string;
   user: AttendeeUser;
   ticketType: AttendeeTicketType;

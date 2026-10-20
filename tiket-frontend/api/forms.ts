@@ -13,11 +13,11 @@ export const getFormFields = async (eventId: string): Promise<FormField[]> => {
 
 export const createFormField = async (
   eventId: string,
-  payload: CreateFormFieldPayload
+  payload: CreateFormFieldPayload,
 ): Promise<FormField> => {
   const response = await api.post(
     `${API_ENDPOINTS.FORMS.CREATE}/${eventId}`,
-    payload
+    payload,
   );
   return response.data;
 };
@@ -25,31 +25,31 @@ export const createFormField = async (
 export const updateFormField = async (
   eventId: string,
   fieldId: string,
-  payload: UpdateFormFieldPayload
+  payload: UpdateFormFieldPayload,
 ): Promise<FormField> => {
   const response = await api.patch(
     API_ENDPOINTS.FORMS.UPDATE(eventId, fieldId),
-    payload
+    payload,
   );
   return response.data;
 };
 
 export const deleteFormField = async (
   eventId: string,
-  fieldId: string
+  fieldId: string,
 ): Promise<{ message: string }> => {
   const response = await api.delete(
-    API_ENDPOINTS.FORMS.DELETE(eventId, fieldId)
+    API_ENDPOINTS.FORMS.DELETE(eventId, fieldId),
   );
   return response.data;
 };
 
 export const deleteFormPage = async (
   eventId: string,
-  pageNum: number
+  pageNum: number,
 ): Promise<{ message: string }> => {
   const response = await api.delete(
-    API_ENDPOINTS.FORMS.DELETE_PAGE(eventId, pageNum)
+    API_ENDPOINTS.FORMS.DELETE_PAGE(eventId, pageNum),
   );
   return response.data;
 };

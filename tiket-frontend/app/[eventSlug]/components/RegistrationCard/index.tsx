@@ -104,7 +104,11 @@ export default function RegistrationCard({
             <div className={styles.welcomeText}>
               Please sign in or register to join this event.
             </div>
-            <Link href="/signin" className={styles.joinBtn} style={{ textAlign: "center" }}>
+            <Link
+              href="/signin"
+              className={styles.joinBtn}
+              style={{ textAlign: "center" }}
+            >
               Sign In to Register
             </Link>
           </>

@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import styles from "./Home.module.css";
@@ -50,7 +49,14 @@ export default function Home() {
             <button className={styles.softIconBtn} aria-label="Search">
               <Search size={18} />
             </button>
-            <button className={styles.softIconBtn} onClick={logout} aria-label="Sign out" title="Sign out"><LogOut size={18} /></button>
+            <button
+              className={styles.softIconBtn}
+              onClick={logout}
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </header>
 
@@ -86,8 +92,8 @@ export default function Home() {
 
               <h2 className={styles.emptyTitle}>No events here</h2>
               <p className={styles.emptySubtitle}>
-                You haven&apos;t scheduled anything yet. Create your first event to
-                get started.
+                You haven&apos;t scheduled anything yet. Create your first event
+                to get started.
               </p>
             </div>
           )}

@@ -16,9 +16,11 @@ export const getAttendees = async (
 ): Promise<GetAttendeesResponse> => {
   const params = new URLSearchParams();
   if (filters?.search) params.append("search", filters.search);
-  if (filters?.ticketTypeId) params.append("ticketTypeId", filters.ticketTypeId);
+  if (filters?.ticketTypeId)
+    params.append("ticketTypeId", filters.ticketTypeId);
   if (filters?.status) params.append("status", filters.status);
-  if (filters?.paymentStatus) params.append("paymentStatus", filters.paymentStatus);
+  if (filters?.paymentStatus)
+    params.append("paymentStatus", filters.paymentStatus);
   if (filters?.page) params.append("page", String(filters.page));
   if (filters?.limit) params.append("limit", String(filters.limit));
 
@@ -58,10 +60,16 @@ export const getAttendeeFormResponses = async (
 
 export const toggleCheckIn = async (
   eventId: string,
-  ticketId: string, action: "checkin" | "undo",
-): Promise<{ message: string; status: AttendeeItem["status"]; checkedInAt: string | null }> => {
+  ticketId: string,
+  action: "checkin" | "undo",
+): Promise<{
+  message: string;
+  status: AttendeeItem["status"];
+  checkedInAt: string | null;
+}> => {
   const response = await api.post(
-    API_ENDPOINTS.ATTENDEES.TOGGLE_CHECKIN(eventId, ticketId), { action },
+    API_ENDPOINTS.ATTENDEES.TOGGLE_CHECKIN(eventId, ticketId),
+    { action },
   );
   return response.data;
 };
@@ -82,7 +90,8 @@ export const manualRegisterAttendee = async (
 ): Promise<{ message: string; ticket: AttendeeItem }> => {
   const response = await api.post(
     API_ENDPOINTS.ATTENDEES.MANUAL_REGISTER(eventId),
-    payload, { headers: { "Idempotency-Key": crypto.randomUUID() } },
+    payload,
+    { headers: { "Idempotency-Key": crypto.randomUUID() } },
   );
   return response.data;
 };

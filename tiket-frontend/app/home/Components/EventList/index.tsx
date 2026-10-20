@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useState } from "react";
 import { useInView } from "react-intersection-observer";
 import type { Event } from "@/types/event";
@@ -81,10 +80,14 @@ function DateGroup({ group }: { group: { date: Date; events: Event[] } }) {
       <div ref={sentinelRef} className={styles.sentinel} aria-hidden="true" />
 
       {/* Sticky date header */}
-      <div className={`${styles.dateHeader}${isStuck ? ` ${styles.stuck}` : ""}`}>
+      <div
+        className={`${styles.dateHeader}${isStuck ? ` ${styles.stuck}` : ""}`}
+      >
         <span className={styles.dot} aria-hidden="true" />
         <span className={styles.dateLabel}>{getDateLabel(group.date)}</span>
-        <span className={styles.weekday}>{dayFormatter.format(group.date)}</span>
+        <span className={styles.weekday}>
+          {dayFormatter.format(group.date)}
+        </span>
       </div>
 
       {/* Event cards */}

@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useParams } from "next/navigation";
 import { useAttendees } from "@/hooks/useAttendees";
 import AttendeeStats from "./components/AttendeeStats";
@@ -59,7 +58,8 @@ export default function AttendeesPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>Attendees</h1>
         <p className={styles.subtitle}>
-          Track live check-ins, view registered attendees, inspect custom registration answers, and issue manual passes.
+          Track live check-ins, view registered attendees, inspect custom
+          registration answers, and issue manual passes.
         </p>
       </div>
 

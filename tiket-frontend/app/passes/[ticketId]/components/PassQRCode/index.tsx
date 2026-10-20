@@ -14,7 +14,9 @@ export function PassQRCode({ ticketId, qrCode, status }: PassQRCodeProps) {
 
   return (
     <div className={styles.qrSection}>
-      <div className={`${styles.qrContainer} ${isInvalid ? styles.invalidQr : ""}`}>
+      <div
+        className={`${styles.qrContainer} ${isInvalid ? styles.invalidQr : ""}`}
+      >
         <QRCode
           value={qrCode || ticketId}
           size={140}
@@ -33,7 +35,17 @@ export function PassQRCode({ ticketId, qrCode, status }: PassQRCodeProps) {
         )}
       </div>
 
-      <span className={styles.instructions}>{status === "active" ? "Present this code at venue entrance" : status === "pending_approval" ? "Awaiting organizer approval. Not valid for entry." : status === "pending" ? "Payment confirmation is pending. Not valid for entry." : status === "used" ? "Already checked in" : "This pass is not valid for entry."}</span>
+      <span className={styles.instructions}>
+        {status === "active"
+          ? "Present this code at venue entrance"
+          : status === "pending_approval"
+            ? "Awaiting organizer approval. Not valid for entry."
+            : status === "pending"
+              ? "Payment confirmation is pending. Not valid for entry."
+              : status === "used"
+                ? "Already checked in"
+                : "This pass is not valid for entry."}
+      </span>
     </div>
   );
 }

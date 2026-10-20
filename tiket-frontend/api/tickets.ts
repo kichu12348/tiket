@@ -8,18 +8,20 @@ import type {
 
 import type { TicketPassData } from "@/types/ticket";
 
-export const getTicketTypes = async (eventId: string): Promise<TicketType[]> => {
+export const getTicketTypes = async (
+  eventId: string,
+): Promise<TicketType[]> => {
   const response = await api.get(API_ENDPOINTS.TICKET_TYPES.GET_ALL(eventId));
   return response.data;
 };
 
 export const createTicketType = async (
   eventId: string,
-  payload: CreateTicketTypePayload
+  payload: CreateTicketTypePayload,
 ): Promise<TicketType> => {
   const response = await api.post(
     `${API_ENDPOINTS.TICKET_TYPES.CREATE}/${eventId}`,
-    payload
+    payload,
   );
   return response.data;
 };
@@ -27,38 +29,40 @@ export const createTicketType = async (
 export const updateTicketType = async (
   eventId: string,
   ticketTypeId: string,
-  payload: UpdateTicketTypePayload
+  payload: UpdateTicketTypePayload,
 ): Promise<TicketType> => {
   const response = await api.patch(
     API_ENDPOINTS.TICKET_TYPES.UPDATE(eventId, ticketTypeId),
-    payload
+    payload,
   );
   return response.data;
 };
 
 export const deleteTicketType = async (
   eventId: string,
-  ticketTypeId: string
+  ticketTypeId: string,
 ): Promise<{ message: string }> => {
   const response = await api.delete(
-    API_ENDPOINTS.TICKET_TYPES.DELETE(eventId, ticketTypeId)
+    API_ENDPOINTS.TICKET_TYPES.DELETE(eventId, ticketTypeId),
   );
   return response.data;
 };
 
 export const reorderTicketTypes = async (
   eventId: string,
-  orderedIds: { id: string; sortOrder: number }[]
+  orderedIds: { id: string; sortOrder: number }[],
 ): Promise<{ message: string }> => {
   const response = await api.put(
     API_ENDPOINTS.TICKET_TYPES.REORDER(eventId),
-    orderedIds
+    orderedIds,
   );
   return response.data;
 };
 
 // Fetch individual attendee ticket pass payload
-export const getTicketPass = async (ticketId: string): Promise<TicketPassData> => {
+export const getTicketPass = async (
+  ticketId: string,
+): Promise<TicketPassData> => {
   const response = await api.get(API_ENDPOINTS.TICKETS.GET(ticketId));
   return response.data;
 };

@@ -1,9 +1,23 @@
 import { useFileDownload } from "@/hooks/useFileDownload";
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, Ticket, Calendar, CheckCircle2, XCircle, ExternalLink, ClipboardList, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Mail,
+  Ticket,
+  Calendar,
+  CheckCircle2,
+  XCircle,
+  ExternalLink,
+  ClipboardList,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import Modal from "@/components/Modal";
-import type { AttendeeDetailResponse, FormResponseItem } from "@/types/attendee";
+import type {
+  AttendeeDetailResponse,
+  FormResponseItem,
+} from "@/types/attendee";
 import { getAttendeeFormResponses } from "@/api/attendees";
 import { toast } from "sonner";
 import styles from "./AttendeeDetailModal.module.css";
@@ -29,9 +43,10 @@ export default function AttendeeDetailModal({
 
   const [isResponsesExpanded, setIsResponsesExpanded] = useState(false);
   const downloadFile = useFileDownload();
-  const [formResponses, setFormResponses] = useState<FormResponseItem[] | null>(null);
+  const [formResponses, setFormResponses] = useState<FormResponseItem[] | null>(
+    null,
+  );
   const [isLoadingResponses, setIsLoadingResponses] = useState(false);
-
 
   const handleToggleFormResponses = async () => {
     if (!detail) return;
@@ -75,10 +90,18 @@ export default function AttendeeDetailModal({
 
             {/* Grid Metadata Skeleton */}
             <div className={styles.skeletonMetaGrid}>
-              <div className={`${styles.skeleton} ${styles.skeletonMetaItem}`} />
-              <div className={`${styles.skeleton} ${styles.skeletonMetaItem}`} />
-              <div className={`${styles.skeleton} ${styles.skeletonMetaItem}`} />
-              <div className={`${styles.skeleton} ${styles.skeletonMetaItem}`} />
+              <div
+                className={`${styles.skeleton} ${styles.skeletonMetaItem}`}
+              />
+              <div
+                className={`${styles.skeleton} ${styles.skeletonMetaItem}`}
+              />
+              <div
+                className={`${styles.skeleton} ${styles.skeletonMetaItem}`}
+              />
+              <div
+                className={`${styles.skeleton} ${styles.skeletonMetaItem}`}
+              />
             </div>
           </div>
         ) : (
@@ -173,16 +196,31 @@ export default function AttendeeDetailModal({
                 <div className={styles.accordionContent}>
                   {isLoadingResponses ? (
                     <div className={styles.inlineSkeletonList}>
-                      <div className={`${styles.skeleton} ${styles.skeletonAnswerBox}`} />
-                      <div className={`${styles.skeleton} ${styles.skeletonAnswerBox}`} />
+                      <div
+                        className={`${styles.skeleton} ${styles.skeletonAnswerBox}`}
+                      />
+                      <div
+                        className={`${styles.skeleton} ${styles.skeletonAnswerBox}`}
+                      />
                     </div>
                   ) : formResponses && formResponses.length > 0 ? (
                     <div className={styles.formResponseList}>
                       {formResponses.map((resp, idx) => (
                         <div key={idx} className={styles.responseItem}>
-                          <span className={styles.responseLabel}>{resp.label}</span>
+                          <span className={styles.responseLabel}>
+                            {resp.label}
+                          </span>
                           <span className={styles.responseValue}>
-                            {resp.value.startsWith("file:") ? <button type="button" onClick={() => downloadFile(resp.value)}>Download file</button> : resp.value || "(No answer provided)"}
+                            {resp.value.startsWith("file:") ? (
+                              <button
+                                type="button"
+                                onClick={() => downloadFile(resp.value)}
+                              >
+                                Download file
+                              </button>
+                            ) : (
+                              resp.value || "(No answer provided)"
+                            )}
                           </span>
                         </div>
                       ))}

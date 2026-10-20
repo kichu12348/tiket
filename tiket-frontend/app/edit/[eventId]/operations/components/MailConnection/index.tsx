@@ -88,13 +88,15 @@ export default function MailConnection({
           <div className={styles.headerText}>
             <h2 className={styles.title}>Email Delivery Service</h2>
             <p className={styles.subtitle}>
-              Configure outbound transactional email delivery for ticket
-              passes, confirmation receipts, and reminder notifications.
+              Configure outbound transactional email delivery for ticket passes,
+              confirmation receipts, and reminder notifications.
             </p>
           </div>
         </div>
         <div className={styles.statusBadge} data-custom={custom}>
-          <span>{custom ? "Custom SMTP / Brevo" : "Platform Brevo Default"}</span>
+          <span>
+            {custom ? "Custom SMTP / Brevo" : "Platform Brevo Default"}
+          </span>
         </div>
       </div>
 
@@ -197,7 +199,9 @@ export default function MailConnection({
                   <SelectContent>
                     <SelectItem value="587">587 · STARTTLS</SelectItem>
                     <SelectItem value="465">465 · TLS (SSL)</SelectItem>
-                    <SelectItem value="2525">2525 · Alternative STARTTLS</SelectItem>
+                    <SelectItem value="2525">
+                      2525 · Alternative STARTTLS
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -249,7 +253,9 @@ export default function MailConnection({
               onClick={handleReset}
             >
               <RotateCcw size={15} />
-              <span>{isResetting ? "Restoring..." : "Restore Platform Brevo"}</span>
+              <span>
+                {isResetting ? "Restoring..." : "Restore Platform Brevo"}
+              </span>
             </button>
           )}
         </div>

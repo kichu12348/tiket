@@ -10,7 +10,7 @@ export interface VerifyPaymentPayload {
 }
 
 export const verifyPayment = async (
-  payload: VerifyPaymentPayload
+  payload: VerifyPaymentPayload,
 ): Promise<CreateOrderResponse> => {
   const response = await api.post(API_ENDPOINTS.PAYMENTS.VERIFY, payload);
   return response.data;

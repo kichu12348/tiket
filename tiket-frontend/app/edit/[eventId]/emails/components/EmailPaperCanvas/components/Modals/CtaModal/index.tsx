@@ -1,6 +1,5 @@
 "use client";
 
-
 import React from "react";
 import Modal from "@/components/Modal";
 import styles from "./CtaModal.module.css";

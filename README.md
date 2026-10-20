@@ -34,26 +34,26 @@ Run it separately for `JWT_SECRET` and `CREDENTIAL_ENCRYPTION_KEY`; use differen
 
 ### Backend: `tiket-backend/.env`
 
-| Variable | What to set |
-| --- | --- |
+| Variable       | What to set                                                                                                                                                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://USER:PASSWORD@127.0.0.1:5432/tiket_development`. Create the database first. URL-encode special characters in credentials; use your database provider's required TLS settings. |
-| `JWT_SECRET` | Random signing secret generated above. Required for authentication. Changing it invalidates existing tokens. |
-| `PORT` | `3001` locally, or the port assigned by your host. |
-| `HOST` | `127.0.0.1` locally; typically `0.0.0.0` inside a deployed container. |
-| `DEBUG` | `false` normally; `true` enables development logging. |
-| `FRONTEND_URL` | Exact allowed frontend origins, comma-separated, without trailing slashes. Locally: `http://localhost:3000`. The first origin is also used for email links. |
-| `CDN_URL` | Base URL of the existing image/CDN service; see the CDN section below. |
+| `JWT_SECRET`   | Random signing secret generated above. Required for authentication. Changing it invalidates existing tokens.                                                                                                                 |
+| `PORT`         | `3001` locally, or the port assigned by your host.                                                                                                                                                                           |
+| `HOST`         | `127.0.0.1` locally; typically `0.0.0.0` inside a deployed container.                                                                                                                                                        |
+| `DEBUG`        | `false` normally; `true` enables development logging.                                                                                                                                                                        |
+| `FRONTEND_URL` | Exact allowed frontend origins, comma-separated, without trailing slashes. Locally: `http://localhost:3000`. The first origin is also used for email links.                                                                  |
+| `CDN_URL`      | Base URL of the existing image/CDN service; see the CDN section below.                                                                                                                                                       |
 
 The remaining backend variables enable payments, email and registration-file storage; they are documented below. Basic password authentication and non-provider flows can be developed before those services are configured. OTP login needs working email delivery, paid checkout needs Razorpay, and registration file uploads need R2.
 
 ### Frontend: `tiket-frontend/.env.local`
 
-| Variable | What to set |
-| --- | --- |
-| `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:3001` locally. Use the backend base URL, without `/api` or a trailing slash. |
-| `NEXT_PUBLIC_CDN_URL` | Public base URL of the image/CDN service. |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Browser Google Maps key for the location picker. |
-| `NEXT_PUBLIC_MAP_ID` | Google Maps map ID used by the map/advanced markers. This is separate from the API key. |
+| Variable                          | What to set                                                                                    |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`             | `http://127.0.0.1:3001` locally. Use the backend base URL, without `/api` or a trailing slash. |
+| `NEXT_PUBLIC_CDN_URL`             | Public base URL of the image/CDN service.                                                      |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Browser Google Maps key for the location picker.                                               |
+| `NEXT_PUBLIC_MAP_ID`              | Google Maps map ID used by the map/advanced markers. This is separate from the API key.        |
 
 All `NEXT_PUBLIC_*` values are visible in the browser and embedded during the frontend build. Never put Razorpay secrets, database credentials, mail credentials, encryption keys or R2 credentials here. Rebuild/redeploy the frontend after changing these values; restart the backend after changing its configuration.
 
@@ -88,12 +88,12 @@ FRONTEND_URL=http://localhost:3000,http://127.0.0.1:3000
 
 Use one platform Razorpay account. Organizer-specific Razorpay credentials are not supported.
 
-| Backend variable | What to set |
-| --- | --- |
-| `RAZORPAY_KEY_ID` | Platform API key ID for the selected test/live environment. |
-| `RAZORPAY_KEY_SECRET` | Matching API key secret. Backend only. |
+| Backend variable          | What to set                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `RAZORPAY_KEY_ID`         | Platform API key ID for the selected test/live environment.                           |
+| `RAZORPAY_KEY_SECRET`     | Matching API key secret. Backend only.                                                |
 | `RAZORPAY_WEBHOOK_SECRET` | Secret chosen when configuring the webhook. This is separate from the API key secret. |
-| `RAZORPAY_ACCOUNT_ID` | Optional account ID; when set, webhook account identity is checked. |
+| `RAZORPAY_ACCOUNT_ID`     | Optional account ID; when set, webhook account identity is checked.                   |
 
 Start in Razorpay test mode. Configure automatic payment capture and register this publicly reachable HTTPS webhook:
 
@@ -111,13 +111,13 @@ Use separate databases, API keys and webhook secrets for test and live environme
 
 Keep fees and taxes at zero until an appropriate business policy is established. Amounts are integer paise; 100 paise = ₹1. Rates use basis points; 100 BPS = 1%.
 
-| Backend variable | Default | Meaning |
-| --- | --- | --- |
+| Backend variable         | Default   | Meaning                                                                                  |
+| ------------------------ | --------- | ---------------------------------------------------------------------------------------- |
 | `PRICING_POLICY_VERSION` | `zero-v1` | Policy label saved in immutable order pricing snapshots. Change when the policy changes. |
-| `TICKET_TAX_BPS` | `0` | Tax rate on the discounted ticket price. |
-| `PLATFORM_FEE_BPS` | `0` | Percentage platform fee. |
-| `PLATFORM_FEE_PAISE` | `0` | Fixed platform fee per nonzero ticket line, not per order. |
-| `FEE_TAX_BPS` | `0` | Tax rate on the platform fee. |
+| `TICKET_TAX_BPS`         | `0`       | Tax rate on the discounted ticket price.                                                 |
+| `PLATFORM_FEE_BPS`       | `0`       | Percentage platform fee.                                                                 |
+| `PLATFORM_FEE_PAISE`     | `0`       | Fixed platform fee per nonzero ticket line, not per order.                               |
+| `FEE_TAX_BPS`            | `0`       | Tax rate on the platform fee.                                                            |
 
 Configured fees and taxes are added on top of the discounted ticket price. Fully discounted/free tickets do not incur platform fees. Existing order snapshots retain their original pricing when configuration changes.
 
@@ -125,11 +125,11 @@ Configured fees and taxes are added on top of the discounted ticket price. Fully
 
 Create a Brevo transactional API key and verify the sender/domain you intend to use. See [Brevo's transactional email setup](https://developers.brevo.com/docs/send-a-transactional-email).
 
-| Backend variable | What to set |
-| --- | --- |
-| `BREVO_API_KEY` | Platform transactional email API key. |
-| `EMAIL_FROM` | Verified sender email address. |
-| `EMAIL_FROM_NAME` | Sender display name; defaults to `Tiket`. |
+| Backend variable            | What to set                                                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `BREVO_API_KEY`             | Platform transactional email API key.                                                                          |
+| `EMAIL_FROM`                | Verified sender email address.                                                                                 |
+| `EMAIL_FROM_NAME`           | Sender display name; defaults to `Tiket`.                                                                      |
 | `CREDENTIAL_ENCRYPTION_KEY` | Exactly 64 hexadecimal characters representing 32 random bytes. Encrypts saved organizer provider credentials. |
 
 Retain the encryption key across deployments. Rotating it requires re-encrypting existing saved connections. Back it up securely alongside the database configuration.
@@ -140,12 +140,12 @@ The platform sender handles OTP emails. Organizers can configure their own Brevo
 
 Create a private R2 bucket and bucket-scoped S3-compatible credentials with object read/write permissions. These credentials support upload, metadata checks, copy and authorized downloads.
 
-| Backend variable | What to set |
-| --- | --- |
-| `R2_ACCOUNT_ID` | Cloudflare account ID. |
-| `R2_ACCESS_KEY_ID` | R2 S3-compatible access key ID. |
+| Backend variable       | What to set                               |
+| ---------------------- | ----------------------------------------- |
+| `R2_ACCOUNT_ID`        | Cloudflare account ID.                    |
+| `R2_ACCESS_KEY_ID`     | R2 S3-compatible access key ID.           |
 | `R2_SECRET_ACCESS_KEY` | Matching S3-compatible secret access key. |
-| `R2_BUCKET` | Exact private bucket name. |
+| `R2_BUCKET`            | Exact private bucket name.                |
 
 The backend constructs the S3 endpoint from the account ID; no additional endpoint variable is needed. Users upload directly from the browser with short-lived presigned URLs. Do not make the bucket public or place these credentials in frontend configuration.
 
@@ -195,16 +195,16 @@ See the [implementation runbook](planning/implementation-runbook.md) for operati
 
 ## Troubleshooting
 
-| Symptom | Check |
-| --- | --- |
-| API connection refused locally | Start the backend; use `127.0.0.1:3001` when it binds IPv4. `localhost` can resolve to IPv6 on Windows. |
-| CORS or WebSocket origin rejected | Match the browser's exact origin in `FRONTEND_URL`, including scheme and port, without a trailing slash. Restart the backend. |
-| Database connection/migration failure | Confirm PostgreSQL is running, the database exists, credentials are correct and the connection's TLS settings match the provider. |
-| Paid checkout unavailable | Configure platform Razorpay keys; verify test/live mode matches the webhook environment. |
-| OTP or transactional email missing | Check Brevo key, verified sender, provider logs and backend delivery jobs. |
-| Saved organizer email credentials cannot decrypt | Restore the original `CREDENTIAL_ENCRYPTION_KEY`; a newly generated key cannot decrypt old connections. |
-| Registration upload unavailable or blocked | Check all four R2 variables, bucket permissions, exact-origin CORS and the presigned URL's expiry. |
-| Event images do not load/upload | Configure the separate compatible image/CDN service; the API URL is only a placeholder in the examples. |
-| Updated frontend configuration has no effect | Restart local Next.js development, or rebuild/redeploy production; public variables are embedded at build time. |
+| Symptom                                          | Check                                                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| API connection refused locally                   | Start the backend; use `127.0.0.1:3001` when it binds IPv4. `localhost` can resolve to IPv6 on Windows.                           |
+| CORS or WebSocket origin rejected                | Match the browser's exact origin in `FRONTEND_URL`, including scheme and port, without a trailing slash. Restart the backend.     |
+| Database connection/migration failure            | Confirm PostgreSQL is running, the database exists, credentials are correct and the connection's TLS settings match the provider. |
+| Paid checkout unavailable                        | Configure platform Razorpay keys; verify test/live mode matches the webhook environment.                                          |
+| OTP or transactional email missing               | Check Brevo key, verified sender, provider logs and backend delivery jobs.                                                        |
+| Saved organizer email credentials cannot decrypt | Restore the original `CREDENTIAL_ENCRYPTION_KEY`; a newly generated key cannot decrypt old connections.                           |
+| Registration upload unavailable or blocked       | Check all four R2 variables, bucket permissions, exact-origin CORS and the presigned URL's expiry.                                |
+| Event images do not load/upload                  | Configure the separate compatible image/CDN service; the API URL is only a placeholder in the examples.                           |
+| Updated frontend configuration has no effect     | Restart local Next.js development, or rebuild/redeploy production; public variables are embedded at build time.                   |
 
 Only example environment files belong in Git. Share variable names and redacted errors when troubleshooting, never actual credentials or presigned URLs.

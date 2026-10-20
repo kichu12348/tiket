@@ -17,9 +17,7 @@ export const FIELD_TYPES = [
 ];
 
 export type FieldType =
-  | (typeof FIELD_TYPES)[number]["value"]
-  | "select"
-  | "file";
+  (typeof FIELD_TYPES)[number]["value"] | "select" | "file";
 
 export type FormFieldOptions =
   | string[]

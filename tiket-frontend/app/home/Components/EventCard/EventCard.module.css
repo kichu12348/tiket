@@ -6,7 +6,9 @@
   border-radius: 16px;
   background-color: #1a1a1a; /* Dark card background */
   border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   cursor: pointer;
   text-decoration: none;
 }
@@ -130,10 +132,13 @@
 }
 
 .generatedPoster::before {
-  content: '';
+  content: "";
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.8));
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(0, 0, 0, 0.8));
   z-index: 1;
 }
 
