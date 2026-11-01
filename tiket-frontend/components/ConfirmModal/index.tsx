@@ -68,7 +68,7 @@ export function ConfirmProvider() {
       setIsConfirming(true);
       try {
         await state.options.onConfirm();
-      } catch (error) {
+      } catch {
         setIsConfirming(false);
         return; // Don't close modal if it threw
       }

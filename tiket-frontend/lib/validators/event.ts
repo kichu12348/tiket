@@ -30,7 +30,11 @@ export const validateEventPayload = (
     return "Registration cannot end after the event has ended.";
   }
 
-  if (data.capacity) {
+  if (
+    data.capacity !== undefined &&
+    data.capacity !== null &&
+    data.capacity !== ""
+  ) {
     const parsedCapacity =
       typeof data.capacity === "string"
         ? parseInt(data.capacity, 10)

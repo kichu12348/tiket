@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tag, Plus, Check, AlertCircle, Percent } from "lucide-react";
+import { Tag, Plus, AlertCircle, Percent } from "lucide-react";
 import DateTimeControl from "../DateTimeControl";
 import styles from "./CouponPanel.module.css";
 

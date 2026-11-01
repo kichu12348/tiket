@@ -29,7 +29,7 @@ export async function getEventBySlug(
     );
     if (!res.ok) return null;
     return res.json();
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -44,7 +44,7 @@ export async function getMe(token: string): Promise<AuthenticatedUser | null> {
     if (!res.ok) return null;
     const data = await res.json();
     return data.user || null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

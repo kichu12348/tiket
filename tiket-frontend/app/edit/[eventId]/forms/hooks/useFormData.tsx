@@ -132,7 +132,7 @@ export function useFormData(eventId?: string) {
       }
       await refreshFields();
       toast.success(`${std.label} updated.`);
-    } catch (error) {
+    } catch {
       toast.error("Failed to update field.");
     }
   };
@@ -286,7 +286,7 @@ export function useFormData(eventId?: string) {
           });
         }
       }
-    } catch (e) {
+    } catch {
       toast.error("Failed to save reorder. Reverting.");
       await refreshFields();
     }

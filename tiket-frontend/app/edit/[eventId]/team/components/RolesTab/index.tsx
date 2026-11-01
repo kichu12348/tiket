@@ -49,7 +49,7 @@ export default function RolesTab({ eventId }: { eventId: string }) {
       .then(async (data) => {
         setRoles(data);
       })
-      .catch((error: unknown) => {
+      .catch((_error: unknown) => {
         toast.error("Failed to load roles");
       })
       .finally(() => {

@@ -59,7 +59,7 @@ export default function AttendeeDetailModal({
         setIsLoadingResponses(true);
         const res = await getAttendeeFormResponses(eventId, detail.attendee.id);
         setFormResponses(res.responses);
-      } catch (err: unknown) {
+      } catch {
         toast.error("Failed to load registration answers.");
       } finally {
         setIsLoadingResponses(false);

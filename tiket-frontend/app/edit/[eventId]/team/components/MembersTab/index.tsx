@@ -70,7 +70,7 @@ export default function MembersTab({ eventId }: { eventId: string }) {
             await removeTeamMember(eventId, memberId);
             toast.success("Member removed");
             fetchData();
-          } catch (error) {
+          } catch {
             toast.error("Failed to remove member");
           }
         },

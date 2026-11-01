@@ -17,7 +17,7 @@ export function useAuth() {
     setIsLoading(true);
     setError("");
     try {
-      const res = await axios.post(API_ENDPOINTS.FRONTEND.AUTH.OTP_VERIFY, {
+      await axios.post(API_ENDPOINTS.FRONTEND.AUTH.OTP_VERIFY, {
         email,
         otp,
       });
@@ -73,7 +73,7 @@ export function useAuth() {
     setIsLoading(true);
     setError("");
     try {
-      const res = await axios.post(API_ENDPOINTS.FRONTEND.AUTH.PASSWORD, {
+      await axios.post(API_ENDPOINTS.FRONTEND.AUTH.PASSWORD, {
         email,
         password,
         name,

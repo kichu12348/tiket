@@ -1,3 +1,4 @@
+import type { Control, FieldValues, FieldErrors, FieldError } from "react-hook-form";
 import type { TicketType } from "@/types/ticketType";
 import type { FormField } from "@/types/form";
 import type { Event } from "@/types/event";
@@ -19,11 +20,8 @@ export interface RegistrationFormProps {
 
 export interface FieldRendererProps {
   field: FormField;
-  // react-hook-form control object — intentionally loose typed here
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  control: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  error?: any;
+  control: Control<FieldValues>;
+  error?: FieldError | { message?: string };
   timezone?: string;
 }
 
@@ -43,10 +41,8 @@ export interface FormFieldsSectionProps {
   currentPage: number;
   maxPage: number;
   pages: Record<number, FormField[]>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  control: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  errors: any;
+  control: Control<FieldValues>;
+  errors: FieldErrors<FieldValues>;
   timezone?: string;
   onNext: () => void;
   onBack: () => void;
