@@ -1,8 +1,8 @@
 import { deliverMail } from "../services/mail.service";
-import { sanitizeRichText } from "./html";
+import { sanitizeEmailHtml } from "./html";
 import db from "@db";
 import { emailLogs, emailTemplates } from "@db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export interface InterpolationData {
   event?: {
@@ -21,6 +21,7 @@ export interface InterpolationData {
   };
   ticket?: {
     qrCode?: string;
+    qrCodeUrl?: string;
     type?: string;
     id?: string;
   };
@@ -55,6 +56,9 @@ export function interpolateTemplate(
       }
       if (domain === "ticket" && data.ticket) {
         if (key === "qrCodeUrl") {
+          if (data.ticket.qrCodeUrl) {
+            return data.ticket.qrCodeUrl;
+          }
           const qrData = data.ticket.qrCode || "TKT-SAMPLE-12345";
           return `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=300&margin=1`;
         }
@@ -98,7 +102,7 @@ export async function sendEmail(options: SendEmailOptions) {
       {
         ...options,
         subject: interpolatedSubject,
-        body: sanitizeRichText(interpolatedBody),
+        body: sanitizeEmailHtml(interpolatedBody),
       },
       options.eventId,
     );
@@ -131,7 +135,7 @@ export async function sendEmail(options: SendEmailOptions) {
           (error instanceof Error ? error.message : "Email delivery failed") ||
           "Failed to log email",
       });
-    } catch (e) {
+    } catch {
       // Ignore fallback log error
     }
     return {

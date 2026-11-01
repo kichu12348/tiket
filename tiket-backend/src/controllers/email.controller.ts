@@ -1,5 +1,5 @@
 import { verifyEventPermission } from "../utils/permissions";
-import { sanitizeRichText } from "../utils/html";
+import { sanitizeEmailHtml } from "../utils/html";
 import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
@@ -13,8 +13,7 @@ import {
   formFields,
   ticketTypes,
 } from "@db/schema";
-import { eq, and, inArray } from "drizzle-orm";
-import { verifyEventOwner } from "@utils";
+import { eq, and } from "drizzle-orm";
 import {
   sendEmail,
   DEFAULT_TEMPLATES,
@@ -141,7 +140,7 @@ export const createEmailTemplate = async (
         name: body.name,
         type: body.type || "custom",
         subject: body.subject,
-        body: sanitizeRichText(body.body),
+        body: sanitizeEmailHtml(body.body),
         isActive: body.isActive !== undefined ? body.isActive : true,
       })
       .returning();
@@ -192,7 +191,7 @@ export const updateEmailTemplate = async (
     if (body.name !== undefined) payload.name = body.name;
     if (body.type !== undefined) payload.type = body.type;
     if (body.subject !== undefined) payload.subject = body.subject;
-    if (body.body !== undefined) payload.body = body.body;
+    if (body.body !== undefined) payload.body = sanitizeEmailHtml(body.body);
     if (body.isActive !== undefined) payload.isActive = body.isActive;
 
     const [updated] = await db
@@ -555,6 +554,7 @@ export const sendBatchEmail = async (
       name?: string;
       ticketType?: string;
       passId?: string;
+      qrCode?: string;
     }[] = [];
 
     if (targetGroup === "custom" && customEmails && customEmails.length > 0) {
@@ -583,6 +583,7 @@ export const sendBatchEmail = async (
           name: t.userName,
           ticketType: t.ticketTypeName,
           passId: t.ticketId,
+          qrCode: t.qrCode,
         }));
       } else {
         // Query check-ins
@@ -603,6 +604,7 @@ export const sendBatchEmail = async (
               name: t.userName,
               ticketType: t.ticketTypeName,
               passId: t.ticketId,
+              qrCode: t.qrCode,
             }));
         } else if (targetGroup === "not_checked_in") {
           recipients = ticketRecords
@@ -612,6 +614,7 @@ export const sendBatchEmail = async (
               name: t.userName,
               ticketType: t.ticketTypeName,
               passId: t.ticketId,
+              qrCode: t.qrCode,
             }));
         }
       }
@@ -642,6 +645,8 @@ export const sendBatchEmail = async (
         },
         ticket: {
           type: r.ticketType || "Pass",
+          id: r.passId,
+          qrCode: r.qrCode,
         },
       };
 
