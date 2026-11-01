@@ -1,0 +1,15 @@
+{
+  "name": "tiket",
+  "private": true,
+  "workspaces": [
+    "tiket-backend",
+    "tiket-frontend"
+  ],
+  "scripts": {
+    "typecheck": "bun --filter '*' typecheck",
+    "lint": "bunx --bun eslint .",
+    "test": "bun --filter tiket-backend test && bun --filter tiket-frontend test",
+    "check": "bun run typecheck && bun run lint && bun run test"
+  }
+}
+

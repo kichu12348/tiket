@@ -1,6 +1,6 @@
 import db from "@db";
 import {
-  events,
+  type events,
   eventTeamMembers,
   formFields,
   orderItems,

@@ -27,12 +27,15 @@ interface CreateFieldBody {
     | "url"
     | "select";
   isRequired?: boolean;
-  options?: string[];
+  options?:
+    | string[]
+    | { choices?: string[]; min?: number | null; max?: number | null }
+    | null;
   sortOrder?: number;
   page?: number;
 }
 
-interface UpdateFieldBody extends Partial<CreateFieldBody> {}
+type UpdateFieldBody = Partial<CreateFieldBody>;
 
 export const createField = async (
   request: FastifyRequest<{

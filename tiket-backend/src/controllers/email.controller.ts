@@ -186,7 +186,9 @@ export const updateEmailTemplate = async (
       return reply.status(403).send({ error: "Unauthorized" });
     }
 
-    const payload: any = { updatedAt: new Date() };
+    const payload: Partial<typeof emailTemplates.$inferInsert> = {
+      updatedAt: new Date(),
+    };
     if (body.name !== undefined) payload.name = body.name;
     if (body.type !== undefined) payload.type = body.type;
     if (body.subject !== undefined) payload.subject = body.subject;
