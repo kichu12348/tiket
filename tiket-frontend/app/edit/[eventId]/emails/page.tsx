@@ -22,10 +22,13 @@ import {
   getEmailLogs,
 } from "@/api/emails";
 import { toast } from "sonner";
+import { Power } from "lucide-react";
 import styles from "./EmailsPage.module.css";
 
 import TemplateTypeSelector from "./components/TemplateTypeSelector";
 import EmailPaperCanvas from "./components/EmailPaperCanvas";
+import VariablePicker from "./components/VariablePicker";
+import LivePreviewPane from "./components/LivePreviewPane";
 import SendTestModal from "./components/SendTestModal";
 import SendBatchModal from "./components/SendBatchModal";
 import EmailLogsTable from "./components/EmailLogsTable";
@@ -51,7 +54,8 @@ export default function EditEmailsPage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isTemplateLoading, setIsTemplateLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLogsLoading] = useState(false);
+  const [isLogsLoading, setIsLogsLoading] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
 
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -73,6 +77,18 @@ export default function EditEmailsPage() {
           tplData.find((t) => t.type === "confirmation") || tplData[0];
         if (match) {
           setSelectedTemplateId(match.id);
+          try {
+            const full = await getEmailTemplateById(eventId, match.id);
+            setLoadedTemplatesMap((prev) => ({
+              ...prev,
+              [full.id]: full,
+            }));
+          } catch {
+            setLoadedTemplatesMap((prev) => ({
+              ...prev,
+              [match.id]: match,
+            }));
+          }
         }
       })
       .catch((err: unknown) => {
@@ -89,49 +105,48 @@ export default function EditEmailsPage() {
     }
   }, [event?.id, loadInitialData]);
 
-  // 2. Lazy loading template content on demand when selected
-  const fetchTemplateOnDemand = useCallback(
-    async (eventId: string, templateId: string) => {
-      if (loadedTemplatesMap[templateId]) return;
-
-      return getEmailTemplateById(eventId, templateId)
-        .then(async (fetched) => {
-          setLoadedTemplatesMap((prev) => ({
-            ...prev,
-            [templateId]: fetched,
-          }));
-        })
-        .catch((err: unknown) => {
-          toast.error(getErrorMessage(err) || "Failed to load email template");
-        })
-        .finally(() => {
-          setIsTemplateLoading(false);
-        });
-    },
-    [loadedTemplatesMap],
-  );
-
-  useEffect(() => {
-    if (event?.id && selectedTemplateId) {
-      if (!loadedTemplatesMap[selectedTemplateId]) {
-        fetchTemplateOnDemand(event.id, selectedTemplateId);
-      }
-    }
-  }, [
-    event?.id,
-    selectedTemplateId,
-    loadedTemplatesMap,
-    fetchTemplateOnDemand,
-  ]);
-
-  // When active category changes, select the first matching template
-  const handleSelectType = (type: EmailTemplateType) => {
+  // When active category changes, fetch full template on demand and select it
+  const handleSelectType = async (type: EmailTemplateType) => {
     setActiveType(type);
     const matching = templates.filter((t) => t.type === type);
     if (matching.length > 0) {
-      setSelectedTemplateId(matching[0].id);
+      const target = matching[0];
+      setSelectedTemplateId(target.id);
+      if (event?.id) {
+        try {
+          setIsTemplateLoading(true);
+          const full = await getEmailTemplateById(event.id, target.id);
+          setLoadedTemplatesMap((prev) => ({
+            ...prev,
+            [full.id]: full,
+          }));
+        } catch (err: unknown) {
+          toast.error(getErrorMessage(err) || "Failed to load template");
+        } finally {
+          setIsTemplateLoading(false);
+        }
+      }
     } else {
       setSelectedTemplateId(null);
+    }
+  };
+
+  // When selecting a custom template tab
+  const handleSelectCustomTemplate = async (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (event?.id) {
+      try {
+        setIsTemplateLoading(true);
+        const full = await getEmailTemplateById(event.id, templateId);
+        setLoadedTemplatesMap((prev) => ({
+          ...prev,
+          [full.id]: full,
+        }));
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || "Failed to load template");
+      } finally {
+        setIsTemplateLoading(false);
+      }
     }
   };
 
@@ -164,6 +179,29 @@ export default function EditEmailsPage() {
     }
   };
 
+  // Toggle template active status with immediate persistence
+  const handleToggleActive = async () => {
+    if (!event?.id || !selectedTemplateId || !currentTemplate) return;
+    try {
+      const nextActive = !currentTemplate.isActive;
+      const updated = await updateEmailTemplate(event.id, selectedTemplateId, {
+        isActive: nextActive,
+      });
+      setTemplates((prev) =>
+        prev.map((t) => (t.id === updated.id ? updated : t)),
+      );
+      setLoadedTemplatesMap((prev) => ({
+        ...prev,
+        [updated.id]: updated,
+      }));
+      toast.success(
+        `Template marked as ${updated.isActive ? "active" : "inactive"}!`,
+      );
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to update template status");
+    }
+  };
+
   // Reset template to system defaults
   const handleResetTemplate = async () => {
     if (!event?.id || !selectedTemplateId) return;
@@ -177,6 +215,7 @@ export default function EditEmailsPage() {
         ...prev,
         [reseted.id]: reseted,
       }));
+      setResetKey((k) => k + 1);
       toast.success("Template reset to system default email layout!");
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to reset template");
@@ -230,7 +269,7 @@ export default function EditEmailsPage() {
         (t) => t.type === "custom" && t.id !== selectedTemplateId,
       );
       if (remainingCustom.length > 0) {
-        setSelectedTemplateId(remainingCustom[0].id);
+        handleSelectCustomTemplate(remainingCustom[0].id);
       } else {
         handleSelectType("confirmation");
       }
@@ -241,6 +280,75 @@ export default function EditEmailsPage() {
     }
   };
 
+  // Variable insertion into active subject input or ProseMirror canvas
+  const handleInsertVariable = (variableKey: string) => {
+    const activeEl = document.activeElement as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | null;
+
+    if (
+      activeEl &&
+      (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")
+    ) {
+      const start = activeEl.selectionStart ?? activeEl.value.length;
+      const end = activeEl.selectionEnd ?? activeEl.value.length;
+      const val = activeEl.value;
+      const before = val.slice(0, start);
+      const after = val.slice(end);
+      const spaceBefore = before.length > 0 && !before.endsWith(" ") ? " " : "";
+      const spaceAfter = after.length > 0 && !after.startsWith(" ") ? " " : "";
+      const nextVal = `${before}${spaceBefore}${variableKey}${spaceAfter}${after}`;
+
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      if (nativeSetter) {
+        nativeSetter.call(activeEl, nextVal);
+      } else {
+        activeEl.value = nextVal;
+      }
+      activeEl.dispatchEvent(new Event("input", { bubbles: true }));
+      activeEl.dispatchEvent(new Event("change", { bubbles: true }));
+
+      const nextPos =
+        start + spaceBefore.length + variableKey.length + spaceAfter.length;
+      activeEl.setSelectionRange(nextPos, nextPos);
+      activeEl.focus();
+      return;
+    }
+
+    const proseMirrorEl = document.querySelector(
+      ".ProseMirror",
+    ) as HTMLElement | null;
+    if (proseMirrorEl) {
+      proseMirrorEl.focus();
+      document.execCommand("insertText", false, ` ${variableKey} `);
+      return;
+    }
+
+    const subjectInput = document.querySelector(
+      "input[placeholder*='Invited to'], input[class*='subjectBoxInput']",
+    ) as HTMLInputElement | null;
+    if (subjectInput) {
+      const val = subjectInput.value;
+      const nextVal = val ? `${val} ${variableKey}` : variableKey;
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      if (nativeSetter) {
+        nativeSetter.call(subjectInput, nextVal);
+      } else {
+        subjectInput.value = nextVal;
+      }
+      subjectInput.dispatchEvent(new Event("input", { bubbles: true }));
+      subjectInput.dispatchEvent(new Event("change", { bubbles: true }));
+      subjectInput.focus();
+    }
+  };
+
   // Send Test email
   const handleSendTest = async (
     recipientEmail: string,
@@ -248,7 +356,7 @@ export default function EditEmailsPage() {
   ) => {
     if (!event?.id || !currentTemplate) return;
     try {
-      const res = await sendTestEmail(event.id, {
+      await sendTestEmail(event.id, {
         recipientEmail,
         recipientName: recipientName || undefined,
         subject: currentTemplate.subject || "",
@@ -257,11 +365,14 @@ export default function EditEmailsPage() {
       });
 
       toast.success("Test email dispatched successfully!");
-      if (res.log) {
-        setLogs((prev) => [res.log, ...prev]);
-      }
+      // Reload logs to reflect freshly logged email
+      setIsLogsLoading(true);
+      const updatedLogs = await getEmailLogs(event.id);
+      setLogs(updatedLogs);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to send test email");
+    } finally {
+      setIsLogsLoading(false);
     }
   };
 
@@ -281,11 +392,14 @@ export default function EditEmailsPage() {
       });
 
       toast.success(res.message);
-      // Reload logs
+      // Reload logs to reflect freshly sent batch emails
+      setIsLogsLoading(true);
       const updatedLogs = await getEmailLogs(event.id);
       setLogs(updatedLogs);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to send batch email");
+    } finally {
+      setIsLogsLoading(false);
     }
   };
 
@@ -320,7 +434,7 @@ export default function EditEmailsPage() {
                     key={ct.id}
                     className={styles.subTab}
                     data-active={ct.id === selectedTemplateId}
-                    onClick={() => setSelectedTemplateId(ct.id)}
+                    onClick={() => handleSelectCustomTemplate(ct.id)}
                   >
                     {ct.name}
                   </button>
@@ -328,20 +442,62 @@ export default function EditEmailsPage() {
             </div>
           )}
 
+          {currentTemplate && (
+            <div className={styles.templateMetaBar}>
+              <div className={styles.templateMetaInfo}>
+                <h2 className={styles.currentTemplateName}>
+                  {currentTemplate.name}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className={styles.statusToggleBtn}
+                data-active={currentTemplate.isActive}
+                onClick={handleToggleActive}
+                title={
+                  currentTemplate.isActive
+                    ? "Template is active (Click to deactivate)"
+                    : "Template is inactive (Click to activate)"
+                }
+              >
+                <Power size={14} />
+                <span>{currentTemplate.isActive ? "Active" : "Inactive"}</span>
+              </button>
+            </div>
+          )}
+
           {isTemplateLoading ? (
             <EmailEditorSkeleton />
           ) : currentTemplate ? (
-            <EmailPaperCanvas
-              key={currentTemplate.id}
-              template={currentTemplate}
-              variables={variables}
-              onSave={handleSaveTemplate}
-              onReset={handleResetTemplate}
-              onDelete={handleDeleteCustom}
-              onOpenSendTest={() => setIsTestModalOpen(true)}
-              onOpenSendBatch={() => setIsBatchModalOpen(true)}
-              isSaving={isSaving}
-            />
+            <>
+              <EmailPaperCanvas
+                key={`${currentTemplate.id}-${currentTemplate.updatedAt}-${resetKey}`}
+                template={currentTemplate}
+                variables={variables}
+                onSave={handleSaveTemplate}
+                onReset={handleResetTemplate}
+                onDelete={handleDeleteCustom}
+                onOpenSendTest={() => setIsTestModalOpen(true)}
+                onOpenSendBatch={() => setIsBatchModalOpen(true)}
+                isSaving={isSaving}
+              />
+
+              <div className={styles.workspaceGrid}>
+                <div className={styles.leftCol}>
+                  <VariablePicker
+                    variables={variables}
+                    onInsertVariable={handleInsertVariable}
+                  />
+                </div>
+                <div className={styles.rightCol}>
+                  <LivePreviewPane
+                    subject={currentTemplate.subject || ""}
+                    body={currentTemplate.body || ""}
+                    variables={variables}
+                  />
+                </div>
+              </div>
+            </>
           ) : (
             <div className={styles.loadingCard}>
               <p className={styles.loadingText}>

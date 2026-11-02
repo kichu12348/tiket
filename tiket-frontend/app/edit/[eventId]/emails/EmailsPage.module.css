@@ -72,9 +72,58 @@
   color: var(--text-primary, #ffffff);
 }
 
+.templateMetaBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: -0.5rem;
+}
+
+.templateMetaInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.currentTemplateName {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+}
+
+.statusToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.statusToggleBtn[data-active="true"] {
+  background: rgba(40, 167, 69, 0.15);
+  color: var(--status-success, #28a745);
+}
+
+.statusToggleBtn[data-active="false"] {
+  background: rgba(255, 80, 80, 0.15);
+  color: var(--status-danger, #ff5050);
+}
+
+.statusToggleBtn:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
+}
+
 .workspaceGrid {
   display: grid;
-  grid-template-columns: 1.2fr 0.9fr;
+  grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   align-items: start;
 }

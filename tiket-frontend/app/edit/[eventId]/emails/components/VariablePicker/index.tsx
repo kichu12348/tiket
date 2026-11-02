@@ -48,6 +48,7 @@ export default function VariablePicker({
                       key={v.key}
                       type="button"
                       className={styles.chip}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => onInsertVariable(v.key)}
                       title={`Sample: ${v.sample}`}
                     >

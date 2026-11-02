@@ -74,7 +74,11 @@ function EmailEditorContent({
             type="button"
             className={styles.toggleActiveBtn}
             data-active={isActive}
-            onClick={() => setIsActive(!isActive)}
+            onClick={async () => {
+              const nextActive = !isActive;
+              setIsActive(nextActive);
+              await onSave({ isActive: nextActive });
+            }}
             title={isActive ? "Disable Template" : "Enable Template"}
           >
             <Power size={14} />

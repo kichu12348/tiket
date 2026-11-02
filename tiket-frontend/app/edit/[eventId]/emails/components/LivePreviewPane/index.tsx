@@ -28,23 +28,52 @@ export default function LivePreviewPane({
       ...(variables.formVariables || []),
     ].forEach((v) => {
       sampleValues[v.key] = v.sample;
+      const strippedKey = v.key.replace(/^\{\{\s*|\s*\}\}$/g, "");
+      sampleValues[strippedKey] = v.sample;
     });
   }
 
-  const renderInterpolated = (templateStr: string) => {
+  const qrUrl =
+    sampleValues["{{ticket.qrCodeUrl}}"] ||
+    sampleValues["ticket.qrCodeUrl"] ||
+    "https://quickchart.io/qr?text=TKT-884920-XYZ&size=300&margin=1";
+
+  const renderInterpolated = (templateStr: string, isBody = false) => {
     if (!templateStr) return "";
-    return templateStr.replace(
-      /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,
+
+    // 1. Replace variables in src attributes first
+    let result = templateStr.replace(
+      /src=["']\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}["']/g,
       (match, key) => {
         const fullKey = `{{${key}}}`;
-        return sampleValues[fullKey] || match;
+        const val = sampleValues[fullKey] || sampleValues[key];
+        return `src="${val || qrUrl}"`;
       },
     );
+
+    // 2. Replace general {{variable}} placeholders
+    result = result.replace(
+      /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,
+      (match, key) => {
+        if (key === "ticket.qrCodeUrl") {
+          // If in body outside an img tag, render as an actual QR code image
+          if (isBody) {
+            return `<img src="${qrUrl}" alt="Ticket QR Code" width="160" height="160" style="display: block; margin: 16px auto; max-width: 160px; border-radius: 8px;" />`;
+          }
+          return qrUrl;
+        }
+        const fullKey = `{{${key}}}`;
+        const val = sampleValues[fullKey] || sampleValues[key];
+        return val !== undefined ? val : match;
+      },
+    );
+
+    return result;
   };
 
-  const previewSubject = renderInterpolated(subject) || "(No Subject)";
+  const previewSubject = renderInterpolated(subject, false) || "(No Subject)";
   const previewBodyHtml =
-    renderInterpolated(body) ||
+    renderInterpolated(body, true) ||
     "<p style='color: rgba(255,255,255,0.4);'>No template content written yet...</p>";
 
   return (

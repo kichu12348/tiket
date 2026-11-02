@@ -27,19 +27,39 @@ export default function SendBatchModal({
   >("all");
   const [customEmailsStr, setCustomEmailsStr] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError(null);
 
     let customEmails: string[] = [];
     if (targetGroup === "custom") {
       customEmails = customEmailsStr
-        .split(",")
+        .split(/[,\n]+/)
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
-      if (customEmails.length === 0) return;
+
+      if (customEmails.length === 0) {
+        setValidationError(
+          "Please enter at least one recipient email address.",
+        );
+        return;
+      }
+
+      const invalidEmails = customEmails.filter(
+        (email) => !EMAIL_REGEX.test(email),
+      );
+      if (invalidEmails.length > 0) {
+        setValidationError(
+          `Invalid email address format: ${invalidEmails.join(", ")}`,
+        );
+        return;
+      }
     }
 
     try {
@@ -126,9 +146,24 @@ export default function SendBatchModal({
               rows={3}
               placeholder="alex@example.com, sara@example.com, john@example.com"
               value={customEmailsStr}
-              onChange={(e) => setCustomEmailsStr(e.target.value)}
+              onChange={(e) => {
+                setCustomEmailsStr(e.target.value);
+                if (validationError) setValidationError(null);
+              }}
               required
             />
+            {validationError && (
+              <p
+                role="alert"
+                style={{
+                  color: "var(--status-danger, #ff5050)",
+                  fontSize: "0.85rem",
+                  margin: "0.4rem 0 0",
+                }}
+              >
+                {validationError}
+              </p>
+            )}
           </div>
         )}
 
