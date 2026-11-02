@@ -18,8 +18,69 @@ export function formatPrice(price: string): string {
 }
 
 /**
+ * Extracts string choices from a FormField's options whether it is
+ * string[] or { choices: string[] }.
+ */
+export function extractChoices(options: FormField["options"]): string[] {
+  if (Array.isArray(options)) {
+    return options.filter((item): item is string => typeof item === "string");
+  }
+  if (
+    options &&
+    typeof options === "object" &&
+    "choices" in options &&
+    Array.isArray(options.choices)
+  ) {
+    return options.choices.filter(
+      (item): item is string => typeof item === "string",
+    );
+  }
+  return [];
+}
+
+/**
+ * Groups and sorts form fields by page (1-indexed) and sortOrder.
+ */
+export function groupFieldsByPage(fields: FormField[]): {
+  pages: Record<number, FormField[]>;
+  maxPage: number;
+  sortedFields: FormField[];
+} {
+  if (!fields || fields.length === 0) {
+    return { pages: {}, maxPage: 0, sortedFields: [] };
+  }
+
+  const minPage = Math.min(...fields.map((f) => f.page));
+  const pageOffset = minPage === 0 ? 1 : 0;
+
+  const sortedFields = [...fields]
+    .map((f) => ({
+      ...f,
+      page: f.page + pageOffset,
+    }))
+    .sort((a, b) => {
+      if (a.page !== b.page) return a.page - b.page;
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return (
+        new Date(a.createdAt || 0).getTime() -
+        new Date(b.createdAt || 0).getTime()
+      );
+    });
+
+  const maxPage = Math.max(...sortedFields.map((f) => f.page));
+  const pages: Record<number, FormField[]> = {};
+
+  for (const f of sortedFields) {
+    if (!pages[f.page]) pages[f.page] = [];
+    pages[f.page]!.push(f);
+  }
+
+  return { pages, maxPage, sortedFields };
+}
+
+/**
  * Derives a Zod schema from an array of FormField definitions.
- * Each field id becomes a key; field type and isRequired drive the validators.
+ * Validates each field type in 100% compliance with tiket-backend validateFormResponses.
  */
 export function buildZodSchema(
   fields: FormField[],
@@ -27,94 +88,175 @@ export function buildZodSchema(
   const shape: z.ZodRawShape = {};
 
   for (const field of fields) {
-    let validator: z.ZodTypeAny;
+    const choices = extractChoices(field.options);
+    const multiple =
+      field.fieldType === "multi_select" || field.fieldType === "checkbox";
 
-    switch (field.fieldType) {
-      case "email":
-        validator = z.string().email("Enter a valid email");
-        break;
-      case "phone":
-        validator = z
-          .string()
-          .regex(/^\+?[\d\s\-()]{7,15}$/, "Enter a valid phone number");
-        break;
-      case "number":
-        validator = z.string().regex(/^\d+$/, "Must be a number");
-        break;
-      case "url":
-        validator = z.string().url("Enter a valid URL");
-        break;
-      case "rating":
-        validator = z.string().min(1, "Please select a rating");
-        break;
-      case "multi_select":
-      case "checkbox": {
-        let arr = z.array(z.string());
-        const opts = (
-          field.options &&
-          typeof field.options === "object" &&
-          !Array.isArray(field.options)
-            ? field.options
-            : null
-        ) as {
-          choices?: string[];
-          min?: number | null;
-          max?: number | null;
-        } | null;
+    if (multiple) {
+      const opts =
+        field.options &&
+        typeof field.options === "object" &&
+        !Array.isArray(field.options)
+          ? field.options
+          : null;
+      const minChoices = typeof opts?.min === "number" ? opts.min : null;
+      const maxChoices = typeof opts?.max === "number" ? opts.max : null;
 
-        const choicesCount = Array.isArray(field.options)
-          ? field.options.length
-          : (opts?.choices?.length ?? 0);
-
-        const rawMin = opts?.min ?? null;
-        const rawMax = opts?.max ?? null;
-
-        const effectiveMin =
-          rawMin != null && rawMin > 0
-            ? choicesCount > 0
-              ? Math.min(rawMin, choicesCount)
-              : rawMin
-            : null;
-        const effectiveMax =
-          rawMax != null && rawMax > 0
-            ? choicesCount > 0
-              ? Math.min(rawMax, choicesCount)
-              : rawMax
-            : null;
-
-        if (effectiveMin != null && effectiveMin > 0) {
-          arr = arr.min(
-            effectiveMin,
-            `Select at least ${effectiveMin} option${effectiveMin > 1 ? "s" : ""}`,
-          );
-        } else if (field.isRequired) {
-          arr = arr.min(1, `${field.label} is required`);
+      shape[field.id] = z.array(z.string()).superRefine((items, ctx) => {
+        if (field.isRequired && items.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${field.label} is required`,
+          });
+          return;
         }
 
-        if (effectiveMax != null && effectiveMax > 0) {
-          arr = arr.max(
-            effectiveMax,
-            `Select at most ${effectiveMax} option${effectiveMax > 1 ? "s" : ""}`,
-          );
+        if (items.length === 0) return;
+
+        if (new Set(items).size !== items.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Duplicate selections are not allowed",
+          });
         }
 
-        shape[field.id] = arr;
-        continue;
+        if (
+          choices.length > 0 &&
+          items.some((item) => !choices.includes(item))
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Invalid answer for ${field.label}`,
+          });
+        }
+
+        if (minChoices !== null && items.length < minChoices) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Select at least ${minChoices} option${minChoices > 1 ? "s" : ""}`,
+          });
+        }
+
+        if (maxChoices !== null && items.length > maxChoices) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Select at most ${maxChoices} option${maxChoices > 1 ? "s" : ""}`,
+          });
+        }
+      });
+      continue;
+    }
+
+    shape[field.id] = z.string().superRefine((val, ctx) => {
+      const trimmed = val.trim();
+      if (!trimmed) {
+        if (field.isRequired) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${field.label} is required`,
+          });
+        }
+        return;
       }
-      default:
-        validator = z.string();
-    }
 
-    if (field.isRequired) {
-      validator = (validator as z.ZodString).min(
-        1,
-        `${field.label} is required`,
-      );
-    } else {
-      validator = z.union([validator, z.literal("")]).optional();
-    }
+      if (
+        field.fieldType === "email" &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter a valid email address",
+        });
+      }
 
-    shape[field.id] = validator;
+      if (
+        field.fieldType === "phone" &&
+        !/^\+?[\d\s\-()]{7,20}$/.test(trimmed)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter a valid phone number",
+        });
+      }
+
+      if (
+        field.fieldType === "number" &&
+        (!trimmed || !Number.isFinite(Number(trimmed)))
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Must be a valid number",
+        });
+      }
+
+      if (field.fieldType === "rating") {
+        const n = Number(trimmed);
+        if (!Number.isInteger(n) || n < 1 || n > 5) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Rating must be an integer from 1 to 5",
+          });
+        }
+      }
+
+      if (field.fieldType === "url") {
+        try {
+          const u = new URL(trimmed);
+          if (!["http:", "https:"].includes(u.protocol)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "URL must begin with http:// or https://",
+            });
+          }
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Enter a valid URL",
+          });
+        }
+      }
+
+      if (
+        field.fieldType === "file" &&
+        !/^file:[0-9a-f-]{36}$/i.test(trimmed)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please upload a valid file",
+        });
+      }
+
+      if (
+        ["date", "datetime"].includes(field.fieldType) &&
+        Number.isNaN(Date.parse(trimmed))
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter a valid date",
+        });
+      }
+
+      if (
+        field.fieldType === "time" &&
+        !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(trimmed)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter a valid time (HH:mm)",
+        });
+      }
+
+      if (
+        ["select", "single_select", "radio"].includes(field.fieldType) &&
+        choices.length > 0 &&
+        !choices.includes(trimmed)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Please select a valid option for ${field.label}`,
+        });
+      }
+    });
   }
 
   return z.object(shape);
@@ -132,10 +274,13 @@ export function buildFormResponses(
     .map((field) => {
       const val = data[field.id];
       if (val === undefined || val === null || val === "") return null;
-      const responseValue = Array.isArray(val)
-        ? JSON.stringify(val)
-        : String(val);
-      return { fieldId: field.id, responseValue };
+      if (Array.isArray(val)) {
+        if (val.length === 0) return null;
+        return { fieldId: field.id, responseValue: JSON.stringify(val) };
+      }
+      const strVal = String(val).trim();
+      if (!strVal) return null;
+      return { fieldId: field.id, responseValue: strVal };
     })
     .filter(Boolean) as { fieldId: string; responseValue: string }[];
 }

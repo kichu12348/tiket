@@ -99,22 +99,31 @@ export default function PhoneField({
       defaultValue=""
       render={({ field: f }) => {
         // Extract raw phone digits if value has dial code prefix
+        const dialPrefix = selectedCountry.dial_code || "";
         const rawPhone = f.value
-          ? f.value.replace(selectedCountry.dial_code || "", "").trim()
+          ? f.value.startsWith(dialPrefix)
+            ? f.value.slice(dialPrefix.length).trim()
+            : f.value
           : "";
 
         const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           const num = e.target.value;
-          const fullNumber = num
-            ? `${selectedCountry.dial_code} ${num.trim()}`
-            : "";
-          f.onChange(fullNumber);
+          if (!num.trim()) {
+            f.onChange("");
+            return;
+          }
+          if (num.trim().startsWith("+")) {
+            f.onChange(num.trim());
+          } else {
+            f.onChange(`${dialPrefix} ${num.trim()}`);
+          }
         };
 
         const handleSelectCountry = (country: CountryDial) => {
           setSelectedCountry(country);
           setOpen(false);
-          const fullNumber = rawPhone ? `${country.dial_code} ${rawPhone}` : "";
+          const nextPrefix = country.dial_code || "";
+          const fullNumber = rawPhone ? `${nextPrefix} ${rawPhone}` : "";
           f.onChange(fullNumber);
         };
 

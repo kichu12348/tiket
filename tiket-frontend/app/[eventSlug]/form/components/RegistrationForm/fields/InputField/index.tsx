@@ -30,13 +30,18 @@ export default function InputField({
             {...f}
             id={`field-${field.id}`}
             placeholder={`Enter ${field.label.toLowerCase()}…`}
-            className={`${styles.textarea} ${error ? styles.inputError : ""}`}
+            className={`${styles.textarea} scrollbar ${error ? styles.inputError : ""}`}
             rows={4}
           />
         )}
       />
     );
   }
+
+  const placeholder =
+    field.fieldType === "url"
+      ? "https://example.com"
+      : `Enter ${field.label.toLowerCase()}…`;
 
   return (
     <Controller
@@ -48,7 +53,8 @@ export default function InputField({
           {...f}
           id={`field-${field.id}`}
           type={inputType}
-          placeholder={`Enter ${field.label.toLowerCase()}…`}
+          step={field.fieldType === "number" ? "any" : undefined}
+          placeholder={placeholder}
           className={`${styles.input} ${error ? styles.inputError : ""}`}
           autoComplete="off"
           aria-invalid={!!error}

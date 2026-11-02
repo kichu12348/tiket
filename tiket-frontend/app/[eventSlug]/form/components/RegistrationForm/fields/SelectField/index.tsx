@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check } from "lucide-react";
 import type { FieldRendererProps } from "../../types";
+import { extractChoices } from "../../utils";
 import styles from "./SelectField.module.css";
 
 export default function SelectField({ field, control }: FieldRendererProps) {
@@ -14,9 +15,7 @@ export default function SelectField({ field, control }: FieldRendererProps) {
       : null
   ) as { choices?: string[]; min?: number | null; max?: number | null } | null;
 
-  const rawChoices = Array.isArray(field.options)
-    ? (field.options as string[])
-    : (optionsObj?.choices ?? []);
+  const rawChoices = extractChoices(field.options);
 
   const choices =
     rawChoices.length > 0
@@ -134,6 +133,14 @@ export default function SelectField({ field, control }: FieldRendererProps) {
           );
         }
 
+        const handleSingleSelect = (choice: string) => {
+          if (f.value === choice && !field.isRequired) {
+            f.onChange("");
+          } else {
+            f.onChange(choice);
+          }
+        };
+
         return (
           <div className={styles.choiceGroup}>
             {choices.map((choice) => (
@@ -144,7 +151,7 @@ export default function SelectField({ field, control }: FieldRendererProps) {
                 className={`${styles.choiceBtn} ${
                   f.value === choice ? styles.choiceBtnActive : ""
                 }`}
-                onClick={() => f.onChange(choice)}
+                onClick={() => handleSingleSelect(choice)}
               >
                 {f.value === choice && <Check size={14} />}
                 {choice}

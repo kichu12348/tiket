@@ -4,7 +4,12 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { getImageUrl, TOKEN_KEY } from "@/constants/config";
 import { FiMapPin } from "react-icons/fi";
-import { getEventBySlug, getMe } from "./api/eventApi";
+import {
+  getEventBySlug,
+  getMe,
+  getEventHosts,
+  getEventAvailability,
+} from "./api/eventApi";
 import { formatEventDates } from "./utils/formatters";
 import RegistrationCard from "./components/RegistrationCard";
 import EventLocation from "./components/EventLocation";
@@ -59,7 +64,11 @@ export default async function EventPage({ params }: PageProps) {
   const event = await getEventBySlug(resolvedParams.eventSlug, token);
   if (!event) return notFound();
 
-  const user = token ? await getMe(token) : null;
+  const [user, hosts, availability] = await Promise.all([
+    token ? getMe(token) : Promise.resolve(null),
+    token ? getEventHosts(event.id, token) : Promise.resolve([]),
+    getEventAvailability(event.id),
+  ]);
   const isAssociated = Boolean(event.isAssociated);
 
   const { formattedDate, formattedTime, monthShort, dayNumber } =
@@ -88,7 +97,8 @@ export default async function EventPage({ params }: PageProps) {
       style={
         {
           "--event-bg": customBg,
-          "--event-font": event.fontFamily,
+          "--event-font": event.fontFamily || "'Inter', sans-serif",
+          fontFamily: event.fontFamily || "inherit",
         } as React.CSSProperties
       }
     >
@@ -120,11 +130,62 @@ export default async function EventPage({ params }: PageProps) {
             </div>
 
             <div className={styles.hostSection}>
-              <div className={styles.hostAvatar}></div>
-              <div className={styles.hostDetails}>
-                <span className={styles.hostedByLabel}>Hosted by</span>
-                <span className={styles.hostName}>The Host</span>
-              </div>
+              {hosts && hosts.length > 0 ? (
+                hosts.slice(0, 3).map((host) => (
+                  <div
+                    key={host.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    <div
+                      className={styles.hostAvatar}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 600,
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      {host.name ? host.name.charAt(0).toUpperCase() : "H"}
+                    </div>
+                    <div className={styles.hostDetails}>
+                      <span className={styles.hostedByLabel}>
+                        {host.isCreator ? "Creator" : host.role || "Host"}
+                      </span>
+                      <span className={styles.hostName}>{host.name}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <div
+                    className={styles.hostAvatar}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    H
+                  </div>
+                  <div className={styles.hostDetails}>
+                    <span className={styles.hostedByLabel}>Hosted by</span>
+                    <span className={styles.hostName}>The Host</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -189,6 +250,7 @@ export default async function EventPage({ params }: PageProps) {
               event={event}
               user={user}
               isAssociated={isAssociated}
+              availability={availability}
             />
 
             {/* About Section */}

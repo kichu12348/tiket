@@ -55,10 +55,10 @@ export default function DateTimeField({
         };
 
         const currentTimeString = isTimeOnly
-          ? f.value || "09:00"
+          ? f.value || ""
           : validDate
             ? format(validDate, "HH:mm")
-            : "09:00";
+            : "";
 
         return (
           <div className={styles.pickersBox}>
@@ -94,6 +94,7 @@ export default function DateTimeField({
                 options={TIME_OPTIONS}
                 value={currentTimeString}
                 onChange={(val) => handleTimeSelect(val as string)}
+                placeholder="Select time"
                 btnColor="transparent"
                 maxHeight="250px"
               />
