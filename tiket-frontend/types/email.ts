@@ -1,6 +1,19 @@
 export type EmailTemplateType =
   "invitation" | "confirmation" | "checkin" | "thank_you" | "sorry" | "custom";
 
+export interface EmailDocumentMark {
+  type: string;
+  attrs?: Record<string, string | number | boolean | null>;
+}
+
+export interface EmailDocumentNode {
+  type: string;
+  attrs?: Record<string, string | number | boolean | null>;
+  content?: EmailDocumentNode[];
+  text?: string;
+  marks?: EmailDocumentMark[];
+}
+
 export interface EmailTemplate {
   id: string;
   eventId: string;

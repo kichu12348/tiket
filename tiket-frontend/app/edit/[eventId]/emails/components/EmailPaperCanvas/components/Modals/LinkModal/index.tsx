@@ -9,6 +9,8 @@ interface LinkModalProps {
   onClose: () => void;
   linkUrl: string;
   setLinkUrl: (url: string) => void;
+  linkText?: string;
+  setLinkText?: (text: string) => void;
   handleApplyLink: () => void;
 }
 
@@ -17,6 +19,8 @@ export default function LinkModal({
   onClose,
   linkUrl,
   setLinkUrl,
+  linkText,
+  setLinkText,
   handleApplyLink,
 }: LinkModalProps) {
   return (
@@ -30,14 +34,27 @@ export default function LinkModal({
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>URL Address</label>
           <input
-            type="url"
+            type="text"
             className={styles.formInput}
-            placeholder="https://example.com"
+            placeholder="https://example.com or {{event.url}}"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
             autoFocus
           />
         </div>
+
+        {setLinkText && (
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Link Text (Optional)</label>
+            <input
+              type="text"
+              className={styles.formInput}
+              placeholder="e.g. Click here to register"
+              value={linkText || ""}
+              onChange={(e) => setLinkText(e.target.value)}
+            />
+          </div>
+        )}
 
         <div className={styles.modalActions}>
           <button

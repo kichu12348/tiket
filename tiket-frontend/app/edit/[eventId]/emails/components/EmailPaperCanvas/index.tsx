@@ -1,18 +1,23 @@
 "use client";
 import { NodeSelection } from "@tiptap/pm/state";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { TextStyle, Color, FontFamily } from "@tiptap/extension-text-style";
 import { Highlight } from "@tiptap/extension-highlight";
 import { Underline } from "@tiptap/extension-underline";
 import { TextAlign } from "@tiptap/extension-text-align";
-import { Link } from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 
 import type { EmailTemplate, AvailableVariables } from "@/types/email";
-import { BlockStyleExtension, CustomImageExtension } from "./extensions";
+import { EmailModelSerializer } from "@/lib/emailModelSerializer";
+import {
+  BlockStyleExtension,
+  ContainerExtension,
+  CustomLinkExtension,
+  CustomImageExtension,
+} from "./extensions";
 import TopControlBar from "./components/TopControlBar";
 import SubjectBox from "./components/SubjectBox";
 import InspectorSidebar from "./components/InspectorSidebar";
@@ -35,39 +40,13 @@ interface EmailPaperCanvasProps {
   isSaving: boolean;
 }
 
-const DEFAULT_EMAIL_BODY = `<table style="background-color: #ffffff;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-    <tbody>
-      <tr>
-        <td align="center">
-          <table style="width: 100%; max-width: 600px; background-color: #ffffff; margin: 0 auto;" role="presentation" border="0" width="600" cellspacing="0" cellpadding="0">
-            <tbody>
-              <tr>
-                <td style="padding: 20px 30px;">
-                  <table style="width: 100%;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-                    <tbody>
-                      <tr>
-                        <td style="white-space: nowrap;" align="left">
-                          <img style="height: 30px; margin-right: 10px;" src="https://raw.githubusercontent.com/theparentcompany-xyz/images/refs/heads/main/Logo%20v1.png" alt="MakeMyPass">
-                        </td>
-                        <td align="right">
-                          <img style="width: 50px; max-width: 100%; height: auto;" src="https://raw.githubusercontent.com/theparentcompany-xyz/images/refs/heads/main/tickachunew.png" alt="MMP Logo">
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </td>
-              </tr>
-              <tr class="inner-html" contenteditable="true">
-                <td style="padding: 20px 30px;">
-                  <h1 style="font-size: 26.4px; color: #004a55; margin-bottom: 20px;"><span style="font-weight: normal;">You're invited to</span>&nbsp;{{event_title}} <span style="font-weight: normal;">–</span> <span style="font-weight: normal;">See You There!</span></h1><p style="font-size: 14px; color: #666666;">Hi {{name}},</p><p style="font-size: 14px; color: #666666;">Greetings from Team EXODIA.</p><p style="font-size: 14px; color: #666666;">We are pleased to inform you that you have been allotted a free entry ticket for EXODIA 3.0.</p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </td>
-      </tr>
-    </tbody>
-  </table>`;
+const DEFAULT_EMAIL_BODY = `
+<div style="font-family: Arial, Helvetica, sans-serif; background-color: #ffffff; color: #111827; max-width: 600px; margin: 0 auto; padding: 32px; border-radius: 12px; border: 1px solid #e5e7eb; box-sizing: border-box;">
+  <h1 style="font-size: 24px; color: #111827; margin-bottom: 20px;">You're invited to {{event.title}}!</h1>
+  <p style="font-size: 15px; color: #374151;">Hi {{attendee.name}},</p>
+  <p style="font-size: 15px; color: #374151;">We are delighted to invite you to join us at <strong>{{event.title}}</strong>.</p>
+</div>
+`.trim();
 
 function EmailPaperCanvasContent({
   template,
@@ -83,10 +62,11 @@ function EmailPaperCanvasContent({
   const [subject, setSubject] = useState(template.subject || "");
   const [isActive, setIsActive] = useState(template.isActive);
   const [deviceView, setDeviceView] = useState<"desktop" | "mobile">("desktop");
-  const [canvasMode, setCanvasMode] = useState<"edit" | "preview" | "code">(
-    "edit",
-  );
+  const [canvasMode, setCanvasMode] = useState<"edit" | "preview" | "code">("edit");
   const [, setSelectionTick] = useState(0);
+
+  // Saved selection tracking ref for modal insertions
+  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
 
   // Modal states for links, CTA buttons & images
   const [isCtaModalOpen, setIsCtaModalOpen] = useState(false);
@@ -95,6 +75,7 @@ function EmailPaperCanvasContent({
 
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const [linkText, setLinkText] = useState("");
 
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
@@ -114,22 +95,21 @@ function EmailPaperCanvasContent({
       Highlight.configure({ multicolor: true }),
       Underline,
       TextAlign.configure({
-        types: ["heading", "paragraph"],
+        types: ["heading", "paragraph", "container"],
       }),
-      Link.configure({
+      CustomLinkExtension.configure({
         openOnClick: false,
-        HTMLAttributes: {
-          style: "color: #2563eb; text-decoration: underline;",
-        },
       }),
+      ContainerExtension,
       CustomImageExtension,
       Placeholder.configure({
-        placeholder:
-          "Click or select text here to start editing your email template...",
+        placeholder: "Click or select text here to start editing your email template...",
       }),
       BlockStyleExtension,
     ],
-    content: template.body || DEFAULT_EMAIL_BODY,
+    content: EmailModelSerializer.deserializeHtmlToJson(
+      template.body || DEFAULT_EMAIL_BODY,
+    ),
     immediatelyRender: false,
     onTransaction: () => {
       setSelectionTick((tick) => tick + 1);
@@ -137,20 +117,21 @@ function EmailPaperCanvasContent({
   });
 
   // Sync external template updates safely
-
   useEffect(() => {
     if (editor && template.body) {
-      if (editor.getHTML() !== template.body) {
-        editor.commands.setContent(template.body);
+      const currentSerialized = EmailModelSerializer.serializeJsonToHtml(editor.getJSON());
+      if (currentSerialized !== template.body) {
+        const deserialized = EmailModelSerializer.deserializeHtmlToJson(template.body);
+        editor.commands.setContent(deserialized);
       }
     }
   }, [template.body, editor]);
 
   if (!editor) return null;
 
-  const handleSave = async (e: React.SubmitEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const compiledHtml = editor.getHTML();
+    const compiledHtml = EmailModelSerializer.serializeJsonToHtml(editor.getJSON());
 
     await onSave({
       name,
@@ -164,6 +145,16 @@ function EmailPaperCanvasContent({
     editor.chain().focus().insertContent(` ${varKey} `).run();
   };
 
+  const handleOpenCtaModal = () => {
+    if (editor) {
+      savedSelectionRef.current = {
+        from: editor.state.selection.from,
+        to: editor.state.selection.to,
+      };
+    }
+    setIsCtaModalOpen(true);
+  };
+
   const handleInsertCtaButton = () => {
     if (!ctaLabel.trim() || !ctaUrl.trim()) return;
 
@@ -175,18 +166,89 @@ function EmailPaperCanvasContent({
 </p>
 `.trim();
 
-    editor.chain().focus().insertContent(buttonHtml).run();
+    const chain = editor.chain().focus();
+    if (savedSelectionRef.current) {
+      chain.setTextSelection(savedSelectionRef.current);
+    }
+
+    const { $from } = editor.state.selection;
+    const currentParagraphEmpty =
+      $from.parent.type.name === "paragraph" && $from.parent.content.size === 0;
+
+    if (currentParagraphEmpty) {
+      chain.insertContent(buttonHtml).run();
+    } else {
+      chain.insertContentAt(editor.state.selection.to, buttonHtml).run();
+    }
+
     setIsCtaModalOpen(false);
+    savedSelectionRef.current = null;
+  };
+
+  const handleOpenLinkModal = () => {
+    if (editor) {
+      savedSelectionRef.current = {
+        from: editor.state.selection.from,
+        to: editor.state.selection.to,
+      };
+      const activeHref = (editor.getAttributes("link").href as string) || "";
+      setLinkUrl(activeHref);
+
+      const { from, to } = editor.state.selection;
+      if (from !== to) {
+        setLinkText(editor.state.doc.textBetween(from, to, " "));
+      } else {
+        setLinkText("");
+      }
+    }
+    setIsLinkModalOpen(true);
   };
 
   const handleApplyLink = () => {
     if (!linkUrl.trim()) {
+      if (savedSelectionRef.current) {
+        editor.chain().focus().setTextSelection(savedSelectionRef.current).unsetLink().run();
+      } else {
+        editor.chain().focus().unsetLink().run();
+      }
       setIsLinkModalOpen(false);
+      setLinkUrl("");
+      setLinkText("");
+      savedSelectionRef.current = null;
       return;
     }
-    editor.chain().focus().setLink({ href: linkUrl.trim() }).run();
+
+    const chain = editor.chain().focus();
+    if (savedSelectionRef.current) {
+      chain.setTextSelection(savedSelectionRef.current);
+      const isCollapsed = savedSelectionRef.current.from === savedSelectionRef.current.to;
+      if (isCollapsed) {
+        const textToInsert = linkText.trim() || linkUrl.trim();
+        chain.insertContent(
+          `<a href="${linkUrl.trim()}" style="color: #2563eb; text-decoration: underline;">${textToInsert}</a>`,
+        );
+      } else {
+        chain.setLink({ href: linkUrl.trim() });
+      }
+    } else {
+      chain.setLink({ href: linkUrl.trim() });
+    }
+    chain.run();
+
     setIsLinkModalOpen(false);
     setLinkUrl("");
+    setLinkText("");
+    savedSelectionRef.current = null;
+  };
+
+  const handleOpenImageModal = () => {
+    if (editor) {
+      savedSelectionRef.current = {
+        from: editor.state.selection.from,
+        to: editor.state.selection.to,
+      };
+    }
+    setIsImageModalOpen(true);
   };
 
   const handleInsertImage = () => {
@@ -195,30 +257,32 @@ function EmailPaperCanvasContent({
     const src = imageUrl.trim();
     const alt = imageAlt.trim();
     const width = imageWidth.trim();
+    const href = imageLinkUrl.trim();
 
-    editor
-      .chain()
-      .focus()
-      .setImage({
-        src,
-        alt: alt || undefined,
-      })
-      .run();
-
-    if (width || imageLinkUrl.trim()) {
-      const attrs: Record<string, string> = {};
-      if (width) attrs.width = width;
-      editor.chain().updateAttributes("image", attrs).run();
-      if (imageLinkUrl.trim()) {
-        editor.chain().setLink({ href: imageLinkUrl.trim() }).run();
-      }
+    const chain = editor.chain().focus();
+    if (savedSelectionRef.current) {
+      chain.setTextSelection(savedSelectionRef.current);
     }
+
+    chain.setImage({
+      src,
+      alt: alt || undefined,
+    });
+
+    const attrsToUpdate: Record<string, string> = {};
+    if (width) attrsToUpdate.width = width;
+    if (href) attrsToUpdate.href = href;
+    if (Object.keys(attrsToUpdate).length > 0) {
+      chain.updateAttributes("image", attrsToUpdate);
+    }
+    chain.run();
 
     setIsImageModalOpen(false);
     setImageUrl("");
     setImageAlt("");
     setImageLinkUrl("");
     setImageWidth("");
+    savedSelectionRef.current = null;
   };
 
   const allVars = variables
@@ -247,29 +311,43 @@ function EmailPaperCanvasContent({
   };
 
   const previewSubject = renderInterpolated(subject) || "(No Subject)";
-  const compiledRawHtml = editor.getHTML();
+  const compiledRawHtml = EmailModelSerializer.serializeJsonToHtml(editor.getJSON());
   const previewBodyHtml =
     renderInterpolated(compiledRawHtml) ||
     "<p style='color:#9ca3af;'>No content written yet...</p>";
 
   // Current Active Node Style Getters
   const currentFontFamily =
-    editor.getAttributes("textStyle").fontFamily || "__default__";
+    (editor.getAttributes("textStyle").fontFamily as string) || "__default__";
   const currentFontWeight =
-    editor.getAttributes("textStyle").fontWeight || "400";
-  const currentTextColor = editor.getAttributes("textStyle").color || "#111827";
-  const currentHighlightColor = editor.getAttributes("highlight").color || "";
-  const currentBlockBgColor =
-    editor.getAttributes("paragraph").backgroundColor || "";
-  const currentBorderStyle =
-    editor.getAttributes("paragraph").borderStyle || "none";
-  const currentBorderWidth =
-    editor.getAttributes("paragraph").borderWidth || "0px";
-  const currentBorderColor =
-    editor.getAttributes("paragraph").borderColor || "#e5e7eb";
-  const currentBorderRadius =
-    editor.getAttributes("paragraph").borderRadius || "0px";
-  const currentPadding = editor.getAttributes("paragraph").padding || "0px";
+    (editor.getAttributes("textStyle").fontWeight as string) || "400";
+  const currentTextColor =
+    (editor.getAttributes("textStyle").color as string) || "#111827";
+  const currentHighlightColor =
+    (editor.getAttributes("highlight").color as string) || "";
+
+  // Dynamic active block type detection
+  const activeBlockType = editor.isActive("heading")
+    ? "heading"
+    : editor.isActive("container")
+      ? "container"
+      : editor.isActive("blockquote")
+        ? "blockquote"
+        : editor.isActive("listItem")
+          ? "listItem"
+          : "paragraph";
+
+  const blockAttrs = editor.getAttributes(activeBlockType);
+  const currentBlockBgColor = (blockAttrs.backgroundColor as string) || "";
+  const currentBorderStyle = (blockAttrs.borderStyle as string) || "none";
+  const currentBorderWidth = (blockAttrs.borderWidth as string) || "0px";
+  const currentBorderColor = (blockAttrs.borderColor as string) || "#e5e7eb";
+  const currentBorderRadius = (blockAttrs.borderRadius as string) || "0px";
+  const currentPadding = (blockAttrs.padding as string) || "0px";
+
+  const updateBlockAttribute = (attrName: string, attrVal: string | null) => {
+    editor.chain().focus().updateAttributes(activeBlockType, { [attrName]: attrVal }).run();
+  };
 
   // Active Image & Link Getters
   const isImageNodeSelected =
@@ -281,15 +359,15 @@ function EmailPaperCanvasContent({
   const activeImageAttrs = editor.getAttributes("image");
   const activeLinkAttrs = editor.getAttributes("link");
 
-  const currentImageSrc = activeImageAttrs.src || "";
-  const currentImageAlt = activeImageAttrs.alt || "";
-  const currentImageWidth = activeImageAttrs.width || "";
-  const currentImageHref = activeLinkAttrs.href || "";
+  const currentImageSrc = (activeImageAttrs.src as string) || "";
+  const currentImageAlt = (activeImageAttrs.alt as string) || "";
+  const currentImageWidth = (activeImageAttrs.width as string) || "";
+  const currentImageHref =
+    (activeImageAttrs.href as string) || (activeLinkAttrs.href as string) || "";
   const currentImageAlignment =
     (activeImageAttrs.alignment as "left" | "center" | "right") || "center";
 
   const getSelectedImagePos = (): number | null => {
-    if (!editor) return null;
     const { selection } = editor.state;
     if (
       selection instanceof NodeSelection &&
@@ -301,7 +379,6 @@ function EmailPaperCanvasContent({
   };
 
   const updateImageSrc = (newSrc: string) => {
-    if (!editor) return;
     const pos = getSelectedImagePos();
     if (pos !== null) {
       editor
@@ -315,7 +392,6 @@ function EmailPaperCanvasContent({
   };
 
   const updateImageAlt = (newAlt: string) => {
-    if (!editor) return;
     const pos = getSelectedImagePos();
     if (pos !== null) {
       editor
@@ -329,7 +405,6 @@ function EmailPaperCanvasContent({
   };
 
   const updateImageWidth = (newWidth: string) => {
-    if (!editor) return;
     const pos = getSelectedImagePos();
     if (pos !== null) {
       editor
@@ -343,29 +418,32 @@ function EmailPaperCanvasContent({
   };
 
   const updateImageHref = (newHref: string) => {
-    if (!editor) return;
     const pos = getSelectedImagePos();
-    if (!newHref.trim()) {
+    const trimmed = newHref.trim();
+    if (!trimmed) {
       if (pos !== null) {
-        editor.chain().unsetLink().setNodeSelection(pos).run();
+        editor
+          .chain()
+          .updateAttributes("image", { href: null })
+          .setNodeSelection(pos)
+          .run();
       } else {
-        editor.chain().unsetLink().run();
+        editor.chain().updateAttributes("image", { href: null }).run();
       }
     } else {
       if (pos !== null) {
         editor
           .chain()
-          .setLink({ href: newHref.trim() })
+          .updateAttributes("image", { href: trimmed })
           .setNodeSelection(pos)
           .run();
       } else {
-        editor.chain().setLink({ href: newHref.trim() }).run();
+        editor.chain().updateAttributes("image", { href: trimmed }).run();
       }
     }
   };
 
   const updateImageAlignment = (alignment: "left" | "center" | "right") => {
-    if (!editor) return;
     const pos = getSelectedImagePos();
     if (pos !== null) {
       editor
@@ -384,13 +462,15 @@ function EmailPaperCanvasContent({
       ? "h2"
       : editor.isActive("heading", { level: 3 })
         ? "h3"
-        : editor.isActive("blockquote")
-          ? "quote"
-          : editor.isActive("bulletList")
-            ? "bullet"
-            : editor.isActive("orderedList")
-              ? "ordered"
-              : "p";
+        : editor.isActive("container")
+          ? "container"
+          : editor.isActive("blockquote")
+            ? "quote"
+            : editor.isActive("bulletList")
+              ? "bullet"
+              : editor.isActive("orderedList")
+                ? "ordered"
+                : "p";
 
   return (
     <form className={styles.workspaceCard} onSubmit={handleSave}>
@@ -408,12 +488,13 @@ function EmailPaperCanvasContent({
         setIsActive={setIsActive}
       />
 
-      {/* Dedicated Subject Line Input Box */}
+      {/* Dedicated Subject Line Input Box with Variable Insertion */}
       <SubjectBox
         subject={subject}
         setSubject={setSubject}
         canvasMode={canvasMode}
         previewSubject={previewSubject}
+        variables={allVars}
       />
 
       {/* Main Two-Column Editor Body */}
@@ -422,9 +503,9 @@ function EmailPaperCanvasContent({
         <InspectorSidebar
           editor={editor}
           allVars={allVars}
-          onOpenCtaModal={() => setIsCtaModalOpen(true)}
-          onOpenLinkModal={() => setIsLinkModalOpen(true)}
-          onOpenImageModal={() => setIsImageModalOpen(true)}
+          onOpenCtaModal={handleOpenCtaModal}
+          onOpenLinkModal={handleOpenLinkModal}
+          onOpenImageModal={handleOpenImageModal}
           currentFontFamily={currentFontFamily}
           currentFontWeight={currentFontWeight}
           currentTextColor={currentTextColor}
@@ -436,6 +517,7 @@ function EmailPaperCanvasContent({
           currentBorderRadius={currentBorderRadius}
           currentPadding={currentPadding}
           currentElementType={currentElementType}
+          updateBlockAttribute={updateBlockAttribute}
           isImageActive={isImageActive}
           currentImageSrc={currentImageSrc}
           currentImageAlt={currentImageAlt}
@@ -473,7 +555,10 @@ function EmailPaperCanvasContent({
       {/* Modals */}
       <CtaModal
         isOpen={isCtaModalOpen}
-        onClose={() => setIsCtaModalOpen(false)}
+        onClose={() => {
+          setIsCtaModalOpen(false);
+          savedSelectionRef.current = null;
+        }}
         ctaLabel={ctaLabel}
         setCtaLabel={setCtaLabel}
         ctaUrl={ctaUrl}
@@ -483,15 +568,23 @@ function EmailPaperCanvasContent({
 
       <LinkModal
         isOpen={isLinkModalOpen}
-        onClose={() => setIsLinkModalOpen(false)}
+        onClose={() => {
+          setIsLinkModalOpen(false);
+          savedSelectionRef.current = null;
+        }}
         linkUrl={linkUrl}
         setLinkUrl={setLinkUrl}
+        linkText={linkText}
+        setLinkText={setLinkText}
         handleApplyLink={handleApplyLink}
       />
 
       <ImageModal
         isOpen={isImageModalOpen}
-        onClose={() => setIsImageModalOpen(false)}
+        onClose={() => {
+          setIsImageModalOpen(false);
+          savedSelectionRef.current = null;
+        }}
         imageUrl={imageUrl}
         setImageUrl={setImageUrl}
         imageLinkUrl={imageLinkUrl}

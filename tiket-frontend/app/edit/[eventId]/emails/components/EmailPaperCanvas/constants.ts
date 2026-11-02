@@ -45,6 +45,7 @@ export const ELEMENT_TYPES = [
   { label: "Heading 1", value: "h1" },
   { label: "Heading 2", value: "h2" },
   { label: "Heading 3", value: "h3" },
+  { label: "Card Container", value: "container" },
   { label: "Blockquote", value: "quote" },
   { label: "Bullet List", value: "bullet" },
   { label: "Numbered List", value: "ordered" },

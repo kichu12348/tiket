@@ -52,6 +52,7 @@ interface InspectorSidebarProps {
   currentBorderRadius: string;
   currentPadding: string;
   currentElementType: string;
+  updateBlockAttribute: (attrName: string, attrVal: string | null) => void;
   isImageActive: boolean;
   currentImageSrc: string;
   currentImageAlt: string;
@@ -83,6 +84,7 @@ export default function InspectorSidebar({
   currentBorderRadius,
   currentPadding,
   currentElementType,
+  updateBlockAttribute,
   isImageActive,
   currentImageSrc,
   currentImageAlt,
@@ -299,23 +301,9 @@ export default function InspectorSidebar({
               <ColorPicker
                 value={currentBlockBgColor}
                 onChange={(color) =>
-                  editor
-                    .chain()
-                    .focus()
-                    .updateAttributes("paragraph", {
-                      backgroundColor: color,
-                    })
-                    .run()
+                  updateBlockAttribute("backgroundColor", color)
                 }
-                reset={() =>
-                  editor
-                    .chain()
-                    .focus()
-                    .updateAttributes("paragraph", {
-                      backgroundColor: null,
-                    })
-                    .run()
-                }
+                reset={() => updateBlockAttribute("backgroundColor", null)}
               />
             </div>
 
@@ -327,13 +315,7 @@ export default function InspectorSidebar({
                   variant="dark"
                   options={BORDER_STYLES}
                   value={currentBorderStyle}
-                  onChange={(val) =>
-                    editor
-                      .chain()
-                      .focus()
-                      .updateAttributes("paragraph", { borderStyle: val })
-                      .run()
-                  }
+                  onChange={(val) => updateBlockAttribute("borderStyle", val)}
                   placeholder="Style"
                   btnWidth="100%"
                   width="100%"
@@ -349,12 +331,7 @@ export default function InspectorSidebar({
                   onChange={(e) => {
                     const val = e.target.value;
                     const formatted = /^\d+$/.test(val) ? `${val}px` : val;
-                    editor
-                      .chain()
-                      .updateAttributes("paragraph", {
-                        borderWidth: formatted,
-                      })
-                      .run();
+                    updateBlockAttribute("borderWidth", formatted);
                   }}
                   placeholder="e.g. 1px"
                 />
@@ -366,13 +343,7 @@ export default function InspectorSidebar({
               <label className={styles.inputLabel}>Border Color</label>
               <ColorPicker
                 value={currentBorderColor}
-                onChange={(color) =>
-                  editor
-                    .chain()
-                    .focus()
-                    .updateAttributes("paragraph", { borderColor: color })
-                    .run()
-                }
+                onChange={(color) => updateBlockAttribute("borderColor", color)}
               />
             </div>
 
@@ -383,13 +354,7 @@ export default function InspectorSidebar({
                 variant="dark"
                 options={CORNER_RADII}
                 value={currentBorderRadius}
-                onChange={(val) =>
-                  editor
-                    .chain()
-                    .focus()
-                    .updateAttributes("paragraph", { borderRadius: val })
-                    .run()
-                }
+                onChange={(val) => updateBlockAttribute("borderRadius", val)}
                 placeholder="Radius"
                 btnWidth="100%"
                 width="100%"
@@ -408,13 +373,7 @@ export default function InspectorSidebar({
                 variant="dark"
                 options={PADDING_SIZES}
                 value={currentPadding}
-                onChange={(val) =>
-                  editor
-                    .chain()
-                    .focus()
-                    .updateAttributes("paragraph", { padding: val })
-                    .run()
-                }
+                onChange={(val) => updateBlockAttribute("padding", val)}
                 placeholder="Padding"
                 btnWidth="100%"
                 width="100%"
@@ -642,6 +601,8 @@ export default function InspectorSidebar({
                     editor.chain().focus().toggleHeading({ level: 2 }).run();
                   else if (val === "h3")
                     editor.chain().focus().toggleHeading({ level: 3 }).run();
+                  else if (val === "container")
+                    editor.chain().focus().wrapIn("container").run();
                   else if (val === "quote")
                     editor.chain().focus().toggleBlockquote().run();
                   else if (val === "bullet")

@@ -1,5 +1,6 @@
-import { Extension } from "@tiptap/react";
+import { Extension, Node } from "@tiptap/core";
 import { Image } from "@tiptap/extension-image";
+import { Link } from "@tiptap/extension-link";
 
 // Custom Tiptap Extension for Block Inline Attributes
 export const BlockStyleExtension = Extension.create({
@@ -7,7 +8,7 @@ export const BlockStyleExtension = Extension.create({
   addGlobalAttributes() {
     return [
       {
-        types: ["paragraph", "heading", "blockquote", "listItem"],
+        types: ["paragraph", "heading", "blockquote", "listItem", "container"],
         attributes: {
           backgroundColor: {
             default: null,
@@ -59,13 +60,154 @@ export const BlockStyleExtension = Extension.create({
               return { style: `padding: ${attributes.padding}` };
             },
           },
+          marginTop: {
+            default: null,
+            parseHTML: (element) => element.style.marginTop || null,
+            renderHTML: (attributes) => {
+              if (!attributes.marginTop) return {};
+              return { style: `margin-top: ${attributes.marginTop}` };
+            },
+          },
+          marginBottom: {
+            default: null,
+            parseHTML: (element) => element.style.marginBottom || null,
+            renderHTML: (attributes) => {
+              if (!attributes.marginBottom) return {};
+              return { style: `margin-bottom: ${attributes.marginBottom}` };
+            },
+          },
         },
       },
     ];
   },
 });
 
-// Custom Tiptap Extension for Image Attributes (Extends Tiptap's Image extension with width & alignment margins)
+// Custom Container Extension for styled card boxes (<div style="...">)
+export const ContainerExtension = Node.create({
+  name: "container",
+  group: "block",
+  content: "block+",
+  defining: true,
+  isolating: true,
+  addAttributes() {
+    return {
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("style"),
+        renderHTML: (attributes) => {
+          if (!attributes.style) return {};
+          return { style: attributes.style };
+        },
+      },
+      backgroundColor: {
+        default: null,
+        parseHTML: (element) => element.style.backgroundColor || null,
+        renderHTML: (attributes) => {
+          if (!attributes.backgroundColor) return {};
+          return { style: `background-color: ${attributes.backgroundColor}` };
+        },
+      },
+      borderColor: {
+        default: null,
+        parseHTML: (element) => element.style.borderColor || null,
+        renderHTML: (attributes) => {
+          if (!attributes.borderColor) return {};
+          return { style: `border-color: ${attributes.borderColor}` };
+        },
+      },
+      borderWidth: {
+        default: null,
+        parseHTML: (element) => element.style.borderWidth || null,
+        renderHTML: (attributes) => {
+          if (!attributes.borderWidth) return {};
+          return { style: `border-width: ${attributes.borderWidth}` };
+        },
+      },
+      borderStyle: {
+        default: null,
+        parseHTML: (element) => element.style.borderStyle || null,
+        renderHTML: (attributes) => {
+          if (!attributes.borderStyle) return {};
+          return { style: `border-style: ${attributes.borderStyle}` };
+        },
+      },
+      borderRadius: {
+        default: null,
+        parseHTML: (element) => element.style.borderRadius || null,
+        renderHTML: (attributes) => {
+          if (!attributes.borderRadius) return {};
+          return { style: `border-radius: ${attributes.borderRadius}` };
+        },
+      },
+      padding: {
+        default: null,
+        parseHTML: (element) => element.style.padding || null,
+        renderHTML: (attributes) => {
+          if (!attributes.padding) return {};
+          return { style: `padding: ${attributes.padding}` };
+        },
+      },
+      marginTop: {
+        default: null,
+        parseHTML: (element) => element.style.marginTop || null,
+        renderHTML: (attributes) => {
+          if (!attributes.marginTop) return {};
+          return { style: `margin-top: ${attributes.marginTop}` };
+        },
+      },
+      marginBottom: {
+        default: null,
+        parseHTML: (element) => element.style.marginBottom || null,
+        renderHTML: (attributes) => {
+          if (!attributes.marginBottom) return {};
+          return { style: `margin-bottom: ${attributes.marginBottom}` };
+        },
+      },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "div[style]",
+      },
+      {
+        tag: "section",
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", HTMLAttributes, 0];
+  },
+});
+
+// Custom Link Extension that preserves inline style & class attributes (critical for CTA buttons)
+export const CustomLinkExtension = Link.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("style"),
+        renderHTML: (attributes) => {
+          if (!attributes.style) {
+            return { style: "color: #2563eb; text-decoration: underline;" };
+          }
+          return { style: attributes.style };
+        },
+      },
+      class: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("class"),
+        renderHTML: (attributes) => {
+          if (!attributes.class) return {};
+          return { class: attributes.class };
+        },
+      },
+    };
+  },
+});
+
+// Custom Image Extension extending Tiptap Image with width, alignment, and click link
 export const CustomImageExtension = Image.extend({
   addAttributes() {
     return {
@@ -94,6 +236,21 @@ export const CustomImageExtension = Image.extend({
           if (!attributes.width) return {};
           return {
             width: attributes.width,
+          };
+        },
+      },
+      href: {
+        default: null,
+        parseHTML: (element) => {
+          if (element.parentElement && element.parentElement.tagName === "A") {
+            return element.parentElement.getAttribute("href");
+          }
+          return element.getAttribute("data-href");
+        },
+        renderHTML: (attributes) => {
+          if (!attributes.href) return {};
+          return {
+            "data-href": attributes.href,
           };
         },
       },
