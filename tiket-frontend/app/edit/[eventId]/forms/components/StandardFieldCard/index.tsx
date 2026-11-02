@@ -1,4 +1,5 @@
 import React from "react";
+import { Lock } from "lucide-react";
 import Dropdown from "@/components/Dropdown";
 import type { StandardField, StandardFieldStatus } from "../../types";
 import styles from "./StandardFieldCard.module.css";
@@ -15,7 +16,34 @@ export default function StandardFieldCard({ field, onChange }: Props) {
     <div className={styles.standardCard}>
       <div className={styles.standardCardLeft}>
         <div className={styles.standardCardIcon}>{field.icon}</div>
-        <span>{field.name === "name" ? "Full Name" : field.label}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontWeight: 500 }}>
+            {field.name === "name" ? "Full Name" : field.label}
+          </span>
+          {isStatic ? (
+            <span
+              style={{
+                fontSize: "0.72rem",
+                color: "var(--text-muted)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "3px",
+              }}
+            >
+              <Lock size={10} style={{ opacity: 0.7 }} />
+              Page 1 Standard Field (Locked)
+            </span>
+          ) : (
+            <span
+              style={{
+                fontSize: "0.72rem",
+                color: "var(--text-muted)",
+              }}
+            >
+              Page 1 Standard Field
+            </span>
+          )}
+        </div>
       </div>
       {isStatic ? (
         <span
@@ -23,8 +51,15 @@ export default function StandardFieldCard({ field, onChange }: Props) {
             fontSize: "0.85rem",
             color: "var(--color-text-secondary)",
             marginLeft: "auto",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            background: "var(--color-soft-bg)",
+            padding: "0.2rem 0.5rem",
+            borderRadius: "var(--radius-sm)",
           }}
         >
+          <Lock size={12} style={{ opacity: 0.6 }} />
           Required
         </span>
       ) : (

@@ -1,7 +1,7 @@
-import type { FieldType } from "@/types/form";
+import type { FieldType, FormFieldOptions } from "@/types/form";
 
 export { FIELD_TYPES } from "@/types/form";
-export type { FieldType } from "@/types/form";
+export type { FieldType, FormFieldOptions };
 
 export interface LocalField {
   localId: string;
@@ -26,4 +26,5 @@ export interface StandardField {
   label: string;
   status: StandardFieldStatus;
   serverId?: string;
+  page?: number;
 }

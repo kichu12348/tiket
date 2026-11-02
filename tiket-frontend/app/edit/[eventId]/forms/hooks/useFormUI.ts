@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { confirm } from "@/components/ConfirmModal";
 import type { LocalField } from "../types";
@@ -9,20 +9,27 @@ export function useFormUI(
 ) {
   const [activePage, setActivePage] = useState(1);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [createdPages, setCreatedPages] = useState<number[]>([]);
 
   /* ── Modal State ── */
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [editingField, setEditingField] = useState<LocalField | null>(null);
 
+  const effectivePages = useMemo(() => {
+    const set = new Set<number>([1, ...pages, ...createdPages]);
+    return Array.from(set).sort((a, b) => a - b);
+  }, [pages, createdPages]);
+
   const addPage = () => {
-    const maxPage = pages.length > 0 ? Math.max(...pages) : 0;
+    const maxPage = effectivePages.length > 0 ? Math.max(...effectivePages) : 1;
     const newPage = maxPage + 1;
+    setCreatedPages((prev) => [...prev, newPage]);
     setActivePage(newPage);
   };
 
   const confirmDeletePage = async (pageNum: number) => {
-    if (pages.length <= 1) {
+    if (effectivePages.length <= 1) {
       toast.error("You need at least one page.");
       return;
     }
@@ -34,6 +41,9 @@ export function useFormUI(
         danger: true,
         onConfirm: async () => {
           await deletePageFromDB(pageNum);
+          setCreatedPages((prev) =>
+            prev.filter((p) => p !== pageNum).map((p) => (p > pageNum ? p - 1 : p)),
+          );
           if (activePage === pageNum) {
             setActivePage(Math.max(1, pageNum - 1));
           } else if (activePage > pageNum) {
@@ -64,6 +74,7 @@ export function useFormUI(
   return {
     activePage,
     setActivePage,
+    effectivePages,
     activeDragId,
     setActiveDragId,
     isModalOpen,

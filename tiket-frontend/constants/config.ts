@@ -68,7 +68,7 @@ export const API_ENDPOINTS = {
     REORDER: (eventId: string) => `/api/ticket-types/${eventId}/reorder`,
   },
   FORMS: {
-    CREATE: `/api/forms`, // /api/forms/:eventId
+    CREATE: (eventId: string) => `/api/forms/${eventId}`,
     GET_ALL: (eventId: string) => `/api/forms/${eventId}`,
     UPDATE: (eventId: string, fieldId: string) =>
       `/api/forms/${eventId}/${fieldId}`,

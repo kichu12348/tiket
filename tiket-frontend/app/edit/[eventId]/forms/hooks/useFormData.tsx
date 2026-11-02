@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import React from "react";
 import { toast } from "sonner";
 import {
   getFormFields,
@@ -9,7 +10,13 @@ import {
 } from "@/api/forms";
 import type { FormField } from "@/types/form";
 import type { LocalField, StandardField, StandardFieldStatus } from "../types";
-import { serverToLocal, getPagesFromFields } from "../functions/formHelpers";
+import {
+  serverToLocal,
+  getPagesFromFields,
+  buildOptionsPayload,
+  isChoiceField,
+  isMultiChoiceField,
+} from "../functions/formHelpers";
 import { User, Mail, Phone } from "lucide-react";
 
 export function useFormData(eventId?: string) {
@@ -20,18 +27,21 @@ export function useFormData(eventId?: string) {
       label: "Name",
       icon: <User size={16} />,
       status: "Required",
+      page: 1,
     },
     {
       name: "email",
       label: "Email",
       icon: <Mail size={16} />,
       status: "Required",
+      page: 1,
     },
     {
       name: "phone",
       label: "Phone",
       icon: <Phone size={16} />,
       status: "Off",
+      page: 1,
     },
   ]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +54,7 @@ export function useFormData(eventId?: string) {
         const stdMap = new Map<string, FormField>();
 
         data.forEach((f) => {
-          if (["name", "email", "phone"].includes(f.name) && f.page === 0) {
+          if (["name", "email", "phone"].includes(f.name) && (f.page === 0 || f.page === 1)) {
             stdMap.set(f.name, f);
           } else {
             custom.push(serverToLocal(f));
@@ -70,13 +80,15 @@ export function useFormData(eventId?: string) {
                 ...std,
                 serverId: dbField?.id,
                 status: "Required",
+                page: 1,
               };
             }
-            if (!dbField) return { ...std, serverId: undefined, status: "Off" };
+            if (!dbField) return { ...std, serverId: undefined, status: "Off", page: 1 };
             return {
               ...std,
               serverId: dbField.id,
               status: dbField.isRequired ? "Required" : "Optional",
+              page: 1,
             };
           }),
         );
@@ -91,6 +103,16 @@ export function useFormData(eventId?: string) {
     refreshFields().finally(() => setIsLoading(false));
   }, [refreshFields]);
 
+  const toggleInlineEdit = (localId: string, isEditing?: boolean) => {
+    setCustomFields((prev) =>
+      prev.map((f) =>
+        f.localId === localId
+          ? { ...f, isEditing: isEditing !== undefined ? isEditing : !f.isEditing }
+          : f,
+      ),
+    );
+  };
+
   const updateStandardField = async (
     name: string,
     status: StandardFieldStatus,
@@ -99,17 +121,9 @@ export function useFormData(eventId?: string) {
     const std = standardFields.find((f) => f.name === name);
     if (!std) return;
 
-    if (status !== "Required") {
-      const otherRequired = standardFields.some(
-        (f) =>
-          f.name !== name &&
-          (f.name === "name" || f.name === "email") &&
-          f.status === "Required",
-      );
-      if (!otherRequired && (name === "name" || name === "email")) {
-        toast.error("Either Name or Email must be Required.");
-        return;
-      }
+    if (name === "name" || name === "email") {
+      toast.error("Name and Email are required Page 1 attendee fields.");
+      return;
     }
 
     try {
@@ -121,13 +135,13 @@ export function useFormData(eventId?: string) {
           await createFormField(eventId, {
             name: std.name,
             label: std.label,
-            fieldType: std.name === "email" ? "email" : "text",
+            fieldType: "phone",
             isRequired: isReq,
-            page: 0,
+            page: 1,
             sortOrder: 0,
           });
         } else {
-          await updateFormField(eventId, std.serverId, { isRequired: isReq });
+          await updateFormField(eventId, std.serverId, { isRequired: isReq, page: 1 });
         }
       }
       await refreshFields();
@@ -140,14 +154,33 @@ export function useFormData(eventId?: string) {
   const saveCustomField = async (
     fieldData: Omit<LocalField, "isEditing" | "localId">,
     isEdit: boolean,
-    localId?: string, // Used for editing an existing field
+    localId?: string,
     activePage?: number,
   ) => {
     if (!eventId) return;
 
+    const isChoice = isChoiceField(fieldData.fieldType);
+    const isMulti = isMultiChoiceField(fieldData.fieldType);
+
+    if (isChoice) {
+      const validChoices = (fieldData.options || []).map((o) => o.trim()).filter(Boolean);
+      if (validChoices.length === 0) {
+        toast.error("At least one option is required.");
+        return;
+      }
+    }
+
+    const finalOptions = buildOptionsPayload(
+      fieldData.fieldType,
+      fieldData.options,
+      fieldData.minOptions,
+      fieldData.maxOptions,
+    );
+
     if (!isEdit) {
       const tempId = crypto.randomUUID();
-      const pageFields = customFields.filter((f) => f.page === activePage);
+      const targetPage = activePage || 1;
+      const pageFields = customFields.filter((f) => f.page === targetPage);
       const maxSort = pageFields.reduce(
         (max, f) => Math.max(max, f.sortOrder),
         -1,
@@ -157,20 +190,13 @@ export function useFormData(eventId?: string) {
         ...fieldData,
         localId: tempId,
         sortOrder: maxSort + 1,
-        page: activePage || 1,
+        page: targetPage,
+        options: isChoice ? (fieldData.options || []) : null,
+        minOptions: isMulti ? (fieldData.minOptions ?? null) : null,
+        maxOptions: isMulti ? (fieldData.maxOptions ?? null) : null,
       };
 
       setCustomFields((prev) => [...prev, newField]);
-
-      const needsConstraints = newField.fieldType === "multi_select";
-      const finalOptions =
-        needsConstraints && newField.options
-          ? {
-              choices: newField.options,
-              min: newField.minOptions || null,
-              max: newField.maxOptions || null,
-            }
-          : newField.options;
 
       try {
         const created = await createFormField(eventId, {
@@ -199,6 +225,9 @@ export function useFormData(eventId?: string) {
       const updatedField: LocalField = {
         ...originalField,
         ...fieldData,
+        options: isChoice ? (fieldData.options || []) : null,
+        minOptions: isMulti ? (fieldData.minOptions ?? null) : null,
+        maxOptions: isMulti ? (fieldData.maxOptions ?? null) : null,
       };
 
       setCustomFields((prev) =>
@@ -206,16 +235,6 @@ export function useFormData(eventId?: string) {
       );
 
       if (updatedField.serverId) {
-        const needsConstraints = updatedField.fieldType === "multi_select";
-        const finalOptions =
-          needsConstraints && updatedField.options
-            ? {
-                choices: updatedField.options,
-                min: updatedField.minOptions || null,
-                max: updatedField.maxOptions || null,
-              }
-            : updatedField.options;
-
         try {
           await updateFormField(eventId, updatedField.serverId, {
             name: updatedField.name,
@@ -223,6 +242,8 @@ export function useFormData(eventId?: string) {
             fieldType: updatedField.fieldType,
             isRequired: updatedField.isRequired,
             options: finalOptions,
+            sortOrder: updatedField.sortOrder,
+            page: updatedField.page,
           });
         } catch (err) {
           toast.error("Failed to save changes.");
@@ -296,6 +317,11 @@ export function useFormData(eventId?: string) {
     if (!eventId) return;
     try {
       await deleteFormPage(eventId, pageNum);
+      setCustomFields((prev) =>
+        prev
+          .filter((f) => f.page !== pageNum)
+          .map((f) => (f.page > pageNum ? { ...f, page: f.page - 1 } : f)),
+      );
       await refreshFields();
     } catch (e) {
       toast.error("Failed to delete page.");
@@ -311,6 +337,7 @@ export function useFormData(eventId?: string) {
     isLoading,
     pages,
     refreshFields,
+    toggleInlineEdit,
     updateStandardField,
     saveCustomField,
     deleteCustomField,

@@ -24,6 +24,10 @@ import { confirm } from "@/components/ConfirmModal";
 import Switch from "@/components/Switch";
 import type { LocalField, FieldType } from "../../types";
 import { FIELD_TYPES } from "../../types";
+import {
+  isChoiceField,
+  isMultiChoiceField,
+} from "../../functions/formHelpers";
 import styles from "./FieldModal.module.css";
 import { toast } from "sonner";
 
@@ -37,41 +41,41 @@ interface Props {
 }
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
-  file: <Upload size={18} />,
   text: <Type size={18} />,
   long_text: <AlignLeft size={18} />,
   email: <Mail size={18} />,
   phone: <Phone size={18} />,
+  number: <Hash size={18} />,
   single_select: <ChevronDown size={18} />,
   multi_select: <List size={18} />,
+  select: <List size={18} />,
   radio: <CircleDot size={18} />,
   checkbox: <CheckSquare size={18} />,
-  number: <Hash size={18} />,
-  datetime: <CalendarClock size={18} />,
   date: <Calendar size={18} />,
+  datetime: <CalendarClock size={18} />,
   time: <Clock size={18} />,
   rating: <Star size={18} />,
   url: <Link size={18} />,
-  select: <List size={18} />,
+  file: <Upload size={18} />,
 };
 
 const TYPE_DESCRIPTIONS: Record<string, string> = {
-  file: "Collect a private registration file",
   text: "Ask for a free-form response",
   long_text: "Ask for a multi-line response",
   email: "Ask for an email address",
   phone: "Ask for a phone number",
+  number: "Ask for a numerical value",
   single_select: "Let the guest choose one option from a list",
   multi_select: "Let the guest choose multiple options",
+  select: "Let the guest choose from a dropdown list",
   radio: "Let the guest choose one option via radio buttons",
-  checkbox: "Ask guests to check a box",
-  number: "Ask for a numerical value",
-  datetime: "Ask guests for a specific date and time",
+  checkbox: "Ask guests to check one or more boxes",
   date: "Ask guests for a specific date",
+  datetime: "Ask guests for a specific date and time",
   time: "Ask guests for a specific time",
   rating: "Ask guests for a rating out of 5",
   url: "Ask guests for a website link",
-  select: "Let the guest choose from a list of options",
+  file: "Collect a private registration file",
 };
 
 function FieldModalContent({
@@ -99,10 +103,10 @@ function FieldModalContent({
   const [isDraggingFile, setIsDraggingFile] = useState(false);
 
   const [minOptions, setMinOptions] = useState<number | "">(
-    initialField?.minOptions ?? 0,
+    typeof initialField?.minOptions === "number" ? initialField.minOptions : "",
   );
   const [maxOptions, setMaxOptions] = useState<number | "">(
-    initialField?.maxOptions ?? "",
+    typeof initialField?.maxOptions === "number" ? initialField.maxOptions : "",
   );
 
   const [isSaving, setIsSaving] = useState(false);
@@ -112,6 +116,9 @@ function FieldModalContent({
   const optionSetRef = useRef<Set<string>>(
     new Set(initialField?.options ?? []),
   );
+
+  const isChoice = isChoiceField(fieldType);
+  const isMulti = isMultiChoiceField(fieldType);
 
   const handleTypeSelect = (type: FieldType) => {
     setFieldType(type);
@@ -178,7 +185,6 @@ function FieldModalContent({
     if (e.target.files && e.target.files.length > 0) {
       readFile(e.target.files[0]);
     }
-    // reset input so the same file can be selected again
     e.target.value = "";
   };
 
@@ -226,15 +232,41 @@ function FieldModalContent({
       toast.error("Question text is required.");
       return;
     }
-    const needsOptions = [
-      "single_select",
-      "multi_select",
-      "radio",
-      "select",
-    ].includes(fieldType);
-    if (needsOptions && options.length === 0) {
+
+    const validOptions = options.map((s) => s.trim()).filter(Boolean);
+
+    if (isChoice && validOptions.length === 0) {
       toast.error("At least one option is required.");
       return;
+    }
+
+    let finalMin = typeof minOptions === "number" ? minOptions : null;
+    let finalMax = typeof maxOptions === "number" ? maxOptions : null;
+
+    if (isMulti) {
+      if (finalMin !== null && finalMin < 0) {
+        toast.error("Minimum selections cannot be negative.");
+        return;
+      }
+      if (finalMax !== null && finalMax <= 0) {
+        toast.error("Maximum selections must be at least 1.");
+        return;
+      }
+      if (finalMin !== null && finalMax !== null && finalMin > finalMax) {
+        toast.error("Minimum selections cannot exceed maximum.");
+        return;
+      }
+      if (finalMin !== null && finalMin > validOptions.length) {
+        toast.error("Minimum selections cannot exceed the number of options.");
+        return;
+      }
+      if (finalMax !== null && finalMax > validOptions.length) {
+        toast.error("Maximum selections cannot exceed the number of options.");
+        return;
+      }
+    } else {
+      finalMin = null;
+      finalMax = null;
     }
 
     setIsSaving(true);
@@ -242,26 +274,12 @@ function FieldModalContent({
       const finalName =
         initialField?.name || label.toLowerCase().replace(/\s+/g, "_");
 
-      let finalMin = typeof minOptions === "number" ? minOptions : null;
-      let finalMax = typeof maxOptions === "number" ? maxOptions : null;
-
-      if (fieldType === "multi_select") {
-        if (finalMin !== null && finalMax !== null && finalMin > finalMax) {
-          toast.error("Minimum selections cannot exceed maximum.");
-          setIsSaving(false);
-          return;
-        }
-      } else {
-        finalMin = null;
-        finalMax = null;
-      }
-
       await onSave({
         name: finalName,
         label: label.trim(),
         fieldType,
         isRequired,
-        options: needsOptions ? options : null,
+        options: isChoice ? validOptions : null,
         minOptions: finalMin,
         maxOptions: finalMax,
         sortOrder: initialField?.sortOrder || 0,
@@ -364,13 +382,10 @@ function FieldModalContent({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               autoFocus
-              multiple
             />
           </div>
 
-          {["single_select", "multi_select", "radio", "select"].includes(
-            fieldType,
-          ) && (
+          {isChoice && (
             <div className={styles.formGroup}>
               <div
                 style={{
@@ -453,7 +468,7 @@ function FieldModalContent({
                 </div>
               </div>
 
-              {fieldType === "multi_select" && (
+              {isMulti && (
                 <div
                   style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}
                 >
@@ -470,7 +485,7 @@ function FieldModalContent({
                       value={minOptions}
                       onChange={(e) =>
                         setMinOptions(
-                          e.target.value ? parseInt(e.target.value) : "",
+                          e.target.value ? parseInt(e.target.value, 10) : "",
                         )
                       }
                     />
@@ -488,7 +503,7 @@ function FieldModalContent({
                       value={maxOptions}
                       onChange={(e) =>
                         setMaxOptions(
-                          e.target.value ? parseInt(e.target.value) : "",
+                          e.target.value ? parseInt(e.target.value, 10) : "",
                         )
                       }
                     />

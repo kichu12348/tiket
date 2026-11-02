@@ -16,7 +16,7 @@ export const createFormField = async (
   payload: CreateFormFieldPayload,
 ): Promise<FormField> => {
   const response = await api.post(
-    `${API_ENDPOINTS.FORMS.CREATE}/${eventId}`,
+    API_ENDPOINTS.FORMS.CREATE(eventId),
     payload,
   );
   return response.data;

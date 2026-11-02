@@ -44,6 +44,7 @@ export default function EditFormsPage() {
     standardFields,
     isLoading,
     pages,
+    toggleInlineEdit,
     updateStandardField,
     saveCustomField,
     deleteCustomField,
@@ -55,6 +56,7 @@ export default function EditFormsPage() {
   const {
     activePage,
     setActivePage,
+    effectivePages,
     setActiveDragId,
     isModalOpen,
     modalMode,
@@ -91,6 +93,18 @@ export default function EditFormsPage() {
       activePage,
     );
     closeFieldModal();
+  };
+
+  const handleInlineSave = async (
+    updated: Omit<LocalField, "isEditing">,
+  ) => {
+    await saveCustomField(
+      updated,
+      true,
+      updated.localId,
+      activePage,
+    );
+    toggleInlineEdit(updated.localId, false);
   };
 
   const handleDragStart = (e: DragStartEvent) => {
@@ -153,9 +167,9 @@ export default function EditFormsPage() {
           <span>Custom Questions</span>
         </div>
 
-        {pages.length > 0 && (
+        {effectivePages.length > 0 && (
           <div className={styles.pageTabs}>
-            {pages.map((pageNum) => (
+            {effectivePages.map((pageNum) => (
               <div
                 key={pageNum}
                 style={{ display: "flex", alignItems: "center" }}
@@ -168,7 +182,7 @@ export default function EditFormsPage() {
                   <Layers size={13} style={{ marginRight: 6, opacity: 0.6 }} />
                   Page {pageNum}
                 </button>
-                {pages.length > 1 && (
+                {effectivePages.length > 1 && (
                   <button
                     className={styles.deletePageBtn}
                     onClick={() => confirmDeletePage(pageNum)}
@@ -212,6 +226,9 @@ export default function EditFormsPage() {
                   key={field.localId}
                   field={field}
                   onEdit={() => openEditModal(field)}
+                  onToggleInlineEdit={() => toggleInlineEdit(field.localId)}
+                  onSaveInline={handleInlineSave}
+                  onDeleteInline={() => deleteCustomField(field.localId)}
                 />
               ))}
             </div>

@@ -1,27 +1,48 @@
-export const FIELD_TYPES = [
-  { label: "File", value: "file" as const },
-  { label: "Text", value: "text" as const },
-  { label: "LongText", value: "long_text" as const },
-  { label: "Email", value: "email" as const },
-  { label: "Phone", value: "phone" as const },
-  { label: "SingleSelect", value: "single_select" as const },
-  { label: "MultiSelect", value: "multi_select" as const },
-  { label: "Radio", value: "radio" as const },
-  { label: "Checkbox", value: "checkbox" as const },
-  { label: "Number", value: "number" as const },
-  { label: "DateTime", value: "datetime" as const },
-  { label: "Date", value: "date" as const },
-  { label: "Time", value: "time" as const },
-  { label: "Rating", value: "rating" as const },
-  { label: "Url", value: "url" as const },
-];
-
 export type FieldType =
-  (typeof FIELD_TYPES)[number]["value"] | "select" | "file";
+  | "text"
+  | "long_text"
+  | "email"
+  | "phone"
+  | "number"
+  | "single_select"
+  | "multi_select"
+  | "radio"
+  | "checkbox"
+  | "date"
+  | "datetime"
+  | "time"
+  | "rating"
+  | "url"
+  | "file"
+  | "select";
+
+export interface FieldTypeOption {
+  label: string;
+  value: FieldType;
+}
+
+export const FIELD_TYPES: FieldTypeOption[] = [
+  { label: "Text", value: "text" },
+  { label: "Long Text", value: "long_text" },
+  { label: "Email", value: "email" },
+  { label: "Phone", value: "phone" },
+  { label: "Number", value: "number" },
+  { label: "Single Select", value: "single_select" },
+  { label: "Multi Select", value: "multi_select" },
+  { label: "Select", value: "select" },
+  { label: "Radio", value: "radio" },
+  { label: "Checkbox", value: "checkbox" },
+  { label: "Date", value: "date" },
+  { label: "Date & Time", value: "datetime" },
+  { label: "Time", value: "time" },
+  { label: "Rating", value: "rating" },
+  { label: "URL", value: "url" },
+  { label: "File", value: "file" },
+];
 
 export type FormFieldOptions =
   | string[]
-  | { choices: string[]; min: number | null; max: number | null }
+  | { choices: string[]; min?: number | null; max?: number | null }
   | null;
 
 export interface FormField {
