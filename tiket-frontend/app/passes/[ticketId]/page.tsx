@@ -9,6 +9,7 @@ import { PassDetails } from "./components/PassDetails";
 import { PassQRCode } from "./components/PassQRCode";
 import { PassActions } from "./components/PassActions";
 import { PassError } from "./components/PassError";
+import { PassSkeleton } from "./components/PassSkeleton";
 import { TornEdge } from "./components/TornEdge";
 import styles from "./Pass.module.css";
 import { downloadImg } from "./utils/downloadImage";
@@ -17,7 +18,8 @@ export default function TicketPassPage() {
   const params = useParams();
   const ticketId = params?.ticketId as string | undefined;
 
-  const { ticket, isLoading, error, statusCode } = useTicketPass(ticketId);
+  const { ticket, isLoading, error, statusCode, refetch } =
+    useTicketPass(ticketId);
 
   const ticketRef = React.useRef<HTMLDivElement>(null);
 
@@ -40,7 +42,9 @@ export default function TicketPassPage() {
 
           {/* Viewport clipping ticket dispense motion */}
           <div className={styles.ticketViewport}>
-            {error ? (
+            {isLoading ? (
+              <PassSkeleton />
+            ) : error ? (
               <PassError message={error} statusCode={statusCode} />
             ) : ticket ? (
               <motion.div
@@ -62,10 +66,11 @@ export default function TicketPassPage() {
                     ticketTypeName={ticket.ticketType.name}
                   />
 
-                  {/* Attendee, Date & Time, Location Details */}
+                  {/* Attendee, Date & Time, Location Details, Form Responses */}
                   <PassDetails
                     attendee={ticket.attendee}
                     event={ticket.event}
+                    responses={ticket.responses}
                   />
 
                   {/* Horizontal Perforation Divider with Inward SVG Bite Cutout Notches */}
@@ -112,11 +117,17 @@ export default function TicketPassPage() {
           </div>
         </div>
 
-        {/* Download Pass Action */}
+        {/* Download Pass & Transfer Actions */}
         {!isLoading && ticket && (
           <PassActions
             handleDownload={() => {
               downloadImg(ticketRef.current, ticket.event.title);
+            }}
+            ticketId={ticket.id}
+            isTransferable={ticket.ticketType?.isTransferable}
+            status={ticket.status}
+            onTransferSuccess={() => {
+              refetch();
             }}
           />
         )}

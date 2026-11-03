@@ -78,7 +78,10 @@ export const API_ENDPOINTS = {
       `/api/forms/${eventId}/pages/${pageNum}`,
   },
   TICKETS: {
-    GET: (ticketId: string) => `/api/tickets/${ticketId}`, // To be implemented in backend
+    GET: (ticketId: string) => `/api/tickets/${ticketId}`,
+    TRANSFER: (ticketId: string) => `/api/tickets/${ticketId}/transfer`,
+    ACCEPT_TRANSFER: (transferId: string) =>
+      `/api/tickets/transfers/${transferId}/accept`,
   },
   ORDERS: {
     QUOTE: "/api/orders/quote",

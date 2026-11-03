@@ -68,3 +68,22 @@ export interface TicketPassData {
   order: TicketPassOrder;
   responses?: TicketFormResponseItem[];
 }
+
+export interface TransferTicketPayload {
+  targetEmail: string;
+}
+
+export interface TicketTransfer {
+  id: string;
+  ticketId: string;
+  fromUserId: string;
+  toUserId: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface AcceptTransferResponse {
+  message: string;
+  transfer: TicketTransfer;
+}
+

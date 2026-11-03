@@ -6,7 +6,12 @@ import type {
   UpdateTicketTypePayload,
 } from "@/types/ticketType";
 
-import type { TicketPassData } from "@/types/ticket";
+import type {
+  TicketPassData,
+  TransferTicketPayload,
+  TicketTransfer,
+  AcceptTransferResponse,
+} from "@/types/ticket";
 
 export const getTicketTypes = async (
   eventId: string,
@@ -66,3 +71,29 @@ export const getTicketPass = async (
   const response = await api.get(API_ENDPOINTS.TICKETS.GET(ticketId));
   return response.data;
 };
+
+// Initiate ticket transfer to another user email
+export const initiateTicketTransfer = async (
+  ticketId: string,
+  payload: TransferTicketPayload,
+): Promise<TicketTransfer> => {
+  const response = await api.post(
+    API_ENDPOINTS.TICKETS.TRANSFER(ticketId),
+    payload,
+  );
+  return response.data;
+};
+
+export const transferTicket = initiateTicketTransfer;
+
+// Accept an initiated ticket transfer
+export const acceptTicketTransfer = async (
+  transferId: string,
+): Promise<AcceptTransferResponse> => {
+  const response = await api.post(
+    API_ENDPOINTS.TICKETS.ACCEPT_TRANSFER(transferId),
+  );
+  return response.data;
+};
+
+export const acceptTransfer = acceptTicketTransfer;
