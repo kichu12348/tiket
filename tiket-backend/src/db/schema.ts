@@ -16,6 +16,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
+import type { ConditionGroup } from "../utils/registration-validation";
+
+export type {
+  ConditionRule,
+  ConditionGroup,
+  FieldConditionConfig,
+} from "../utils/registration-validation";
 
 // ==========================================
 // 🎯 ENUMS
@@ -212,6 +219,9 @@ export const ticketTypes = pgTable("ticket_types", {
   isHidden: boolean("is_hidden").notNull().default(false),
   price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"), // 0 for free
   quantityLimit: integer("quantity_limit"), // null means unlimited
+  poolName: varchar("pool_name", { length: 100 }),
+  poolCapacity: integer("pool_capacity"),
+  eligibilityRules: jsonb("eligibility_rules").$type<ConditionGroup | null>(),
   saleStart: timestamp("sale_start"),
   saleEnd: timestamp("sale_end"),
   isRefundable: boolean("is_refundable").notNull().default(false),
@@ -404,7 +414,7 @@ export const formFields = pgTable("form_fields", {
   label: varchar("label", { length: 255 }).notNull(),
   fieldType: fieldTypeEnum("field_type").notNull(),
   isRequired: boolean("is_required").notNull().default(true),
-  options: jsonb("options"), // Array of choices for select/radio
+  options: jsonb("options"), // Array of choices for select/radio, or { choices, min, max, conditions }
   sortOrder: integer("sort_order").notNull().default(0),
   page: integer("page").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),

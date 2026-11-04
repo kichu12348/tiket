@@ -15,6 +15,7 @@ import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { createHash, randomUUID } from "node:crypto";
 import type { Transaction } from "../db/types";
 import { HttpError } from "../utils/errors";
+import { evaluateConditionGroup, getFieldAction } from "../utils/registration-validation";
 import { toPaise, fromPaise } from "../utils/money";
 import {
   validateFormResponses,
@@ -152,6 +153,10 @@ async function cart(
       ),
     )
     .orderBy(ticketTypes.id);
+  const allEventTiers = await tx
+    .select()
+    .from(ticketTypes)
+    .where(eq(ticketTypes.eventId, event.id));
   const requested = new Map<string, number>();
   const coupon = await validateCoupon(tx, event.id, body.code);
   const fields = await tx
@@ -177,7 +182,47 @@ async function cart(
           !coupon.ticketTypeIds.includes(tier.id)))
     )
       throw new HttpError(403, "An eligible access code is required.");
-    if (!complimentary) validateFormResponses(fields, purchase.formResponses);
+    if (!complimentary) {
+      validateFormResponses(
+        fields,
+        purchase.formResponses,
+        purchase.ticketTypeId,
+      );
+      if (purchase.formResponses?.length) {
+        const answers = new Map<string, string>();
+        for (const resp of purchase.formResponses) {
+          answers.set(resp.fieldId, resp.responseValue.trim());
+        }
+        purchase.formResponses = purchase.formResponses.filter((resp) => {
+          const field = fields.find((f) => f.id === resp.fieldId);
+          return field
+            ? getFieldAction(field, answers, purchase.ticketTypeId) !== "hide"
+            : true;
+        });
+      }
+    }
+    if (
+      !complimentary &&
+      tier.eligibilityRules &&
+      tier.eligibilityRules.rules &&
+      tier.eligibilityRules.rules.length > 0
+    ) {
+      const answers = new Map<string, string>();
+      for (const resp of purchase.formResponses || []) {
+        answers.set(resp.fieldId, resp.responseValue.trim());
+      }
+      const isEligible = evaluateConditionGroup(
+        tier.eligibilityRules,
+        answers,
+        purchase.ticketTypeId,
+      );
+      if (!isEligible) {
+        throw new HttpError(
+          403,
+          `You are not eligible to purchase the ticket tier "${tier.name}".`,
+        );
+      }
+    }
     for (const response of purchase.formResponses || []) {
       if (fields.find((f) => f.id === response.fieldId)?.fieldType !== "file")
         continue;
@@ -204,7 +249,7 @@ async function cart(
     event.capacity,
     await allocatedByTier(tx, event.id),
     requested,
-    tiers,
+    allEventTiers,
     event.overbookingLimit ?? 0,
   );
   const policy = pricingPolicy();

@@ -45,6 +45,25 @@ export type FormFieldOptions =
   | { choices: string[]; min?: number | null; max?: number | null }
   | null;
 
+export interface ConditionRule {
+  sourceType: "field" | "ticketType";
+  sourceId: string; // fieldId or "ticketTypeId"
+  operator: "equals" | "not_equals" | "contains" | "in";
+  value: string | string[];
+}
+
+export interface ConditionGroup {
+  match: "all" | "any"; // AND vs OR
+  rules: ConditionRule[];
+}
+
+export interface FieldConditionConfig {
+  match: "all" | "any"; // AND vs OR
+  rules: ConditionRule[];
+  thenAction: "show" | "require" | "hide";
+  elseAction: "hide" | "optional" | "show";
+}
+
 export interface FormField {
   id: string;
   eventId: string;
@@ -53,6 +72,7 @@ export interface FormField {
   fieldType: FieldType;
   isRequired: boolean;
   options: FormFieldOptions;
+  conditions?: FieldConditionConfig | null;
   sortOrder: number;
   page: number;
   createdAt: string;
@@ -64,6 +84,7 @@ export interface CreateFormFieldPayload {
   fieldType: FieldType;
   isRequired?: boolean;
   options?: FormFieldOptions;
+  conditions?: FieldConditionConfig | null;
   sortOrder?: number;
   page?: number;
 }

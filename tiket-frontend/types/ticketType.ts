@@ -1,3 +1,5 @@
+import type { ConditionGroup } from "./form";
+
 export interface TicketType {
   isHidden?: boolean;
   id: string;
@@ -6,6 +8,9 @@ export interface TicketType {
   description: string | null;
   price: string;
   quantityLimit: number | null;
+  poolName?: string | null;
+  poolCapacity?: number | null;
+  eligibilityRules?: ConditionGroup | null;
   saleStart: string | null;
   saleEnd: string | null;
   isRefundable: boolean;
@@ -23,6 +28,9 @@ export interface CreateTicketTypePayload {
   description?: string;
   price?: number;
   quantityLimit?: number | null;
+  poolName?: string | null;
+  poolCapacity?: number | null;
+  eligibilityRules?: ConditionGroup | null;
   saleStart?: string | null;
   saleEnd?: string | null;
   isRefundable?: boolean;

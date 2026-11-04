@@ -11,7 +11,13 @@ import { useAvailability } from "@/hooks/useAvailability";
 import CheckoutReview from "../CheckoutReview";
 import { Input } from "@/components/ui/input";
 import type { RegistrationFormProps, SubmitStep } from "./types";
-import { isTicketActive, buildZodSchema, buildFormResponses } from "./utils";
+import {
+  isTicketActive,
+  buildZodSchema,
+  buildFormResponses,
+  getFieldAction,
+  evaluateConditionGroup,
+} from "./utils";
 
 import ApprovalBanner from "./ApprovalBanner";
 import { TicketSelector, AutoSelectedBadge } from "./TicketSelector";
@@ -48,6 +54,9 @@ export default function RegistrationForm({
   );
   const needsTicketSelection = activeTicketTypes.length > 1;
 
+  // ── Effective ticket selection ──────────────────────────────────────────
+  const effectiveTypeId = selectedTicketTypeId ?? activeTicketTypes[0]?.id;
+
   // ── Normalize 0-indexed page numbers & sort fields ─────────────────────────
   const normalizedFormFields = useMemo(() => {
     if (!formFields || formFields.length === 0) return [];
@@ -69,27 +78,10 @@ export default function RegistrationForm({
       });
   }, [formFields]);
 
-  // ── Page / field grouping ──────────────────────────────────────────────────
-  const maxPage =
-    normalizedFormFields.length > 0
-      ? Math.max(...normalizedFormFields.map((f) => f.page))
-      : 0;
-
-  const pages = useMemo(() => {
-    const map: Record<number, typeof normalizedFormFields> = {};
-    for (const f of normalizedFormFields) {
-      if (!map[f.page]) map[f.page] = [];
-      map[f.page]!.push(f);
-    }
-    return map;
-  }, [normalizedFormFields]);
-
-  const hasForm = normalizedFormFields.length > 0;
-
   // ── Zod + react-hook-form ──────────────────────────────────────────────────
   const schema = useMemo(
-    () => buildZodSchema(normalizedFormFields),
-    [normalizedFormFields],
+    () => buildZodSchema(normalizedFormFields, effectiveTypeId),
+    [normalizedFormFields, effectiveTypeId],
   );
 
   const defaultValues = useMemo(() => {
@@ -108,12 +100,51 @@ export default function RegistrationForm({
     control,
     handleSubmit,
     trigger,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues,
     mode: "onBlur",
   });
+
+  const formValues = watch();
+
+  const answers = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [key, val] of Object.entries(formValues || {})) {
+      if (val !== undefined && val !== null) {
+        map.set(
+          key,
+          Array.isArray(val) ? JSON.stringify(val) : String(val).trim(),
+        );
+      }
+    }
+    return map;
+  }, [formValues]);
+
+  // ── Visible fields with live conditional evaluation ────────────────────────
+  const visibleFormFields = useMemo(() => {
+    return normalizedFormFields.filter(
+      (f) => getFieldAction(f, answers, effectiveTypeId) !== "hide",
+    );
+  }, [normalizedFormFields, answers, effectiveTypeId]);
+
+  const maxPage =
+    visibleFormFields.length > 0
+      ? Math.max(...visibleFormFields.map((f) => f.page))
+      : 0;
+
+  const pages = useMemo(() => {
+    const map: Record<number, typeof visibleFormFields> = {};
+    for (const f of visibleFormFields) {
+      if (!map[f.page]) map[f.page] = [];
+      map[f.page]!.push(f);
+    }
+    return map;
+  }, [visibleFormFields]);
+
+  const hasForm = visibleFormFields.length > 0;
 
   // ── Pagination handlers ────────────────────────────────────────────────────
   const handleNextPage = async () => {
@@ -126,11 +157,30 @@ export default function RegistrationForm({
 
   // ── Submission ─────────────────────────────────────────────────────────────
   const onSubmit = async (data: Record<string, unknown>) => {
-    const effectiveTypeId = selectedTicketTypeId ?? activeTicketTypes[0]?.id;
     if (!effectiveTypeId) {
       setErrorMessage("Please select a ticket type.");
       setSubmitStep("error");
       return;
+    }
+
+    const tier = activeTicketTypes.find((t) => t.id === effectiveTypeId);
+    if (
+      tier?.eligibilityRules &&
+      tier.eligibilityRules.rules &&
+      tier.eligibilityRules.rules.length > 0
+    ) {
+      const isEligible = evaluateConditionGroup(
+        tier.eligibilityRules,
+        answers,
+        effectiveTypeId,
+      );
+      if (!isEligible) {
+        setErrorMessage(
+          `You do not meet the eligibility requirements for the selected "${tier.name}" ticket.`,
+        );
+        setSubmitStep("error");
+        return;
+      }
     }
 
     await checkout.prepare({
@@ -139,7 +189,11 @@ export default function RegistrationForm({
       purchases: [
         {
           ticketTypeId: effectiveTypeId,
-          formResponses: buildFormResponses(normalizedFormFields, data),
+          formResponses: buildFormResponses(
+            normalizedFormFields,
+            data,
+            effectiveTypeId,
+          ),
         },
       ],
     });
@@ -208,7 +262,7 @@ export default function RegistrationForm({
 
       {hasForm && (
         <FormFieldsSection
-          fields={normalizedFormFields}
+          fields={visibleFormFields}
           currentPage={currentPage}
           maxPage={maxPage}
           pages={pages}

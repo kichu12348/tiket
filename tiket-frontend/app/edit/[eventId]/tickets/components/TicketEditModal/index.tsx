@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createTicketType, updateTicketType } from "@/api/tickets";
+import { getFormFields } from "@/api/forms";
 import type { TicketType } from "@/types/ticketType";
+import type { FormField, ConditionGroup } from "@/types/form";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { Globe, CalendarIcon, Clock } from "lucide-react";
@@ -100,6 +102,42 @@ function TicketEditModalContent({
       eventEndDate ||
       new Date(Date.now() + 86400000).toISOString(),
   );
+  const [poolName, setPoolName] = useState(ticket?.poolName ?? "");
+  const [poolCapacity, setPoolCapacity] = useState(
+    ticket?.poolCapacity?.toString() ?? "",
+  );
+  const [hasEligibility, setHasEligibility] = useState(
+    Boolean(
+      ticket?.eligibilityRules &&
+        ticket.eligibilityRules.rules &&
+        ticket.eligibilityRules.rules.length > 0,
+    ),
+  );
+  const [eligibilityFieldId, setEligibilityFieldId] = useState(
+    ticket?.eligibilityRules?.rules?.[0]?.sourceId ?? "",
+  );
+  const [eligibilityOperator, setEligibilityOperator] = useState<
+    "equals" | "not_equals" | "contains" | "in"
+  >(
+    (ticket?.eligibilityRules?.rules?.[0]?.operator as
+      | "equals"
+      | "not_equals"
+      | "contains"
+      | "in") ?? "equals",
+  );
+  const [eligibilityValue, setEligibilityValue] = useState(
+    Array.isArray(ticket?.eligibilityRules?.rules?.[0]?.value)
+      ? ticket?.eligibilityRules?.rules?.[0]?.value.join(", ")
+      : (ticket?.eligibilityRules?.rules?.[0]?.value ?? ""),
+  );
+  const [availableFields, setAvailableFields] = useState<FormField[]>([]);
+
+  useEffect(() => {
+    getFormFields(eventId)
+      .then((fields) => setAvailableFields(fields || []))
+      .catch(() => {});
+  }, [eventId]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSave = async () => {
@@ -129,11 +167,40 @@ function TicketEditModalContent({
 
     try {
       setIsSubmitting(true);
+      let eligibilityRules: ConditionGroup | null = null;
+      if (
+        hasEligibility &&
+        eligibilityFieldId.trim() &&
+        eligibilityValue.trim()
+      ) {
+        const val =
+          eligibilityOperator === "in"
+            ? eligibilityValue
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : eligibilityValue.trim();
+        eligibilityRules = {
+          match: "all",
+          rules: [
+            {
+              sourceType: "field",
+              sourceId: eligibilityFieldId.trim(),
+              operator: eligibilityOperator,
+              value: val,
+            },
+          ],
+        };
+      }
+
       const payload = {
         name,
         description,
         price: Number(price),
         quantityLimit: quantityLimit ? parseInt(quantityLimit, 10) : null,
+        poolName: poolName.trim() || null,
+        poolCapacity: poolCapacity ? parseInt(poolCapacity, 10) : null,
+        eligibilityRules,
         isHidden,
         isRefundable,
         isTransferable,
@@ -218,6 +285,41 @@ function TicketEditModalContent({
               data-testid="ticket-quantity-input"
             />
           </div>
+          <div className={styles.formGroup}>
+            <label>Shared Capacity Pool (Optional)</label>
+            <input
+              type="text"
+              className={styles.input}
+              placeholder="e.g. Category A or Student Pool"
+              value={poolName}
+              onChange={(e) => setPoolName(e.target.value)}
+              data-testid="ticket-pool-name-input"
+            />
+            <span
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--text-muted)",
+                marginTop: "0.25rem",
+                display: "block",
+              }}
+            >
+              Share pool capacity across multiple tiers (e.g. Early Bird + Regular).
+            </span>
+          </div>
+          {poolName.trim() && (
+            <div className={styles.formGroup}>
+              <label>Shared Pool Capacity</label>
+              <input
+                type="number"
+                className={styles.input}
+                placeholder="Total capacity for this pool (e.g. 60)"
+                value={poolCapacity}
+                onChange={(e) => setPoolCapacity(e.target.value)}
+                min="1"
+                data-testid="ticket-pool-capacity-input"
+              />
+            </div>
+          )}
           <div className={styles.formGroup}>
             <div
               style={{
@@ -386,6 +488,102 @@ function TicketEditModalContent({
                 min="1"
                 data-testid="ticket-max-transfers-input"
               />
+            </div>
+          )}
+          <div className={styles.switchRow}>
+            <span>Require Form Eligibility</span>
+            <Switch
+              id="ticket-eligibility-switch"
+              checked={hasEligibility}
+              onChange={setHasEligibility}
+            />
+          </div>
+          {hasEligibility && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+                padding: "0.85rem",
+                background: "rgba(255, 255, 255, 0.03)",
+                borderRadius: "8px",
+                border: "1px solid var(--border-subtle)",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                }}
+              >
+                Eligible only IF Form Question matches:
+              </span>
+              <div className={styles.formGroup}>
+                <label style={{ fontSize: "0.75rem" }}>Form Question</label>
+                {availableFields.length > 0 ? (
+                  <select
+                    className={styles.input}
+                    value={eligibilityFieldId}
+                    onChange={(e) => setEligibilityFieldId(e.target.value)}
+                    style={{ background: "#1c1c1e", color: "#fff" }}
+                    data-testid="ticket-eligibility-field-select"
+                  >
+                    <option value="">Select a question...</option>
+                    {availableFields.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.label} ({f.name})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    className={styles.input}
+                    placeholder="Field ID or name (e.g. role)"
+                    value={eligibilityFieldId}
+                    onChange={(e) => setEligibilityFieldId(e.target.value)}
+                    data-testid="ticket-eligibility-field-input"
+                  />
+                )}
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: "0.75rem" }}>Operator</label>
+                  <select
+                    className={styles.input}
+                    value={eligibilityOperator}
+                    onChange={(e) =>
+                      setEligibilityOperator(
+                        e.target.value as
+                          | "equals"
+                          | "not_equals"
+                          | "contains"
+                          | "in",
+                      )
+                    }
+                    style={{ background: "#1c1c1e", color: "#fff" }}
+                    data-testid="ticket-eligibility-operator-select"
+                  >
+                    <option value="equals">Equals</option>
+                    <option value="not_equals">Does not equal</option>
+                    <option value="contains">Contains</option>
+                    <option value="in">In list</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: "0.75rem" }}>Expected Value</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    placeholder="e.g. Student"
+                    value={eligibilityValue}
+                    onChange={(e) => setEligibilityValue(e.target.value)}
+                    data-testid="ticket-eligibility-value-input"
+                  />
+                </div>
+              </div>
             </div>
           )}
           <div className={styles.footer}>

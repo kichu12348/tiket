@@ -17,6 +17,39 @@ const fieldTypes = [
   "select",
 ] as const;
 
+const conditionRuleSchema = {
+  type: "object",
+  required: ["sourceType", "sourceId", "operator", "value"],
+  properties: {
+    sourceType: { type: "string", enum: ["field", "ticketType"] },
+    sourceId: { type: "string" },
+    operator: {
+      type: "string",
+      enum: ["equals", "not_equals", "contains", "in"],
+    },
+    value: {
+      anyOf: [
+        { type: "string" },
+        { type: "array", items: { type: "string" } },
+      ],
+    },
+  },
+};
+
+const fieldConditionConfigSchema = {
+  type: "object",
+  required: ["match", "rules", "thenAction", "elseAction"],
+  properties: {
+    match: { type: "string", enum: ["all", "any"] },
+    rules: {
+      type: "array",
+      items: conditionRuleSchema,
+    },
+    thenAction: { type: "string", enum: ["show", "require", "hide"] },
+    elseAction: { type: "string", enum: ["hide", "optional", "show"] },
+  },
+};
+
 const formFieldObj = {
   type: "object",
   properties: {
@@ -38,10 +71,14 @@ const formFieldObj = {
             choices: { type: "array", items: { type: "string" } },
             min: { type: ["integer", "null"] },
             max: { type: ["integer", "null"] },
+            conditions: { anyOf: [fieldConditionConfigSchema, { type: "null" }] },
           },
         },
         { type: "null" },
       ],
+    },
+    conditions: {
+      anyOf: [fieldConditionConfigSchema, { type: "null" }],
     },
     sortOrder: { type: "integer" },
     page: { type: "integer" },
@@ -81,10 +118,16 @@ export const createFieldSchema = {
                 choices: { type: "array", items: { type: "string" } },
                 min: { type: ["integer", "null"] },
                 max: { type: ["integer", "null"] },
+                conditions: {
+                  anyOf: [fieldConditionConfigSchema, { type: "null" }],
+                },
               },
             },
             { type: "null" },
           ],
+        },
+        conditions: {
+          anyOf: [fieldConditionConfigSchema, { type: "null" }],
         },
         sortOrder: { type: "integer" },
         page: { type: "integer" },
@@ -145,10 +188,16 @@ export const updateFieldSchema = {
                 choices: { type: "array", items: { type: "string" } },
                 min: { type: ["integer", "null"] },
                 max: { type: ["integer", "null"] },
+                conditions: {
+                  anyOf: [fieldConditionConfigSchema, { type: "null" }],
+                },
               },
             },
             { type: "null" },
           ],
+        },
+        conditions: {
+          anyOf: [fieldConditionConfigSchema, { type: "null" }],
         },
         sortOrder: { type: "integer" },
         page: { type: "integer" },

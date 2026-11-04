@@ -1,6 +1,143 @@
 import { z } from "zod";
 import type { TicketType } from "@/types/ticketType";
-import type { FormField } from "@/types/form";
+import type {
+  FormField,
+  ConditionRule,
+  ConditionGroup,
+  FieldConditionConfig,
+} from "@/types/form";
+
+export function evaluateConditionRule(
+  rule: ConditionRule,
+  answers: Map<string, string>,
+  ticketTypeId?: string,
+): boolean {
+  let sourceRaw = "";
+  if (rule.sourceType === "ticketType") {
+    sourceRaw = ticketTypeId ?? "";
+  } else {
+    sourceRaw = answers.get(rule.sourceId) ?? "";
+  }
+
+  let sourceArray: string[] | null = null;
+  if (sourceRaw.startsWith("[") && sourceRaw.endsWith("]")) {
+    try {
+      const parsed: unknown = JSON.parse(sourceRaw);
+      if (Array.isArray(parsed) && parsed.every((i) => typeof i === "string")) {
+        sourceArray = parsed;
+      }
+    } catch {
+      // not JSON
+    }
+  }
+
+  const targetValues: string[] = Array.isArray(rule.value)
+    ? rule.value.map(String)
+    : [String(rule.value ?? "")];
+
+  const compareEq = (a: string, b: string) =>
+    a.trim().toLowerCase() === b.trim().toLowerCase();
+
+  switch (rule.operator) {
+    case "equals": {
+      if (sourceArray !== null) {
+        if (Array.isArray(rule.value)) {
+          return (
+            sourceArray.length === rule.value.length &&
+            sourceArray.every((item, idx) =>
+              compareEq(item, (rule.value as string[])[idx] ?? ""),
+            )
+          );
+        }
+        return targetValues.some((tv) =>
+          sourceArray!.some((item) => compareEq(item, tv)),
+        );
+      }
+      return targetValues.some((tv) => compareEq(sourceRaw, tv));
+    }
+    case "not_equals": {
+      if (sourceArray !== null) {
+        if (Array.isArray(rule.value)) {
+          return !(
+            sourceArray.length === rule.value.length &&
+            sourceArray.every((item, idx) =>
+              compareEq(item, (rule.value as string[])[idx] ?? ""),
+            )
+          );
+        }
+        return !targetValues.some((tv) =>
+          sourceArray!.some((item) => compareEq(item, tv)),
+        );
+      }
+      return !targetValues.some((tv) => compareEq(sourceRaw, tv));
+    }
+    case "contains": {
+      const targetStr = (
+        Array.isArray(rule.value)
+          ? rule.value.join(" ")
+          : String(rule.value ?? "")
+      ).toLowerCase();
+      if (sourceArray !== null) {
+        return sourceArray.some(
+          (item) =>
+            item.toLowerCase().includes(targetStr) ||
+            targetStr.includes(item.toLowerCase()),
+        );
+      }
+      return sourceRaw.toLowerCase().includes(targetStr);
+    }
+    case "in": {
+      if (sourceArray !== null) {
+        return sourceArray.some((item) =>
+          targetValues.some((tv) => compareEq(item, tv)),
+        );
+      }
+      return targetValues.some((tv) => compareEq(sourceRaw, tv));
+    }
+    default:
+      return false;
+  }
+}
+
+export function evaluateConditionGroup(
+  group: ConditionGroup,
+  answers: Map<string, string>,
+  ticketTypeId?: string,
+): boolean {
+  if (!group || !group.rules || group.rules.length === 0) {
+    return true;
+  }
+  if (group.match === "any") {
+    return group.rules.some((rule) =>
+      evaluateConditionRule(rule, answers, ticketTypeId),
+    );
+  }
+  return group.rules.every((rule) =>
+    evaluateConditionRule(rule, answers, ticketTypeId),
+  );
+}
+
+export function getFieldAction(
+  field: FormField,
+  answers: Map<string, string>,
+  ticketTypeId?: string,
+): "show" | "require" | "hide" | "optional" {
+  const optionsObj =
+    field.options &&
+    typeof field.options === "object" &&
+    !Array.isArray(field.options)
+      ? (field.options as { conditions?: FieldConditionConfig })
+      : null;
+
+  const config = field.conditions || optionsObj?.conditions;
+
+  if (!config || !config.rules || config.rules.length === 0) {
+    return field.isRequired ? "require" : "optional";
+  }
+
+  const isMatch = evaluateConditionGroup(config, answers, ticketTypeId);
+  return isMatch ? config.thenAction : config.elseAction;
+}
 
 /** Returns true when a ticket type is currently on sale. */
 export function isTicketActive(tt: TicketType): boolean {
@@ -79,85 +216,113 @@ export function groupFieldsByPage(fields: FormField[]): {
 }
 
 /**
- * Derives a Zod schema from an array of FormField definitions.
+ * Derives a Zod schema from an array of FormField definitions and live conditional rules.
  * Validates each field type in 100% compliance with tiket-backend validateFormResponses.
  */
 export function buildZodSchema(
   fields: FormField[],
-): z.ZodObject<z.ZodRawShape> {
+  ticketTypeId?: string,
+): z.ZodTypeAny {
   const shape: z.ZodRawShape = {};
 
   for (const field of fields) {
-    const choices = extractChoices(field.options);
     const multiple =
       field.fieldType === "multi_select" || field.fieldType === "checkbox";
+    shape[field.id] = multiple
+      ? z.array(z.string()).default([])
+      : z.string().default("");
+  }
 
-    if (multiple) {
-      const opts =
-        field.options &&
-        typeof field.options === "object" &&
-        !Array.isArray(field.options)
-          ? field.options
-          : null;
-      const minChoices = typeof opts?.min === "number" ? opts.min : null;
-      const maxChoices = typeof opts?.max === "number" ? opts.max : null;
+  return z.object(shape).superRefine((data, ctx) => {
+    const answers = new Map<string, string>();
+    for (const [key, val] of Object.entries(data)) {
+      if (val !== undefined && val !== null) {
+        answers.set(
+          key,
+          Array.isArray(val) ? JSON.stringify(val) : String(val).trim(),
+        );
+      }
+    }
 
-      shape[field.id] = z.array(z.string()).superRefine((items, ctx) => {
-        if (field.isRequired && items.length === 0) {
+    for (const field of fields) {
+      const action = getFieldAction(field, answers, ticketTypeId);
+      if (action === "hide") {
+        // Hidden field: do not validate or issue any errors
+        continue;
+      }
+
+      const val = data[field.id];
+      const multiple =
+        field.fieldType === "multi_select" || field.fieldType === "checkbox";
+      const items: string[] = Array.isArray(val) ? (val as string[]) : [];
+      const trimmed = typeof val === "string" ? val.trim() : "";
+
+      const isReq =
+        action === "require" || (action === "show" && field.isRequired);
+
+      if (multiple) {
+        if (isReq && items.length === 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
+            path: [field.id],
             message: `${field.label} is required`,
           });
-          return;
+          continue;
         }
-
-        if (items.length === 0) return;
+        if (items.length === 0) continue;
 
         if (new Set(items).size !== items.length) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
+            path: [field.id],
             message: "Duplicate selections are not allowed",
           });
         }
-
+        const choices = extractChoices(field.options);
         if (
           choices.length > 0 &&
           items.some((item) => !choices.includes(item))
         ) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
+            path: [field.id],
             message: `Invalid answer for ${field.label}`,
           });
         }
-
+        const opts =
+          field.options &&
+          typeof field.options === "object" &&
+          !Array.isArray(field.options)
+            ? field.options
+            : null;
+        const minChoices = typeof opts?.min === "number" ? opts.min : null;
+        const maxChoices = typeof opts?.max === "number" ? opts.max : null;
         if (minChoices !== null && items.length < minChoices) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
+            path: [field.id],
             message: `Select at least ${minChoices} option${minChoices > 1 ? "s" : ""}`,
           });
         }
-
         if (maxChoices !== null && items.length > maxChoices) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
+            path: [field.id],
             message: `Select at most ${maxChoices} option${maxChoices > 1 ? "s" : ""}`,
           });
         }
-      });
-      continue;
-    }
-
-    shape[field.id] = z.string().superRefine((val, ctx) => {
-      const trimmed = val.trim();
-      if (!trimmed) {
-        if (field.isRequired) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `${field.label} is required`,
-          });
-        }
-        return;
+        continue;
       }
+
+      if (isReq && !trimmed) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field.id],
+          message: `${field.label} is required`,
+        });
+        continue;
+      }
+      if (!trimmed) continue;
 
       if (
         field.fieldType === "email" &&
@@ -165,6 +330,7 @@ export function buildZodSchema(
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
+          path: [field.id],
           message: "Enter a valid email address",
         });
       }
@@ -175,6 +341,7 @@ export function buildZodSchema(
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
+          path: [field.id],
           message: "Enter a valid phone number",
         });
       }
@@ -185,6 +352,7 @@ export function buildZodSchema(
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
+          path: [field.id],
           message: "Must be a valid number",
         });
       }
@@ -194,6 +362,7 @@ export function buildZodSchema(
         if (!Number.isInteger(n) || n < 1 || n > 5) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
+            path: [field.id],
             message: "Rating must be an integer from 1 to 5",
           });
         }
@@ -205,12 +374,14 @@ export function buildZodSchema(
           if (!["http:", "https:"].includes(u.protocol)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
+              path: [field.id],
               message: "URL must begin with http:// or https://",
             });
           }
         } catch {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
+            path: [field.id],
             message: "Enter a valid URL",
           });
         }
@@ -222,6 +393,7 @@ export function buildZodSchema(
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
+          path: [field.id],
           message: "Please upload a valid file",
         });
       }
@@ -232,6 +404,7 @@ export function buildZodSchema(
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
+          path: [field.id],
           message: "Enter a valid date",
         });
       }
@@ -242,10 +415,12 @@ export function buildZodSchema(
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
+          path: [field.id],
           message: "Enter a valid time (HH:mm)",
         });
       }
 
+      const choices = extractChoices(field.options);
       if (
         ["select", "single_select", "radio"].includes(field.fieldType) &&
         choices.length > 0 &&
@@ -253,24 +428,35 @@ export function buildZodSchema(
       ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
+          path: [field.id],
           message: `Please select a valid option for ${field.label}`,
         });
       }
-    });
-  }
-
-  return z.object(shape);
+    }
+  });
 }
 
 /**
  * Converts raw react-hook-form data into the flat form-response array
- * expected by the POST /api/orders body.
+ * expected by the POST /api/orders body. Strips fields that evaluate to "hide".
  */
 export function buildFormResponses(
   formFields: FormField[],
   data: Record<string, unknown>,
+  ticketTypeId?: string,
 ): { fieldId: string; responseValue: string }[] {
+  const answers = new Map<string, string>();
+  for (const [key, val] of Object.entries(data)) {
+    if (val !== undefined && val !== null) {
+      answers.set(
+        key,
+        Array.isArray(val) ? JSON.stringify(val) : String(val).trim(),
+      );
+    }
+  }
+
   return formFields
+    .filter((field) => getFieldAction(field, answers, ticketTypeId) !== "hide")
     .map((field) => {
       const val = data[field.id];
       if (val === undefined || val === null || val === "") return null;

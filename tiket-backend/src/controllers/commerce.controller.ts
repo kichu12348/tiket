@@ -409,6 +409,24 @@ export async function getAvailability(
       .select({ version: events.version })
       .from(events)
       .where(eq(events.id, event.id));
+
+    const poolAllocated = new Map<string, number>();
+    const poolCapacities = new Map<string, number>();
+    for (const tier of tiers) {
+      if (
+        tier.poolName &&
+        tier.poolCapacity !== null &&
+        tier.poolCapacity !== undefined
+      ) {
+        poolCapacities.set(tier.poolName, tier.poolCapacity);
+        poolAllocated.set(
+          tier.poolName,
+          (poolAllocated.get(tier.poolName) || 0) +
+            (allocated.get(tier.id) || 0),
+        );
+      }
+    }
+
     return {
       version: version!.version,
       remaining: eventRemaining,
@@ -422,19 +440,36 @@ export async function getAvailability(
               (!access.ticketTypeIds.length ||
                 access.ticketTypeIds.includes(tier.id))),
         )
-        .map((tier) => ({
-          ...tier,
-          remaining:
+        .map((tier) => {
+          const eventRemainingVal =
+            eventRemaining === null ? Infinity : eventRemaining;
+          const tierRemainingVal =
             tier.quantityLimit === null
-              ? eventRemaining
-              : Math.min(
-                  eventRemaining ?? Infinity,
-                  Math.max(
-                    0,
-                    tier.quantityLimit - (allocated.get(tier.id) || 0),
-                  ),
-                ),
-        })),
+              ? Infinity
+              : Math.max(
+                  0,
+                  tier.quantityLimit - (allocated.get(tier.id) || 0),
+                );
+          const poolRemainingVal =
+            tier.poolName && poolCapacities.has(tier.poolName)
+              ? Math.max(
+                  0,
+                  poolCapacities.get(tier.poolName)! -
+                    (poolAllocated.get(tier.poolName) || 0),
+                )
+              : Infinity;
+
+          const minRemaining = Math.min(
+            eventRemainingVal,
+            poolRemainingVal,
+            tierRemainingVal,
+          );
+
+          return {
+            ...tier,
+            remaining: minRemaining === Infinity ? null : minRemaining,
+          };
+        }),
     };
   });
 }

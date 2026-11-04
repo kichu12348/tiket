@@ -1,3 +1,34 @@
+const conditionRuleSchema = {
+  type: "object",
+  required: ["sourceType", "sourceId", "operator", "value"],
+  properties: {
+    sourceType: { type: "string", enum: ["field", "ticketType"] },
+    sourceId: { type: "string" },
+    operator: {
+      type: "string",
+      enum: ["equals", "not_equals", "contains", "in"],
+    },
+    value: {
+      anyOf: [
+        { type: "string" },
+        { type: "array", items: { type: "string" } },
+      ],
+    },
+  },
+};
+
+const conditionGroupSchema = {
+  type: "object",
+  required: ["match", "rules"],
+  properties: {
+    match: { type: "string", enum: ["all", "any"] },
+    rules: {
+      type: "array",
+      items: conditionRuleSchema,
+    },
+  },
+};
+
 const ticketTypeObj = {
   type: "object",
   properties: {
@@ -8,6 +39,11 @@ const ticketTypeObj = {
     description: { type: ["string", "null"] },
     price: { type: "string" },
     quantityLimit: { type: ["integer", "null"], minimum: 1 },
+    poolName: { type: ["string", "null"] },
+    poolCapacity: { type: ["integer", "null"], minimum: 1 },
+    eligibilityRules: {
+      anyOf: [conditionGroupSchema, { type: "null" }],
+    },
     saleStart: { type: ["string", "null"], format: "date-time" },
     saleEnd: { type: ["string", "null"], format: "date-time" },
     isRefundable: { type: "boolean" },
@@ -41,6 +77,11 @@ export const createTicketTypeSchema = {
         description: { type: "string" },
         price: { type: "number", minimum: 0, maximum: 10000000 },
         quantityLimit: { type: ["integer", "null"], minimum: 1 },
+        poolName: { type: ["string", "null"] },
+        poolCapacity: { type: ["integer", "null"], minimum: 1 },
+        eligibilityRules: {
+          anyOf: [conditionGroupSchema, { type: "null" }],
+        },
         saleStart: { type: "string", format: "date-time" },
         saleEnd: { type: "string", format: "date-time" },
         isRefundable: { type: "boolean" },
@@ -95,6 +136,11 @@ export const updateTicketTypeSchema = {
         description: { type: "string" },
         price: { type: "number", minimum: 0, maximum: 10000000 },
         quantityLimit: { type: ["integer", "null"], minimum: 1 },
+        poolName: { type: ["string", "null"] },
+        poolCapacity: { type: ["integer", "null"], minimum: 1 },
+        eligibilityRules: {
+          anyOf: [conditionGroupSchema, { type: "null" }],
+        },
         saleStart: { type: ["string", "null"], format: "date-time" },
         saleEnd: { type: ["string", "null"], format: "date-time" },
         isRefundable: { type: "boolean" },

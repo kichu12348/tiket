@@ -136,7 +136,12 @@ export function assertCapacity(
   eventCapacity: number | null,
   allocated: Map<string, number>,
   requested: Map<string, number>,
-  tiers: { id: string; quantityLimit: number | null }[],
+  tiers: {
+    id: string;
+    quantityLimit: number | null;
+    poolName?: string | null;
+    poolCapacity?: number | null;
+  }[],
   overbookingLimit = 0,
 ) {
   const used = [...allocated.values()].reduce((a, b) => a + b, 0);
@@ -145,6 +150,38 @@ export function assertCapacity(
     eventCapacity !== null ? eventCapacity + overbookingLimit : null;
   if (maxCapacity !== null && used + wanted > maxCapacity)
     throw new HttpError(409, "Event is sold out.");
+
+  const poolTotals = new Map<
+    string,
+    { capacity: number; totalAllocated: number; totalRequested: number }
+  >();
+
+  for (const tier of tiers) {
+    if (
+      tier.poolName &&
+      tier.poolCapacity !== null &&
+      tier.poolCapacity !== undefined
+    ) {
+      const existing = poolTotals.get(tier.poolName) || {
+        capacity: tier.poolCapacity,
+        totalAllocated: 0,
+        totalRequested: 0,
+      };
+      existing.totalAllocated += allocated.get(tier.id) || 0;
+      existing.totalRequested += requested.get(tier.id) || 0;
+      poolTotals.set(tier.poolName, existing);
+    }
+  }
+
+  for (const [, pool] of poolTotals) {
+    if (
+      pool.totalRequested > 0 &&
+      pool.totalAllocated + pool.totalRequested > pool.capacity
+    ) {
+      throw new HttpError(409, "Selected category pool is sold out.");
+    }
+  }
+
   for (const tier of tiers)
     if (
       tier.quantityLimit !== null &&

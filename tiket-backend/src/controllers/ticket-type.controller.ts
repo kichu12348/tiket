@@ -9,10 +9,10 @@ import {
 import { verifyEventPermission } from "../utils/permissions";
 import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
+import type { ConditionGroup } from "../utils/registration-validation";
 import db from "@db";
 import { ticketTypes, events, tickets } from "@db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
-import { verifyEventOwner } from "@utils";
 
 interface CreateTicketTypeBody {
   isHidden?: boolean;
@@ -20,6 +20,9 @@ interface CreateTicketTypeBody {
   description?: string;
   price?: number;
   quantityLimit?: number | null;
+  poolName?: string | null;
+  poolCapacity?: number | null;
+  eligibilityRules?: ConditionGroup | null;
   saleStart?: string | null;
   saleEnd?: string | null;
   isRefundable?: boolean;
@@ -84,6 +87,9 @@ export const createTicketType = async (
           description: body.description,
           price: normalizedPrice,
           quantityLimit: body.quantityLimit,
+          poolName: body.poolName ?? null,
+          poolCapacity: body.poolCapacity ?? null,
+          eligibilityRules: body.eligibilityRules ?? null,
           saleStart: body.saleStart ? new Date(body.saleStart) : null,
           saleEnd: body.saleEnd ? new Date(body.saleEnd) : null,
           isRefundable: body.isRefundable ?? false,
@@ -185,6 +191,11 @@ export const updateTicketType = async (
       payload.price = fromPaise(toPaise(String(body.price)));
     if (body.quantityLimit !== undefined)
       payload.quantityLimit = body.quantityLimit;
+    if (body.poolName !== undefined) payload.poolName = body.poolName;
+    if (body.poolCapacity !== undefined)
+      payload.poolCapacity = body.poolCapacity;
+    if (body.eligibilityRules !== undefined)
+      payload.eligibilityRules = body.eligibilityRules;
     if (body.isRefundable !== undefined)
       payload.isRefundable = body.isRefundable;
     if (body.isTransferable !== undefined)
@@ -231,6 +242,31 @@ export const updateTicketType = async (
           409,
           "Quantity cannot be reduced below allocated tickets.",
         );
+      if (body.poolCapacity !== undefined && body.poolCapacity !== null) {
+        const targetPool =
+          body.poolName !== undefined ? body.poolName : current.poolName;
+        if (targetPool) {
+          const allTiers = await tx
+            .select()
+            .from(ticketTypes)
+            .where(eq(ticketTypes.eventId, eventId));
+          const allocated = await allocatedByTier(tx, eventId);
+          let totalPoolAllocated = 0;
+          for (const t of allTiers) {
+            const tPool: string | null =
+              t.id === ticketTypeId ? targetPool : t.poolName;
+            if (tPool === targetPool) {
+              totalPoolAllocated += allocated.get(t.id) || 0;
+            }
+          }
+          if (body.poolCapacity < totalPoolAllocated) {
+            throw new HttpError(
+              409,
+              "Pool capacity cannot be reduced below allocated tickets in the pool.",
+            );
+          }
+        }
+      }
       const result = await tx
         .update(ticketTypes)
         .set(payload)
