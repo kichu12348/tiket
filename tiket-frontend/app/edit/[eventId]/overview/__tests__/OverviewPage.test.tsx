@@ -39,7 +39,7 @@ try {
 }
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import type { EventInsightsData } from "@/types/attendee";
+import type { EventInsightsData, CustomInsightWidget } from "@/types/attendee";
 import type { EventHost } from "@/api/events";
 import EditOverviewPage from "../page";
 
@@ -404,11 +404,18 @@ mock.module("@/store/useEventStore", () => ({
 
 const mockGetEventInsights = mock(async () => mockInsights);
 const mockGetEventHosts = mock(async () => mockHosts);
+const mockUpdateCustomInsights = mock(
+  async (_eventId: string, widgets: CustomInsightWidget[]) => ({
+    message: "Custom insights saved successfully.",
+    customInsightsConfig: widgets,
+  }),
+);
 
 mock.module("@/api/attendees", () => ({
   getEventInsights: mockGetEventInsights,
   getAttendees: mock(async () => ({ attendees: [], total: 0 })),
   getAttendeeStats: mock(async () => ({})),
+  updateCustomInsights: mockUpdateCustomInsights,
 }));
 
 mock.module("@/api/events", () => ({
@@ -426,6 +433,7 @@ describe("OverviewPage (Lu.ma / MakeMyPass caliber Dashboard)", () => {
   beforeEach(() => {
     mockGetEventInsights.mockClear();
     mockGetEventHosts.mockClear();
+    mockUpdateCustomInsights.mockClear();
   });
 
   test("1. Renders event title, status, and all 4 KPI summary cards", async () => {
