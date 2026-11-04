@@ -153,7 +153,8 @@ export default function FinancePanel({
 
               const isRefundEligible =
                 canRefund &&
-                order.paymentProvider === "razorpay" &&
+                (!order.paymentProvider ||
+                  order.paymentProvider === "razorpay") &&
                 ["success", "partially_refunded"].includes(
                   order.paymentStatus,
                 ) &&

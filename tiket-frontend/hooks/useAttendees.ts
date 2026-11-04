@@ -1,4 +1,4 @@
-import { useEventRevision } from "./useLiveEvent";
+import { useEventRevision, useLiveEvent } from "./useLiveEvent";
 import { getErrorMessage } from "@/lib/errors";
 
 import { useState, useEffect, useCallback } from "react";
@@ -20,10 +20,12 @@ import {
   manualRegisterAttendee,
   exportAttendees,
 } from "@/api/attendees";
+import { decideRegistration } from "@/api/commerce";
 import { getTicketTypes } from "@/api/tickets";
 import { validateManualRegisterPayload } from "@/lib/validators/attendee";
 
 export function useAttendees(eventId: string) {
+  useLiveEvent(eventId);
   const revision = useEventRevision(eventId);
   const [filters, setFilters] = useState<AttendeeFiltersState>({
     search: "",
@@ -200,6 +202,54 @@ export function useAttendees(eventId: string) {
     }
   };
 
+  // Registration Approval/Decline Decision Handler
+  const handleDecide = async (
+    orderId: string,
+    decision: "approve" | "decline",
+  ) => {
+    try {
+      await decideRegistration(eventId, orderId, decision);
+      toast.success(
+        decision === "approve"
+          ? "Registration approved."
+          : "Registration declined and refund queued where applicable.",
+      );
+
+      // Optimistic update in attendee list
+      setAttendees((prev) =>
+        prev.map((att) => {
+          if (att.order.id === orderId) {
+            return {
+              ...att,
+              status: decision === "approve" ? "active" : "cancelled",
+            };
+          }
+          return att;
+        }),
+      );
+
+      // Optimistic update in detail modal if open
+      if (attendeeDetail && attendeeDetail.attendee.order.id === orderId) {
+        setAttendeeDetail({
+          ...attendeeDetail,
+          attendee: {
+            ...attendeeDetail.attendee,
+            status: decision === "approve" ? "active" : "cancelled",
+          },
+        });
+      }
+
+      fetchMetadata();
+      fetchAttendeesList();
+      return true;
+    } catch (err: unknown) {
+      toast.error(
+        getErrorMessage(err) || "Failed to update registration decision.",
+      );
+      return false;
+    }
+  };
+
   // Manual Register Handler
   const handleManualRegister = async (payload: ManualRegisterPayload) => {
     const validation = validateManualRegisterPayload(payload);
@@ -278,6 +328,7 @@ export function useAttendees(eventId: string) {
     // Actions
     handleToggleCheckIn,
     handleCancelTicket,
+    handleDecide,
     handleExport,
     refetch: fetchAttendeesList,
   };

@@ -41,6 +41,7 @@ export default function AttendeesPage() {
     // Actions
     handleToggleCheckIn,
     handleCancelTicket,
+    handleDecide,
     handleExport,
   } = useAttendees(eventId);
 
@@ -90,6 +91,7 @@ export default function AttendeesPage() {
         onToggleCheckIn={handleToggleCheckIn}
         onSelectAttendee={openAttendeeDetail}
         onCancelTicket={handleCancelTicket}
+        onDecide={handleDecide}
         isLoading={isLoading}
       />
 
@@ -103,6 +105,7 @@ export default function AttendeesPage() {
           onClose={closeAttendeeDetail}
           onToggleCheckIn={handleToggleCheckIn}
           onCancelTicket={handleCancelTicket}
+          onDecide={handleDecide}
         />
       )}
 

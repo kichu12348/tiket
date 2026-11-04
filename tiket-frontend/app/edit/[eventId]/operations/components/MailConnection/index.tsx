@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, ShieldCheck, Check, RotateCcw } from "lucide-react";
+import { Mail, ShieldCheck, Check, RotateCcw, AlertCircle } from "lucide-react";
 import styles from "./MailConnection.module.css";
 
 interface MailConnectionProps {
@@ -35,15 +35,54 @@ export default function MailConnection({
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setError("");
+
+    const emailTrimmed = fromEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+      setError("Please provide a valid sender email address.");
+      return;
+    }
+    if (fromName.trim().length > 120) {
+      setError("Sender display name cannot exceed 120 characters.");
+      return;
+    }
+
+    if (provider === "brevo") {
+      if (!apiKey.trim()) {
+        setError("Brevo API key is required.");
+        return;
+      }
+    } else {
+      const hostTrimmed = host.trim();
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(hostTrimmed)) {
+        setError("SMTP host must be a valid domain (e.g. smtp.postmarkapp.com).");
+        return;
+      }
+      const portNum = Number(port);
+      if (![465, 587, 2525].includes(portNum)) {
+        setError("SMTP port must be 465, 587, or 2525.");
+        return;
+      }
+      if (!username.trim()) {
+        setError("SMTP username is required.");
+        return;
+      }
+      if (!password) {
+        setError("SMTP password is required.");
+        return;
+      }
+    }
+
     const config: MailConfig =
       provider === "brevo"
         ? {
             provider,
             apiKey: apiKey.trim(),
-            fromEmail: fromEmail.trim(),
+            fromEmail: emailTrimmed,
             fromName: fromName.trim() || undefined,
           }
         : {
@@ -53,7 +92,7 @@ export default function MailConnection({
             secure: port === "465",
             username: username.trim(),
             password,
-            fromEmail: fromEmail.trim(),
+            fromEmail: emailTrimmed,
             fromName: fromName.trim() || undefined,
           };
 
@@ -63,6 +102,7 @@ export default function MailConnection({
       if (success) {
         setApiKey("");
         setPassword("");
+        setError("");
       }
     } finally {
       setIsSubmitting(false);
@@ -234,6 +274,13 @@ export default function MailConnection({
             </>
           )}
         </div>
+
+        {error && (
+          <div role="alert" className="flex items-center gap-1.5 text-red-400 text-xs py-1">
+            <AlertCircle size={14} className="shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         <div className={styles.actionsRow}>
           <button

@@ -109,7 +109,11 @@ export default function OperationsPage() {
         <>
           {/* Door Ticket Scanner */}
           {ops.permissions.includes("scan_tickets") && (
-            <DoorScanner disabled={ops.busy} scan={ops.scan} />
+            <DoorScanner
+              disabled={ops.busy}
+              scan={ops.scan}
+              undoCheckIn={ops.undoCheckIn}
+            />
           )}
 
           {/* Pending Guest Approvals */}

@@ -12,6 +12,9 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
+  Check,
+  X,
+  Download,
 } from "lucide-react";
 import Modal from "@/components/Modal";
 import type {
@@ -29,6 +32,7 @@ interface AttendeeDetailModalProps {
   onClose: () => void;
   onToggleCheckIn: (ticketId: string) => void;
   onCancelTicket: (ticketId: string) => void;
+  onDecide?: (orderId: string, decision: "approve" | "decline") => void;
 }
 
 export default function AttendeeDetailModal({
@@ -38,6 +42,7 @@ export default function AttendeeDetailModal({
   onClose,
   onToggleCheckIn,
   onCancelTicket,
+  onDecide,
 }: AttendeeDetailModalProps) {
   const isOpen = !!detail || isLoading;
 
@@ -215,8 +220,10 @@ export default function AttendeeDetailModal({
                               <button
                                 type="button"
                                 onClick={() => downloadFile(resp.value)}
+                                className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 underline font-medium cursor-pointer"
                               >
-                                Download file
+                                <Download size={13} />
+                                <span>Download file</span>
                               </button>
                             ) : (
                               resp.value || "(No answer provided)"
@@ -269,36 +276,63 @@ export default function AttendeeDetailModal({
               </Link>
 
               <div className={styles.rightActionBtns}>
-                {detail.attendee.status !== "cancelled" &&
-                  detail.attendee.status !== "refunded" && (
+                {detail.attendee.status === "pending_approval" && onDecide ? (
+                  <>
                     <button
-                      onClick={() => onCancelTicket(detail.attendee.id)}
+                      type="button"
+                      onClick={() =>
+                        onDecide(detail.attendee.order.id, "decline")
+                      }
                       className={styles.btnDanger}
                     >
-                      <XCircle size={14} />
-                      <span>Cancel Ticket</span>
+                      <X size={14} />
+                      <span>Decline</span>
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onDecide(detail.attendee.order.id, "approve")
+                      }
+                      className={styles.btnPrimary}
+                    >
+                      <Check size={14} />
+                      <span>Approve</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {detail.attendee.status !== "cancelled" &&
+                      detail.attendee.status !== "refunded" && (
+                        <button
+                          onClick={() => onCancelTicket(detail.attendee.id)}
+                          className={styles.btnDanger}
+                        >
+                          <XCircle size={14} />
+                          <span>Cancel Ticket</span>
+                        </button>
+                      )}
 
-                <button
-                  onClick={() => onToggleCheckIn(detail.attendee.id)}
-                  disabled={
-                    detail.attendee.status === "cancelled" ||
-                    detail.attendee.status === "refunded"
-                  }
-                  className={
-                    detail.attendee.status === "used"
-                      ? styles.btnSecondary
-                      : styles.btnPrimary
-                  }
-                >
-                  <CheckCircle2 size={14} />
-                  <span>
-                    {detail.attendee.status === "used"
-                      ? "Undo Check-In"
-                      : "Check In"}
-                  </span>
-                </button>
+                    <button
+                      onClick={() => onToggleCheckIn(detail.attendee.id)}
+                      disabled={
+                        detail.attendee.status === "cancelled" ||
+                        detail.attendee.status === "refunded"
+                      }
+                      className={
+                        detail.attendee.status === "used"
+                          ? styles.btnSecondary
+                          : styles.btnPrimary
+                      }
+                    >
+                      <CheckCircle2 size={14} />
+                      <span>
+                        {detail.attendee.status === "used"
+                          ? "Undo Check-In"
+                          : "Check In"}
+                      </span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -48,6 +48,7 @@ export default function AttendeeFilters({
     { label: "All Statuses", value: "" },
     { label: "Active", value: "active" },
     { label: "Checked In", value: "used" },
+    { label: "Pending Approval", value: "pending_approval" },
     { label: "Transferred", value: "transferred" },
     { label: "Refunded", value: "refunded" },
     { label: "Cancelled", value: "cancelled" },
@@ -106,7 +107,7 @@ export default function AttendeeFilters({
       </div>
 
       <div className={styles.rightActions}>
-        {/* Export Button */}
+        {/* Export Buttons */}
         <button
           onClick={() => onExport("csv")}
           className={styles.btnSecondary}
@@ -114,6 +115,14 @@ export default function AttendeeFilters({
         >
           <Download size={16} />
           <span>Export CSV</span>
+        </button>
+        <button
+          onClick={() => onExport("json")}
+          className={styles.btnSecondary}
+          title="Export JSON Roster"
+        >
+          <Download size={16} />
+          <span>Export JSON</span>
         </button>
 
         {/* Add Attendee Button */}

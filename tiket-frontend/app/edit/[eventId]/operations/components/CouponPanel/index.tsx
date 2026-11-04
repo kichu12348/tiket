@@ -42,18 +42,38 @@ export default function CouponPanel({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
+      const trimmedCode = code.trim().toUpperCase();
+      if (!/^[A-Za-z0-9_-]{2,64}$/.test(trimmedCode)) {
+        throw new Error(
+          "Code must be 2-64 characters using letters, numbers, hyphens, or underscores.",
+        );
+      }
       const amount = kind === "access" ? 0 : parseMinorUnits(value);
-      if (kind === "percent" && amount > 10000) {
-        throw new Error("Percentage discount cannot exceed 100%.");
+      if (kind === "percent" && (amount <= 0 || amount > 10000)) {
+        throw new Error("Percentage discount must be between 0.01% and 100%.");
+      }
+      if (kind === "fixed" && amount <= 0) {
+        throw new Error("Fixed discount amount must be greater than zero.");
+      }
+      if (start && end && new Date(start) >= new Date(end)) {
+        throw new Error("Valid from date must be before valid until date.");
+      }
+      let parsedMaxUses: number | null = null;
+      if (maxUses.trim()) {
+        const num = Number(maxUses);
+        if (!Number.isInteger(num) || num < 1) {
+          throw new Error("Max uses must be a positive integer.");
+        }
+        parsedMaxUses = num;
       }
       setError("");
       setIsSubmitting(true);
       const success = await save({
-        code: code.trim(),
+        code: trimmedCode,
         kind,
         value: amount,
         ticketTypeIds: selectedTiers,
-        maxUses: maxUses ? Number(maxUses) : null,
+        maxUses: parsedMaxUses,
         startsAt: start ? new Date(start).toISOString() : null,
         endsAt: end ? new Date(end).toISOString() : null,
         isActive: true,
@@ -173,7 +193,16 @@ export default function CouponPanel({
                   data-active={coupon.isActive}
                   disabled={disabled}
                   onClick={() =>
-                    save({ ...coupon, isActive: !coupon.isActive })
+                    save({
+                      code: coupon.code,
+                      kind: coupon.kind,
+                      value: coupon.value,
+                      ticketTypeIds: coupon.ticketTypeIds || [],
+                      maxUses: coupon.maxUses ?? null,
+                      startsAt: coupon.startsAt ?? null,
+                      endsAt: coupon.endsAt ?? null,
+                      isActive: !coupon.isActive,
+                    })
                   }
                   title={
                     coupon.isActive

@@ -5,6 +5,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Clock,
+  Check,
+  X,
 } from "lucide-react";
 import type { AttendeeItem } from "@/types/attendee";
 import styles from "./AttendeeTable.module.css";
@@ -19,6 +22,7 @@ interface AttendeeTableProps {
   onToggleCheckIn: (ticketId: string) => void;
   onSelectAttendee: (ticketId: string) => void;
   onCancelTicket: (ticketId: string) => void;
+  onDecide?: (orderId: string, decision: "approve" | "decline") => void;
   isLoading: boolean;
 }
 
@@ -31,6 +35,7 @@ export default function AttendeeTable({
   onPageChange,
   onToggleCheckIn,
   onSelectAttendee,
+  onDecide,
   isLoading,
 }: AttendeeTableProps) {
   if (!isLoading && attendees.length === 0) {
@@ -75,6 +80,13 @@ export default function AttendeeTable({
             <span>Refunded</span>
           </span>
         );
+      case "pending_approval":
+        return (
+          <span className={styles.statusBadge} data-status="pending_approval">
+            <Clock size={12} />
+            <span>Pending Approval</span>
+          </span>
+        );
       case "cancelled":
         return (
           <span className={styles.statusBadge} data-status="cancelled">
@@ -109,6 +121,7 @@ export default function AttendeeTable({
           <tbody>
             {attendees.map((item) => {
               const isCheckedIn = item.status === "used";
+              const isPending = item.status === "pending_approval";
               const isCancelled =
                 item.status === "cancelled" || item.status === "refunded";
 
@@ -157,12 +170,14 @@ export default function AttendeeTable({
                   <td>
                     <button
                       onClick={() => onToggleCheckIn(item.id)}
-                      disabled={isCancelled}
+                      disabled={isCancelled || isPending}
                       className={`${styles.checkInBtn} ${isCheckedIn ? styles.checkedIn : styles.notCheckedIn}`}
                       title={
-                        isCheckedIn
-                          ? "Click to undo check-in"
-                          : "Click to check-in"
+                        isPending
+                          ? "Registration is pending host approval"
+                          : isCheckedIn
+                            ? "Click to undo check-in"
+                            : "Click to check-in"
                       }
                     >
                       <CheckCircle2 size={13} />
@@ -173,10 +188,31 @@ export default function AttendeeTable({
                   {/* Actions column */}
                   <td className={styles.alignRight}>
                     <div className={styles.actionsGroup}>
+                      {isPending && onDecide && (
+                        <>
+                          <button
+                            onClick={() => onDecide(item.order.id, "approve")}
+                            className={styles.iconBtn}
+                            title="Approve Registration"
+                            aria-label="Approve Registration"
+                          >
+                            <Check size={14} className="text-emerald-400" />
+                          </button>
+                          <button
+                            onClick={() => onDecide(item.order.id, "decline")}
+                            className={styles.iconBtn}
+                            title="Decline Registration"
+                            aria-label="Decline Registration"
+                          >
+                            <X size={14} className="text-red-400" />
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => onSelectAttendee(item.id)}
                         className={styles.iconBtn}
                         title="View Details"
+                        aria-label="View Details"
                       >
                         <Eye size={15} />
                       </button>

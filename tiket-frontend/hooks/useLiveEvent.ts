@@ -15,7 +15,16 @@ export function useLiveEvent(eventId: string) {
       try {
         const { ticket } = await connectDashboard(eventId);
         if (disposed) return;
-        const url = new URL(API_ENDPOINTS.REALTIME.SOCKET, API_URL);
+        if (typeof WebSocket === "undefined") {
+          setStatus("polling");
+          return;
+        }
+        const base =
+          API_URL ||
+          (typeof window !== "undefined"
+            ? window.location.origin
+            : "http://localhost:3000");
+        const url = new URL(API_ENDPOINTS.REALTIME.SOCKET, base);
         url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
         socket = new WebSocket(url);
         socket.onopen = () => socket?.send(JSON.stringify({ ticket }));
@@ -40,7 +49,9 @@ export function useLiveEvent(eventId: string) {
           }
         };
         socket.onclose = () => reconnect();
-        socket.onerror = () => socket?.close();
+        socket.onerror = () => {
+          reconnect();
+        };
       } catch {
         reconnect();
       }

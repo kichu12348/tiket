@@ -33,7 +33,9 @@ export default function DateTimeControl({
   value,
   onChange,
 }: DateTimeControlProps) {
-  const date = value ? new Date(value) : undefined;
+  const parsedDate = value ? new Date(value) : undefined;
+  const isValidDate = parsedDate && !isNaN(parsedDate.getTime());
+  const date = isValidDate ? parsedDate : undefined;
   const time = date
     ? `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
     : "12:00";

@@ -16,8 +16,10 @@ import {
 } from "@/api/commerce";
 import type { Coupon, Finance, MailConfig } from "@/types/commerce";
 import { getErrorMessage } from "@/lib/errors";
-import { useEventRevision } from "./useLiveEvent";
+import { useEventRevision, useLiveEvent } from "./useLiveEvent";
+import { toggleCheckIn } from "@/api/attendees";
 export function useOperations(eventId: string) {
+  useLiveEvent(eventId);
   const [finance, setFinance] = useState<Finance | null>(null);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [approvals, setApprovals] = useState<
@@ -102,10 +104,21 @@ export function useOperations(eventId: string) {
   const refund = (orderId: string, amount: number, reason: string) =>
     run(async () => {
       const storage = `tiket:refund:${eventId}:${orderId}:${amount}:${reason}`;
-      const key = sessionStorage.getItem(storage) || crypto.randomUUID();
-      sessionStorage.setItem(storage, key);
+      let key = crypto.randomUUID();
+      if (
+        typeof window !== "undefined" &&
+        typeof window.sessionStorage !== "undefined"
+      ) {
+        key = window.sessionStorage.getItem(storage) || key;
+        window.sessionStorage.setItem(storage, key);
+      }
       await refundOrder(eventId, orderId, amount, reason, key);
-      sessionStorage.removeItem(storage);
+      if (
+        typeof window !== "undefined" &&
+        typeof window.sessionStorage !== "undefined"
+      ) {
+        window.sessionStorage.removeItem(storage);
+      }
     }, "Refund queued. Its status will update after Razorpay processes it.");
   return {
     finance,
@@ -134,7 +147,39 @@ export function useOperations(eventId: string) {
         () => resetMailConnection(eventId),
         "Default Brevo delivery restored.",
       ),
-    scan: (qrCode: string) =>
-      run(() => scanTicket(eventId, qrCode), "Attendee checked in."),
+    scan: async (qrCode: string) => {
+      setBusy(true);
+      setError("");
+      try {
+        const res = (await scanTicket(eventId, qrCode)) as {
+          message?: string;
+          ticket?: { id: string };
+          ticketId?: string;
+          status?: string;
+        };
+        toast.success(res?.message || "Attendee checked in.");
+        await refresh();
+        return {
+          success: true,
+          ticketId: res?.ticket?.id || res?.ticketId || "",
+          message: res?.message || "Attendee checked in.",
+          status: res?.status || "used",
+        };
+      } catch (err) {
+        const msg = getErrorMessage(err);
+        setError(msg);
+        return {
+          success: false,
+          error: msg,
+        };
+      } finally {
+        setBusy(false);
+      }
+    },
+    undoCheckIn: (ticketId: string) =>
+      run(
+        () => toggleCheckIn(eventId, ticketId, "undo"),
+        "Check-in undone.",
+      ),
   };
 }
