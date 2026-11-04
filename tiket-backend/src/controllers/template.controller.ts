@@ -1,9 +1,9 @@
 import { handleControllerError } from "../utils/errors";
+import { verifyEventPermission } from "../utils/permissions";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
 import { documentTemplates } from "@db/schema";
 import { eq } from "drizzle-orm";
-import { verifyEventOwner, verifyOwnerByTemplateId } from "@utils";
 
 interface CreateTemplateBody {
   name: string;
@@ -31,11 +31,15 @@ export const createTemplate = async (
     const { eventId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyEventOwner(eventId, user.id);
-    if (!isOwner) {
+    const hasPermission = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_tickets",
+    );
+    if (!hasPermission) {
       return reply.status(403).send({
         error:
-          "Only the event creator can configure Document visual boundaries.",
+          "Only the event creator or team members with manage_tickets permission can configure Document visual boundaries.",
       });
     }
 
@@ -88,8 +92,21 @@ export const updateTemplate = async (
     const { templateId } = request.params;
     const body = request.body;
 
-    const isOwner = await verifyOwnerByTemplateId(templateId, user.id);
-    if (!isOwner) {
+    const [existingTemplate] = await db
+      .select()
+      .from(documentTemplates)
+      .where(eq(documentTemplates.id, templateId));
+
+    if (!existingTemplate) {
+      return reply.status(404).send({ error: "Document Template missing." });
+    }
+
+    const hasPermission = await verifyEventPermission(
+      existingTemplate.eventId,
+      user.id,
+      "manage_tickets",
+    );
+    if (!hasPermission) {
       return reply.status(403).send({
         error: "Unauthorized. Template boundaries natively restricted.",
       });
@@ -125,19 +142,27 @@ export const deleteTemplate = async (
     const user = request.user as { id: string };
     const { templateId } = request.params;
 
-    const isOwner = await verifyOwnerByTemplateId(templateId, user.id);
-    if (!isOwner) {
+    const [existingTemplate] = await db
+      .select()
+      .from(documentTemplates)
+      .where(eq(documentTemplates.id, templateId));
+
+    if (!existingTemplate) {
+      return reply.status(404).send({ error: "Document Template missing." });
+    }
+
+    const hasPermission = await verifyEventPermission(
+      existingTemplate.eventId,
+      user.id,
+      "manage_tickets",
+    );
+    if (!hasPermission) {
       return reply.status(403).send({ error: "Unauthorized" });
     }
 
-    const deletedTemplateList = await db
+    await db
       .delete(documentTemplates)
-      .where(eq(documentTemplates.id, templateId))
-      .returning();
-
-    if (deletedTemplateList.length === 0) {
-      return reply.status(404).send({ error: "Document Template missing." });
-    }
+      .where(eq(documentTemplates.id, templateId));
 
     return reply.send({
       message: "Document Canvas logically destroyed from database.",

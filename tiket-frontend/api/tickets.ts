@@ -12,6 +12,11 @@ import type {
   TicketTransfer,
   AcceptTransferResponse,
 } from "@/types/ticket";
+import type {
+  DocumentTemplate,
+  CreateTemplatePayload,
+  UpdateTemplatePayload,
+} from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
 
 export const getTicketTypes = async (
   eventId: string,
@@ -97,3 +102,42 @@ export const acceptTicketTransfer = async (
 };
 
 export const acceptTransfer = acceptTicketTransfer;
+
+// --- Document Templates API ---
+export const getTemplates = async (
+  eventId: string,
+): Promise<DocumentTemplate[]> => {
+  const response = await api.get(API_ENDPOINTS.TEMPLATES.GET_ALL(eventId));
+  return response.data;
+};
+
+export const createTemplate = async (
+  eventId: string,
+  payload: CreateTemplatePayload,
+): Promise<DocumentTemplate> => {
+  const response = await api.post(
+    API_ENDPOINTS.TEMPLATES.CREATE(eventId),
+    payload,
+  );
+  return response.data;
+};
+
+export const updateTemplate = async (
+  templateId: string,
+  payload: UpdateTemplatePayload,
+): Promise<DocumentTemplate> => {
+  const response = await api.patch(
+    API_ENDPOINTS.TEMPLATES.UPDATE(templateId),
+    payload,
+  );
+  return response.data;
+};
+
+export const deleteTemplate = async (
+  templateId: string,
+): Promise<{ message: string }> => {
+  const response = await api.delete(
+    API_ENDPOINTS.TEMPLATES.DELETE(templateId),
+  );
+  return response.data;
+};

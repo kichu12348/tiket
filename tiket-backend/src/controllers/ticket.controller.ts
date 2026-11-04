@@ -12,9 +12,9 @@ import {
   orders,
   ticketFormResponses,
   formFields,
-  eventTeamMembers,
+  documentTemplates,
 } from "@db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 export const getTicketPass = async (
   request: FastifyRequest<{ Params: { ticketId: string } }>,
@@ -88,6 +88,24 @@ export const getTicketPass = async (
       .innerJoin(formFields, eq(ticketFormResponses.fieldId, formFields.id))
       .where(eq(ticketFormResponses.ticketId, ticketId));
 
+    // 5. Fetch active ticket template (if configured for this event)
+    const [template] = await db
+      .select({
+        id: documentTemplates.id,
+        name: documentTemplates.name,
+        backgroundImageUrl: documentTemplates.backgroundImageUrl,
+        elementsJson: documentTemplates.elementsJson,
+      })
+      .from(documentTemplates)
+      .where(
+        and(
+          eq(documentTemplates.eventId, row.event.id),
+          eq(documentTemplates.type, "ticket"),
+        ),
+      )
+      .orderBy(desc(documentTemplates.updatedAt))
+      .limit(1);
+
     const responsePayload = {
       id: row.ticket.id,
       qrCode: row.ticket.qrCode,
@@ -128,6 +146,14 @@ export const getTicketPass = async (
         label: r.label,
         value: r.value,
       })),
+      template: template
+        ? {
+            id: template.id,
+            name: template.name,
+            backgroundImageUrl: template.backgroundImageUrl,
+            elementsJson: template.elementsJson,
+          }
+        : null,
     };
 
     return reply.status(200).send(responsePayload);

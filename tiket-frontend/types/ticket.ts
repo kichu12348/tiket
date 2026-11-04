@@ -57,6 +57,13 @@ export interface TicketFormResponseItem {
   value?: string | null;
 }
 
+export interface TicketPassTemplate {
+  id: string;
+  name: string;
+  backgroundImageUrl?: string | null;
+  elementsJson?: unknown;
+}
+
 export interface TicketPassData {
   id: string;
   qrCode: string;
@@ -67,6 +74,7 @@ export interface TicketPassData {
   attendee: TicketPassAttendee;
   order: TicketPassOrder;
   responses?: TicketFormResponseItem[];
+  template?: TicketPassTemplate | null;
 }
 
 export interface TransferTicketPayload {

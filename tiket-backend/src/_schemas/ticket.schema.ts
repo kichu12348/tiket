@@ -73,6 +73,15 @@ const ticketPassResponseSchema = {
         },
       },
     },
+    template: {
+      type: ["object", "null"],
+      properties: {
+        id: { type: "string" },
+        name: { type: "string" },
+        backgroundImageUrl: { type: ["string", "null"] },
+        elementsJson: { type: ["array", "object", "null"] },
+      },
+    },
   },
 };
 

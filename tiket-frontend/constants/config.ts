@@ -86,6 +86,12 @@ export const API_ENDPOINTS = {
     ACCEPT_TRANSFER: (transferId: string) =>
       `/api/tickets/transfers/${transferId}/accept`,
   },
+  TEMPLATES: {
+    CREATE: (eventId: string) => `/api/templates/events/${eventId}`,
+    GET_ALL: (eventId: string) => `/api/templates/events/${eventId}`,
+    UPDATE: (templateId: string) => `/api/templates/${templateId}`,
+    DELETE: (templateId: string) => `/api/templates/${templateId}`,
+  },
   ORDERS: {
     QUOTE: "/api/orders/quote",
     GET: (id: string) => `/api/orders/${id}`,

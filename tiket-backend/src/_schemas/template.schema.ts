@@ -38,6 +38,7 @@ export const createTemplateSchema = {
       201: templateResponseObj,
       400: errorResponseSchema,
       401: errorResponseSchema,
+      403: errorResponseSchema,
       500: errorResponseSchema,
     },
   },
@@ -79,6 +80,7 @@ export const updateTemplateSchema = {
     response: {
       200: templateResponseObj,
       401: errorResponseSchema,
+      403: errorResponseSchema,
       404: errorResponseSchema,
       500: errorResponseSchema,
     },
@@ -98,6 +100,7 @@ export const deleteTemplateSchema = {
         properties: { message: { type: "string" } },
       },
       401: errorResponseSchema,
+      403: errorResponseSchema,
       404: errorResponseSchema,
       500: errorResponseSchema,
     },
