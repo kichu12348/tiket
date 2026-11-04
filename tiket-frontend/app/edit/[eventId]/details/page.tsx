@@ -13,7 +13,16 @@ import {
   CalendarClock,
   CalendarCheck,
   ChevronLeft,
+  Globe,
 } from "lucide-react";
+import {
+  FiGlobe,
+  FiInstagram,
+  FiTwitter,
+  FiLinkedin,
+  FiYoutube,
+  FiMessageCircle,
+} from "react-icons/fi";
 import styles from "./Details.module.css";
 import { getSignedUrl, uploadToCDN, updateEvent } from "@/api/events";
 import { getBackgroundColor } from "@/lib/color";
@@ -29,12 +38,12 @@ import DOMPurify from "isomorphic-dompurify";
 
 import Switch from "@/components/Switch";
 import { toast } from "sonner";
-import { validateEventPayload } from "@/lib/validators/event";
+import { validateEventPayload, normalizeSocialLinks } from "@/lib/validators/event";
 import { useEventStore } from "@/store/useEventStore";
 import Image from "@/components/Image";
 import { getImageUrl } from "@/constants/config";
 import { TRANSPARENT_BG } from "@/constants/util";
-import type { Event, LocationDetails } from "@/types/event";
+import type { Event, LocationDetails, EventSocialLinks } from "@/types/event";
 
 function DetailsForm({ event }: { event: Event }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,6 +84,16 @@ function DetailsForm({ event }: { event: Event }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requireApproval, setRequireApproval] = useState(event.requireApproval);
   const [capacity, setCapacity] = useState(event.capacity?.toString() || "");
+  const [socialLinks, setSocialLinks] = useState<EventSocialLinks>(
+    event.socialLinks || {},
+  );
+
+  const handleSocialChange = (field: keyof EventSocialLinks, value: string) => {
+    setSocialLinks((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,6 +133,8 @@ function DetailsForm({ event }: { event: Event }) {
     try {
       setIsSubmitting(true);
 
+      const normalizedSocial = normalizeSocialLinks(socialLinks);
+
       const validationError = validateEventPayload({
         title,
         startDate,
@@ -121,6 +142,7 @@ function DetailsForm({ event }: { event: Event }) {
         regStartDate,
         regEndDate,
         capacity,
+        socialLinks,
       });
 
       if (validationError) {
@@ -175,6 +197,7 @@ function DetailsForm({ event }: { event: Event }) {
         coverImage: finalCoverImage,
         locationType,
         locationDetails: finalLocationDetails,
+        socialLinks: normalizedSocial,
         startDate,
         endDate,
         timezone,
@@ -358,6 +381,97 @@ function DetailsForm({ event }: { event: Event }) {
               ) : (
                 "Write something..."
               )}
+            </div>
+          </div>
+
+          {/* Social & Community Links */}
+          <div className={styles.sectionLabel}>
+            <Globe size={15} strokeWidth={1.8} />
+            <span>Social & Community Links</span>
+          </div>
+          <div className={styles.formBlock}>
+            <div className={styles.socialRow}>
+              <div className={styles.socialIconCol}>
+                <FiGlobe size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="Personal Website (https://...)"
+                aria-label="Website"
+                className={styles.socialInput}
+                value={socialLinks.website || ""}
+                onChange={(e) => handleSocialChange("website", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.socialRow}>
+              <div className={styles.socialIconCol}>
+                <FiInstagram size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="Instagram (@handle or URL)"
+                aria-label="Instagram"
+                className={styles.socialInput}
+                value={socialLinks.instagram || ""}
+                onChange={(e) => handleSocialChange("instagram", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.socialRow}>
+              <div className={styles.socialIconCol}>
+                <FiTwitter size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="X / Twitter (@handle or URL)"
+                aria-label="X / Twitter"
+                className={styles.socialInput}
+                value={socialLinks.twitter || ""}
+                onChange={(e) => handleSocialChange("twitter", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.socialRow}>
+              <div className={styles.socialIconCol}>
+                <FiLinkedin size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="LinkedIn (profile or page URL)"
+                aria-label="LinkedIn"
+                className={styles.socialInput}
+                value={socialLinks.linkedin || ""}
+                onChange={(e) => handleSocialChange("linkedin", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.socialRow}>
+              <div className={styles.socialIconCol}>
+                <FiYoutube size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="YouTube (@channel or channel URL)"
+                aria-label="YouTube"
+                className={styles.socialInput}
+                value={socialLinks.youtube || ""}
+                onChange={(e) => handleSocialChange("youtube", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.socialRow}>
+              <div className={styles.socialIconCol}>
+                <FiMessageCircle size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="Community (Discord, WhatsApp, Telegram invite)"
+                aria-label="Community"
+                className={styles.socialInput}
+                value={socialLinks.community || ""}
+                onChange={(e) => handleSocialChange("community", e.target.value)}
+              />
             </div>
           </div>
 

@@ -20,6 +20,7 @@ import {
   connectionTickets,
   uploads,
 } from "@db/schema";
+import type { EventSocialLinks } from "@db/schema";
 import { generateSlug } from "@utils";
 import { seedDefaultTemplatesForEvent } from "../utils/emailService";
 import { eq, and, ne } from "drizzle-orm";
@@ -41,6 +42,7 @@ interface CreateEventBody {
     lng?: number;
     link?: string;
   };
+  socialLinks?: EventSocialLinks | null;
   startDate: string;
   endDate: string;
   timezone: string;
@@ -110,6 +112,7 @@ export const createEvent = async (
         color: body.color,
         locationType: body.locationType || "offline",
         locationDetails: body.locationDetails,
+        socialLinks: body.socialLinks || null,
         startDate: new Date(body.startDate),
         endDate: new Date(body.endDate),
         timezone: body.timezone || "UTC",
@@ -332,6 +335,8 @@ export const updateEvent = async (
       payload.requireApproval = body.requireApproval;
     if (body.capacity !== undefined) payload.capacity = body.capacity;
     if (body.status !== undefined) payload.status = body.status;
+    if (body.socialLinks !== undefined)
+      payload.socialLinks = body.socialLinks;
 
     const updatedEventList = await db.transaction(async (tx) => {
       const current = await lockEvent(tx, eventId);

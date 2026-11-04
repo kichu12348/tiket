@@ -3,7 +3,16 @@ import styles from "./EventPage.module.css";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { getImageUrl, TOKEN_KEY } from "@/constants/config";
-import { FiMapPin } from "react-icons/fi";
+import {
+  FiMapPin,
+  FiArrowUpRight,
+  FiGlobe,
+  FiInstagram,
+  FiTwitter,
+  FiLinkedin,
+  FiYoutube,
+  FiMessageCircle,
+} from "react-icons/fi";
 import {
   getEventBySlug,
   getMe,
@@ -13,7 +22,6 @@ import {
 import { formatEventDates } from "./utils/formatters";
 import RegistrationCard from "./components/RegistrationCard";
 import EventLocation from "./components/EventLocation";
-import { FiArrowUpRight } from "react-icons/fi";
 import { TRANSPARENT_BG } from "@/constants/util";
 import type { Metadata, Viewport } from "next";
 
@@ -90,6 +98,29 @@ export default async function EventPage({ params }: PageProps) {
         })()
       : event.locationDetails || {};
   const { city, state, name } = locationData;
+
+  const socialLinksData =
+    typeof event.socialLinks === "string"
+      ? (() => {
+          try {
+            return JSON.parse(event.socialLinks);
+          } catch {
+            return {};
+          }
+        })()
+      : event.socialLinks || {};
+
+  const socialItems = [
+    { key: "website", url: socialLinksData.website, label: "Website", icon: FiGlobe },
+    { key: "instagram", url: socialLinksData.instagram, label: "Instagram", icon: FiInstagram },
+    { key: "twitter", url: socialLinksData.twitter, label: "X / Twitter", icon: FiTwitter },
+    { key: "linkedin", url: socialLinksData.linkedin, label: "LinkedIn", icon: FiLinkedin },
+    { key: "youtube", url: socialLinksData.youtube, label: "YouTube", icon: FiYoutube },
+    { key: "community", url: socialLinksData.community, label: "Community", icon: FiMessageCircle },
+  ].filter(
+    (item): item is { key: string; url: string; label: string; icon: typeof FiGlobe } =>
+      Boolean(item.url && typeof item.url === "string" && item.url.trim().length > 0),
+  );
 
   return (
     <div
@@ -187,6 +218,30 @@ export default async function EventPage({ params }: PageProps) {
                 </div>
               )}
             </div>
+
+            {socialItems.length > 0 && (
+              <div
+                className={styles.socialSection}
+                data-testid="event-social-links"
+              >
+                <div className={styles.socialList}>
+                  {socialItems.map(({ key, url, label, icon: Icon }) => (
+                    <a
+                      key={key}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.socialLink}
+                      aria-label={label}
+                      title={label}
+                      data-testid={`social-link-${key}`}
+                    >
+                      <Icon size={16} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column */}

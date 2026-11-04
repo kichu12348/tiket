@@ -1,3 +1,12 @@
+export interface EventSocialLinks {
+  website?: string | null;
+  instagram?: string | null;
+  twitter?: string | null;
+  linkedin?: string | null;
+  youtube?: string | null;
+  community?: string | null;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -6,6 +15,7 @@ export interface Event {
   color: string | null;
   locationType: "online" | "offline" | "hybrid";
   locationDetails: LocationDetails | null;
+  socialLinks?: EventSocialLinks | null;
   startDate: string;
   endDate: string;
   timezone: string;
@@ -49,6 +59,7 @@ export interface CreateEventPayload {
   coverImage: string | null;
   locationType: "online" | "offline" | "hybrid";
   locationDetails: LocationDetails | null;
+  socialLinks?: EventSocialLinks | null;
   startDate: string;
   endDate: string;
   timezone: string;

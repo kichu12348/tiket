@@ -13,6 +13,19 @@ const locationDetailsSchema = {
   },
 };
 
+const socialLinksSchema = {
+  type: ["object", "null"],
+  properties: {
+    website: { type: ["string", "null"] },
+    instagram: { type: ["string", "null"] },
+    twitter: { type: ["string", "null"] },
+    linkedin: { type: ["string", "null"] },
+    youtube: { type: ["string", "null"] },
+    community: { type: ["string", "null"] },
+  },
+  additionalProperties: true,
+};
+
 const eventResponseObj = {
   type: "object",
   properties: {
@@ -23,6 +36,7 @@ const eventResponseObj = {
     color: { type: ["string", "null"] },
     locationType: { type: "string", enum: ["online", "offline", "hybrid"] },
     locationDetails: locationDetailsSchema,
+    socialLinks: socialLinksSchema,
     startDate: { type: "string", format: "date-time" },
     endDate: { type: "string", format: "date-time" },
     timezone: { type: "string" },
@@ -60,6 +74,7 @@ export const createEventSchema = {
         color: { type: "string" },
         locationType: { type: "string", enum: ["online", "offline", "hybrid"] },
         locationDetails: locationDetailsSchema,
+        socialLinks: socialLinksSchema,
         startDate: { type: "string", format: "date-time" },
         endDate: { type: "string", format: "date-time" },
         timezone: { type: "string" },
@@ -96,6 +111,7 @@ export const updateEventSchema = {
         color: { type: "string" },
         locationType: { type: "string", enum: ["online", "offline", "hybrid"] },
         locationDetails: locationDetailsSchema,
+        socialLinks: socialLinksSchema,
         startDate: { type: "string", format: "date-time" },
         endDate: { type: "string", format: "date-time" },
         timezone: { type: "string" },

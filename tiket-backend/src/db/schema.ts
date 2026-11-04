@@ -130,6 +130,15 @@ export const users = pgTable("users", {
 // 🎉 EVENT CREATION & MANAGEMENT
 // ==========================================
 
+export interface EventSocialLinks {
+  website?: string | null;
+  instagram?: string | null;
+  twitter?: string | null;
+  linkedin?: string | null;
+  youtube?: string | null;
+  community?: string | null;
+}
+
 export const events = pgTable("events", {
   id: uuid("id").primaryKey().$defaultFn(uuidv7),
   title: varchar("title", { length: 255 }).notNull(),
@@ -139,6 +148,7 @@ export const events = pgTable("events", {
   color: varchar("color", { length: 7 }).default("#000000"),
   locationType: locationTypeEnum("location_type").notNull().default("offline"),
   locationDetails: jsonb("location_details"), // Maps link, address, or meeting URL
+  socialLinks: jsonb("social_links").$type<EventSocialLinks>(),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   timezone: varchar("timezone", { length: 50 }).notNull().default("UTC"),

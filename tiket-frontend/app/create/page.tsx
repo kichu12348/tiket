@@ -1,5 +1,5 @@
 "use client";
-import type { LocationDetails } from "@/types/event";
+import type { LocationDetails, CreateEventPayload, EventSocialLinks } from "@/types/event";
 import { getErrorMessage } from "@/lib/errors";
 
 import { useState, useRef } from "react";
@@ -15,6 +15,14 @@ import {
   CalendarClock,
   CalendarCheck,
 } from "lucide-react";
+import {
+  FiGlobe,
+  FiInstagram,
+  FiTwitter,
+  FiLinkedin,
+  FiYoutube,
+  FiMessageCircle,
+} from "react-icons/fi";
 import styles from "./Create.module.css";
 import { getSignedUrl, uploadToCDN, createEvent } from "@/api/events";
 import { getBackgroundColor } from "@/lib/color";
@@ -30,8 +38,7 @@ import Dropdown from "@/components/Dropdown";
 import Switch from "@/components/Switch";
 import { toast } from "sonner";
 import { randomStr } from "@/lib/utils";
-import type { CreateEventPayload } from "@/types/event";
-import { validateEventPayload } from "@/lib/validators/event";
+import { validateEventPayload, normalizeSocialLinks } from "@/lib/validators/event";
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -73,6 +80,14 @@ export default function CreateEventPage() {
   const [requireApproval, setRequireApproval] = useState(false);
   const [capacity, setCapacity] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
+  const [socialLinks, setSocialLinks] = useState<EventSocialLinks>({});
+
+  const handleSocialChange = (field: keyof EventSocialLinks, value: string) => {
+    setSocialLinks((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -96,6 +111,8 @@ export default function CreateEventPage() {
       setIsSubmitting(true);
 
       // --- VALIDATIONS ---
+      const normalizedSocial = normalizeSocialLinks(socialLinks);
+
       const validationError = validateEventPayload({
         title,
         startDate,
@@ -103,6 +120,7 @@ export default function CreateEventPage() {
         regStartDate,
         regEndDate,
         capacity,
+        socialLinks,
       });
 
       if (validationError) {
@@ -157,6 +175,7 @@ export default function CreateEventPage() {
             : locationType === "hybrid"
               ? { ...(locationDetails || {}), link: virtualLink }
               : locationDetails,
+        socialLinks: normalizedSocial,
         startDate,
         endDate,
         timezone,
@@ -345,6 +364,97 @@ export default function CreateEventPage() {
               ) : (
                 "Write something..."
               )}
+            </div>
+          </div>
+
+          {/* Social & Community Links */}
+          <div className={styles.sectionLabel}>
+            <Globe size={15} strokeWidth={1.8} />
+            <span>Social & Community Links</span>
+          </div>
+          <div className={styles.formBlock}>
+            <div className={styles.optionRow}>
+              <div className={styles.iconCol}>
+                <FiGlobe size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="Personal Website (https://...)"
+                aria-label="Website"
+                className={styles.subInput}
+                value={socialLinks.website || ""}
+                onChange={(e) => handleSocialChange("website", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.optionRow}>
+              <div className={styles.iconCol}>
+                <FiInstagram size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="Instagram (@handle or URL)"
+                aria-label="Instagram"
+                className={styles.subInput}
+                value={socialLinks.instagram || ""}
+                onChange={(e) => handleSocialChange("instagram", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.optionRow}>
+              <div className={styles.iconCol}>
+                <FiTwitter size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="X / Twitter (@handle or URL)"
+                aria-label="X / Twitter"
+                className={styles.subInput}
+                value={socialLinks.twitter || ""}
+                onChange={(e) => handleSocialChange("twitter", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.optionRow}>
+              <div className={styles.iconCol}>
+                <FiLinkedin size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="LinkedIn (profile or page URL)"
+                aria-label="LinkedIn"
+                className={styles.subInput}
+                value={socialLinks.linkedin || ""}
+                onChange={(e) => handleSocialChange("linkedin", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.optionRow}>
+              <div className={styles.iconCol}>
+                <FiYoutube size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="YouTube (@channel or channel URL)"
+                aria-label="YouTube"
+                className={styles.subInput}
+                value={socialLinks.youtube || ""}
+                onChange={(e) => handleSocialChange("youtube", e.target.value)}
+              />
+            </div>
+
+            <div className={styles.optionRow}>
+              <div className={styles.iconCol}>
+                <FiMessageCircle size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="Community (Discord, WhatsApp, Telegram invite)"
+                aria-label="Community"
+                className={styles.subInput}
+                value={socialLinks.community || ""}
+                onChange={(e) => handleSocialChange("community", e.target.value)}
+              />
             </div>
           </div>
 
