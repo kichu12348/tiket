@@ -54,6 +54,7 @@ const eventResponseObj = {
     slug: { type: "string" },
     organizationId: { type: "string" },
     isAssociated: { type: "boolean" },
+    role: { type: ["string", "null"] },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },

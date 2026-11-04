@@ -2,6 +2,7 @@ import db from "@db";
 import { admissionAudits, checkIns, events, orders, tickets } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { emitEvent } from "../services/inventory.service";
+import { enqueueCheckInEmail } from "../services/notifications.service";
 import { HttpError } from "./errors";
 import { verifyEventPermission } from "./permissions";
 
@@ -42,10 +43,12 @@ export async function changeAdmission(
     if (!ticket)
       throw new HttpError(409, "Ticket admission has already changed.");
     if (undo) await tx.delete(checkIns).where(eq(checkIns.ticketId, ticketId));
-    else
+    else {
       await tx
         .insert(checkIns)
         .values({ ticketId, eventId, loggedByUserId: userId });
+      await enqueueCheckInEmail(tx, eventId, ticketId);
+    }
     await tx.insert(admissionAudits).values({
       eventId,
       ticketId,

@@ -167,6 +167,127 @@ export async function enqueueOrderEmail(
     })
     .onConflictDoNothing();
 }
+
+export async function enqueueCheckInEmail(
+  tx: Transaction,
+  eventId: string,
+  ticketId: string,
+) {
+  const [activeTemplate] = await tx
+    .select()
+    .from(emailTemplates)
+    .where(
+      and(
+        eq(emailTemplates.eventId, eventId),
+        eq(emailTemplates.type, "checkin"),
+        eq(emailTemplates.isActive, true),
+      ),
+    );
+
+  if (!activeTemplate) return;
+
+  const [data] = await tx
+    .select({
+      event: events,
+      ticket: tickets,
+      user: users,
+      ticketType: ticketTypes,
+    })
+    .from(tickets)
+    .innerJoin(events, eq(events.id, tickets.eventId))
+    .innerJoin(users, eq(users.id, tickets.userId))
+    .innerJoin(ticketTypes, eq(ticketTypes.id, tickets.ticketTypeId))
+    .where(eq(tickets.id, ticketId));
+
+  if (!data) return;
+
+  const responses = await tx
+    .select({
+      label: formFields.label,
+      value: ticketFormResponses.responseValue,
+    })
+    .from(ticketFormResponses)
+    .innerJoin(formFields, eq(ticketFormResponses.fieldId, formFields.id))
+    .where(eq(ticketFormResponses.ticketId, ticketId));
+
+  const formMap: Record<string, string> = {};
+  for (const resp of responses) {
+    if (resp.label && resp.value !== null && resp.value !== undefined) {
+      formMap[resp.label] = resp.value;
+    }
+  }
+
+  const origin = (process.env.FRONTEND_URL || "http://localhost:3000").split(
+    ",",
+  )[0]!;
+  const passUrl = `${origin}/passes/${ticketId}`;
+  const qrCode = data.ticket.qrCode || "";
+  const qrCodeUrl = qrCode
+    ? `https://quickchart.io/qr?text=${encodeURIComponent(qrCode)}&size=300&margin=1`
+    : "";
+
+  let locationStr = "Venue";
+  if (data.event.locationType === "online") {
+    locationStr = "Online Stream";
+  } else if (
+    data.event.locationDetails &&
+    typeof data.event.locationDetails === "object" &&
+    "address" in data.event.locationDetails &&
+    typeof data.event.locationDetails.address === "string"
+  ) {
+    locationStr = data.event.locationDetails.address;
+  }
+
+  const interpolationData: InterpolationData = {
+    event: {
+      title: data.event.title,
+      startDate: data.event.startDate
+        ? new Date(data.event.startDate).toLocaleString()
+        : "",
+      endDate: data.event.endDate
+        ? new Date(data.event.endDate).toLocaleString()
+        : "",
+      location: locationStr,
+      url: `${origin}/${data.event.slug}`,
+      passUrl,
+    },
+    attendee: {
+      name: data.user.name,
+      email: data.user.email,
+    },
+    ticket: {
+      id: data.ticket.id,
+      type: data.ticketType.name || "Pass",
+      qrCode,
+      qrCodeUrl,
+    },
+    form: formMap,
+  };
+
+  const rawSubject =
+    activeTemplate.subject || `Welcome to ${data.event.title}!`;
+  const rawBody =
+    activeTemplate.body || `<p>Welcome! You have been checked in.</p>`;
+
+  const subject = interpolateTemplate(rawSubject, interpolationData);
+  const body = sanitizeEmailHtml(interpolateTemplate(rawBody, interpolationData));
+
+  await tx
+    .insert(deliveryJobs)
+    .values({
+      key: `checkin:${ticketId}`,
+      eventId: data.event.id,
+      payload: {
+        recipientEmail: data.user.email,
+        recipientName: data.user.name,
+        subject,
+        body,
+        templateId: activeTemplate.id,
+      },
+    })
+    .onConflictDoNothing();
+}
+
 export async function processDeliveries() {
   const pending = await db
     .select()

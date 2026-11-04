@@ -4,6 +4,7 @@ import db from "@db";
 import { events, tickets, ticketTypes, ticketTransfers, users } from "@db/schema";
 import { assertNotBlacklisted } from "../services/inventory.service";
 import { eq, and } from "drizzle-orm";
+import { deliverMail } from "../services/mail.service";
 
 interface InitiateTransferBody {
   targetEmail: string;
@@ -93,7 +94,11 @@ export const initiateTransfer = async (
     }
 
     const [event] = await db
-      .select({ id: events.id, organizationId: events.organizationId })
+      .select({
+        id: events.id,
+        organizationId: events.organizationId,
+        title: events.title,
+      })
       .from(events)
       .where(eq(events.id, ticket.eventId));
     if (!event) return reply.status(404).send({ error: "Event not found." });
@@ -131,7 +136,28 @@ export const initiateTransfer = async (
       })
       .returning();
 
-    return reply.status(201).send(transferLists[0]);
+    const createdTransfer = transferLists[0];
+    if (!createdTransfer) throw new Error("Failed to create transfer record");
+
+    const origin = (process.env.FRONTEND_URL || "http://localhost:3000").split(
+      ",",
+    )[0]!;
+    try {
+      await deliverMail(
+        {
+          recipientEmail: targetUser.email,
+          recipientName: targetUser.name,
+          subject: `Ticket transfer for ${event.title}`,
+          body: `<p>${user.email} has initiated a ticket transfer for <strong>${event.title}</strong>.</p><p>Please visit your <a href="${origin}/home">dashboard</a> or <a href="${origin}/passes/${ticketId}">view ticket pass</a> to accept it.</p>`,
+        },
+        event.id,
+        `transfer:${createdTransfer.id}`,
+      );
+    } catch (mailErr) {
+      request.log.warn(mailErr, "Failed to deliver transfer notification email");
+    }
+
+    return reply.status(201).send(createdTransfer);
   } catch (error) {
     return handleControllerError(request, reply, error);
   }
@@ -221,6 +247,56 @@ export const acceptTransfer = async (
         message: "Transfer successfully atomically validated.",
         transfer: updatedTransfers[0],
       });
+    });
+  } catch (error) {
+    return handleControllerError(request, reply, error);
+  }
+};
+
+export const cancelTransfer = async (
+  request: FastifyRequest<{ Params: { transferId: string } }>,
+  reply: FastifyReply,
+) => {
+  try {
+    await request.jwtVerify();
+    const user = request.user as { id: string };
+    const { transferId } = request.params;
+
+    const [transfer] = await db
+      .select()
+      .from(ticketTransfers)
+      .where(eq(ticketTransfers.id, transferId));
+
+    if (!transfer) {
+      return reply.status(404).send({ error: "Transfer not found." });
+    }
+
+    if (transfer.fromUserId !== user.id && transfer.toUserId !== user.id) {
+      return reply
+        .status(403)
+        .send({ error: "You are not authorized to cancel this transfer." });
+    }
+
+    if (transfer.status !== "pending") {
+      return reply
+        .status(400)
+        .send({ error: "Only pending transfers can be cancelled." });
+    }
+
+    const [updatedTransfer] = await db
+      .update(ticketTransfers)
+      .set({ status: "rejected" })
+      .where(
+        and(
+          eq(ticketTransfers.id, transfer.id),
+          eq(ticketTransfers.status, "pending"),
+        ),
+      )
+      .returning();
+
+    return reply.send({
+      message: "Transfer cancelled successfully.",
+      transfer: updatedTransfer,
     });
   } catch (error) {
     return handleControllerError(request, reply, error);

@@ -13,8 +13,11 @@ import {
   ticketFormResponses,
   formFields,
   documentTemplates,
+  ticketTransfers,
 } from "@db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ne } from "drizzle-orm";
+import { emitEvent, lockEvent } from "../services/inventory.service";
+import { queueRefund } from "../services/refund.service";
 
 export const getTicketPass = async (
   request: FastifyRequest<{ Params: { ticketId: string } }>,
@@ -157,6 +160,313 @@ export const getTicketPass = async (
     };
 
     return reply.status(200).send(responsePayload);
+  } catch (error) {
+    return handleControllerError(request, reply, error);
+  }
+};
+
+export const getMyTickets = async (
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => {
+  try {
+    await request.jwtVerify();
+    const user = request.user as { id: string };
+
+    // 1. Fetch tickets owned by user joined with events and ticketTypes
+    const userTickets = await db
+      .select({
+        ticket: tickets,
+        event: {
+          id: events.id,
+          title: events.title,
+          slug: events.slug,
+          startDate: events.startDate,
+          endDate: events.endDate,
+          locationType: events.locationType,
+          coverImage: events.coverImage,
+        },
+        ticketType: {
+          id: ticketTypes.id,
+          name: ticketTypes.name,
+          price: ticketTypes.price,
+        },
+      })
+      .from(tickets)
+      .innerJoin(events, eq(tickets.eventId, events.id))
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .where(eq(tickets.userId, user.id))
+      .orderBy(desc(tickets.createdAt));
+
+    // 2. Fetch incoming pending transfers where toUserId === user.id
+    const incomingTransfers = await db
+      .select({
+        id: ticketTransfers.id,
+        ticketId: ticketTransfers.ticketId,
+        status: ticketTransfers.status,
+        createdAt: ticketTransfers.createdAt,
+        ticket: {
+          id: tickets.id,
+          status: tickets.status,
+        },
+        event: {
+          id: events.id,
+          title: events.title,
+          slug: events.slug,
+        },
+        sender: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        },
+      })
+      .from(ticketTransfers)
+      .innerJoin(tickets, eq(ticketTransfers.ticketId, tickets.id))
+      .innerJoin(events, eq(tickets.eventId, events.id))
+      .innerJoin(users, eq(ticketTransfers.fromUserId, users.id))
+      .where(
+        and(
+          eq(ticketTransfers.toUserId, user.id),
+          eq(ticketTransfers.status, "pending"),
+        ),
+      )
+      .orderBy(desc(ticketTransfers.createdAt));
+
+    // 3. Fetch outgoing pending transfers where fromUserId === user.id
+    const outgoingTransfers = await db
+      .select({
+        id: ticketTransfers.id,
+        ticketId: ticketTransfers.ticketId,
+        toUserId: ticketTransfers.toUserId,
+        status: ticketTransfers.status,
+        createdAt: ticketTransfers.createdAt,
+        recipient: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        },
+      })
+      .from(ticketTransfers)
+      .innerJoin(users, eq(ticketTransfers.toUserId, users.id))
+      .where(
+        and(
+          eq(ticketTransfers.fromUserId, user.id),
+          eq(ticketTransfers.status, "pending"),
+        ),
+      )
+      .orderBy(desc(ticketTransfers.createdAt));
+
+    return reply.send({
+      tickets: userTickets.map((t) => ({
+        id: t.ticket.id,
+        qrCode: t.ticket.qrCode,
+        status: t.ticket.status,
+        createdAt: t.ticket.createdAt.toISOString(),
+        event: {
+          id: t.event.id,
+          title: t.event.title,
+          slug: t.event.slug,
+          startDate: t.event.startDate.toISOString(),
+          endDate: t.event.endDate ? t.event.endDate.toISOString() : null,
+          locationType: t.event.locationType,
+          coverImage: t.event.coverImage,
+        },
+        ticketType: {
+          id: t.ticketType.id,
+          name: t.ticketType.name,
+          price: t.ticketType.price,
+        },
+      })),
+      incomingTransfers: incomingTransfers.map((it) => ({
+        id: it.id,
+        ticketId: it.ticketId,
+        status: it.status,
+        createdAt: it.createdAt.toISOString(),
+        ticket: {
+          id: it.ticket.id,
+          status: it.ticket.status,
+        },
+        event: {
+          id: it.event.id,
+          title: it.event.title,
+          slug: it.event.slug,
+        },
+        sender: {
+          id: it.sender.id,
+          name: it.sender.name,
+          email: it.sender.email,
+        },
+      })),
+      outgoingTransfers: outgoingTransfers.map((ot) => ({
+        id: ot.id,
+        ticketId: ot.ticketId,
+        toUserId: ot.toUserId,
+        status: ot.status,
+        createdAt: ot.createdAt.toISOString(),
+        recipient: {
+          id: ot.recipient.id,
+          name: ot.recipient.name,
+          email: ot.recipient.email,
+        },
+      })),
+    });
+  } catch (error) {
+    return handleControllerError(request, reply, error);
+  }
+};
+
+export const cancelTicket = async (
+  request: FastifyRequest<{ Params: { ticketId: string } }>,
+  reply: FastifyReply,
+) => {
+  try {
+    await request.jwtVerify();
+    const user = request.user as { id: string };
+    const { ticketId } = request.params;
+
+    const [ticket] = await db
+      .select()
+      .from(tickets)
+      .where(eq(tickets.id, ticketId));
+
+    if (!ticket) {
+      return reply.status(404).send({ error: "Ticket not found." });
+    }
+
+    if (ticket.userId !== user.id) {
+      return reply
+        .status(403)
+        .send({ error: "You do not have permission to cancel this ticket." });
+    }
+
+    if (ticket.status !== "active" && ticket.status !== "pending_approval") {
+      return reply
+        .status(409)
+        .send({ error: "Only active or pending tickets can be cancelled." });
+    }
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, ticket.orderId));
+
+    if (!order) {
+      return reply.status(404).send({ error: "Order not found." });
+    }
+
+    const [item] = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.ticketId, ticket.id));
+
+    if (order.totalPaise === 0) {
+      // Free ticket cancellation
+      await db.transaction(async (tx) => {
+        await lockEvent(tx, ticket.eventId);
+
+        await tx
+          .update(tickets)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(eq(tickets.id, ticket.id));
+
+        const remainingActive = await tx
+          .select({ id: tickets.id })
+          .from(tickets)
+          .where(
+            and(
+              eq(tickets.orderId, order.id),
+              ne(tickets.status, "cancelled"),
+              ne(tickets.status, "refunded"),
+            ),
+          );
+
+        if (remainingActive.length === 0) {
+          await tx
+            .update(orders)
+            .set({
+              reservationState: "released",
+              registrationStatus: "cancelled",
+              updatedAt: new Date(),
+            })
+            .where(eq(orders.id, order.id));
+        }
+
+        await emitEvent(tx, ticket.eventId, "tickets.changed");
+      });
+
+      return reply.send({
+        message: "Ticket cancelled successfully.",
+        ticketId: ticket.id,
+      });
+    }
+
+    // Paid ticket
+    if (!item) {
+      return reply
+        .status(404)
+        .send({ error: "Order item details not found." });
+    }
+
+    const isRefundable = item.policy?.isRefundable === true;
+    const isWithinWindow =
+      !item.policy?.refundableUntil ||
+      new Date(item.policy.refundableUntil) > new Date();
+
+    if (!isRefundable || !isWithinWindow) {
+      return reply.status(409).send({
+        error: "This ticket is non-refundable or past the refund window.",
+      });
+    }
+
+    await db.transaction(async (tx) => {
+      await lockEvent(tx, ticket.eventId);
+
+      await queueRefund(
+        tx,
+        order,
+        `cancel:${ticket.id}`,
+        {
+          amountPaise: item.totalPaise,
+          reason: "Attendee self-service ticket cancellation",
+          voidTicketIds: [ticket.id],
+        },
+        user.id,
+      );
+
+      await tx
+        .update(tickets)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(eq(tickets.id, ticket.id));
+
+      const remainingActive = await tx
+        .select({ id: tickets.id })
+        .from(tickets)
+        .where(
+          and(
+            eq(tickets.orderId, order.id),
+            ne(tickets.status, "cancelled"),
+            ne(tickets.status, "refunded"),
+          ),
+        );
+
+      if (remainingActive.length === 0) {
+        await tx
+          .update(orders)
+          .set({
+            reservationState: "released",
+            registrationStatus: "cancelled",
+            updatedAt: new Date(),
+          })
+          .where(eq(orders.id, order.id));
+      }
+
+      await emitEvent(tx, ticket.eventId, "tickets.changed");
+    });
+
+    return reply.send({
+      message: "Ticket cancelled and refund queued successfully.",
+      ticketId: ticket.id,
+    });
   } catch (error) {
     return handleControllerError(request, reply, error);
   }

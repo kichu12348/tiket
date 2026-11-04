@@ -93,6 +93,12 @@ export async function deliverMail(
   eventId?: string,
   key?: string,
 ) {
+  if (!process.env.BREVO_API_KEY && process.env.NODE_ENV !== "production") {
+    console.log(
+      `\n[DEV MAIL FALLBACK]\nTo: ${message.recipientName ? `${message.recipientName} <${message.recipientEmail}>` : message.recipientEmail}\nSubject: ${message.subject}\nBody:\n${message.body}\n---------------------\n`,
+    );
+    return;
+  }
   const config = await configFor(eventId);
   if (config.provider === "brevo") {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {

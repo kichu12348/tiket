@@ -170,12 +170,48 @@ export const getMyEvents = async (
     await request.jwtVerify();
     const user = request.user as { id: string };
 
-    const myEventsList = await db
+    // 1. Fetch events owned by the user (as creator / organization)
+    const ownedEvents = await db
       .select()
       .from(events)
       .where(eq(events.organizationId, user.id));
 
-    return reply.send(myEventsList);
+    // 2. Fetch events where the user is an event team member
+    const teamEvents = await db
+      .select({
+        event: events,
+        roleName: eventRoles.name,
+      })
+      .from(eventTeamMembers)
+      .innerJoin(events, eq(eventTeamMembers.eventId, events.id))
+      .innerJoin(eventRoles, eq(eventTeamMembers.roleId, eventRoles.id))
+      .where(eq(eventTeamMembers.userId, user.id));
+
+    // 3. Merge, deduplicate, and include isAssociated & role
+    const eventMap = new Map<
+      string,
+      typeof events.$inferSelect & { isAssociated: boolean; role: string }
+    >();
+
+    for (const event of ownedEvents) {
+      eventMap.set(event.id, {
+        ...event,
+        isAssociated: true,
+        role: "Owner",
+      });
+    }
+
+    for (const item of teamEvents) {
+      if (!eventMap.has(item.event.id)) {
+        eventMap.set(item.event.id, {
+          ...item.event,
+          isAssociated: true,
+          role: item.roleName,
+        });
+      }
+    }
+
+    return reply.send(Array.from(eventMap.values()));
   } catch (error) {
     return handleControllerError(request, reply, error);
   }
