@@ -137,6 +137,8 @@ export const API_ENDPOINTS = {
     MANUAL_REGISTER: (eventId: string) =>
       `/api/attendees/${eventId}/manual-register`,
     EXPORT: (eventId: string) => `/api/attendees/${eventId}/export`,
+    CUSTOM_INSIGHTS: (eventId: string) =>
+      `/api/attendees/${eventId}/custom-insights`,
   },
   EMAILS: {
     TEMPLATES: (eventId: string) => `/api/emails/events/${eventId}/templates`,

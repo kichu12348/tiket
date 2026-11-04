@@ -9,6 +9,7 @@ import {
   cancelTicket,
   manualRegister,
   exportAttendees,
+  updateCustomInsights,
 } from "@controllers/attendee";
 import {
   getAttendeesSchema,
@@ -20,6 +21,7 @@ import {
   cancelTicketSchema,
   manualRegisterSchema,
   exportAttendeesSchema,
+  updateCustomInsightsSchema,
 } from "@schemas/attendee";
 
 export default async function attendeeRoutes(fastify: FastifyInstance) {
@@ -43,5 +45,10 @@ export default async function attendeeRoutes(fastify: FastifyInstance) {
     "/:eventId/manual-register",
     manualRegisterSchema,
     manualRegister,
+  );
+  fastify.put(
+    "/:eventId/custom-insights",
+    updateCustomInsightsSchema,
+    updateCustomInsights,
   );
 }

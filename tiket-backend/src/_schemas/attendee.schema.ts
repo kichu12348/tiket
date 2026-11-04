@@ -311,6 +311,58 @@ export const exportAttendeesSchema = {
   },
 };
 
+export const customInsightWidgetSchema = {
+  type: "object",
+  required: ["id", "title", "fieldId", "chartType"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    fieldId: { type: "string" },
+    chartType: { type: "string", enum: ["bar", "donut", "stat", "table"] },
+    filterTicketTypeId: { type: ["string", "null"] },
+    filterStatus: { type: "string", enum: ["all", "checked_in", "active"] },
+  },
+};
+
+export const formFieldAnalyticsItemSchema = {
+  type: "object",
+  required: ["fieldId", "label", "fieldType", "totalResponses", "distribution"],
+  properties: {
+    fieldId: { type: "string" },
+    label: { type: "string" },
+    fieldType: { type: "string" },
+    totalResponses: { type: "number" },
+    distribution: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["value", "count", "percentage"],
+        properties: {
+          value: { type: "string" },
+          count: { type: "number" },
+          percentage: { type: "number" },
+        },
+      },
+    },
+    averageNumeric: { type: ["number", "null"] },
+    rawResponses: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["ticketId", "ticketTypeId", "isCheckedIn", "status", "values"],
+        properties: {
+          ticketId: { type: "string" },
+          ticketTypeId: { type: "string" },
+          isCheckedIn: { type: "boolean" },
+          status: { type: "string" },
+          values: { type: "array", items: { type: "string" } },
+          numericValue: { type: ["number", "null"] },
+        },
+      },
+    },
+  },
+};
+
 export const getEventInsightsSchema = {
   schema: {
     params: {
@@ -425,10 +477,55 @@ export const getEventInsightsSchema = {
               },
             },
           },
+          customInsightsConfig: {
+            type: "array",
+            items: customInsightWidgetSchema,
+          },
+          formFieldAnalytics: {
+            type: "array",
+            items: formFieldAnalyticsItemSchema,
+          },
         },
       },
       401: errorResponseSchema,
       403: errorResponseSchema,
+      500: errorResponseSchema,
+    },
+  },
+};
+
+export const updateCustomInsightsSchema = {
+  schema: {
+    params: {
+      type: "object",
+      required: ["eventId"],
+      properties: { eventId: { type: "string" } },
+    },
+    body: {
+      type: "object",
+      required: ["widgets"],
+      properties: {
+        widgets: {
+          type: "array",
+          items: customInsightWidgetSchema,
+        },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          customInsightsConfig: {
+            type: "array",
+            items: customInsightWidgetSchema,
+          },
+        },
+      },
+      400: errorResponseSchema,
+      401: errorResponseSchema,
+      403: errorResponseSchema,
+      404: errorResponseSchema,
       500: errorResponseSchema,
     },
   },

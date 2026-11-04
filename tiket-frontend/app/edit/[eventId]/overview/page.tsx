@@ -9,8 +9,11 @@ import { useLiveEvent, useEventRevision } from "@/hooks/useLiveEvent";
 import { useAvailability } from "@/hooks/useAvailability";
 import type { EventHost } from "@/api/events";
 import { getEventHosts } from "@/api/events";
-import { getEventInsights } from "@/api/attendees";
-import type { EventInsightsData } from "@/types/attendee";
+import { getEventInsights, updateCustomInsights } from "@/api/attendees";
+import type {
+  EventInsightsData,
+  CustomInsightWidget,
+} from "@/types/attendee";
 import {
   Calendar,
   MapPin,
@@ -30,6 +33,7 @@ import {
 } from "lucide-react";
 import InsightsCharts from "./components/InsightsCharts";
 import CapacityMeter from "./components/CapacityMeter";
+import CustomFormInsights from "./components/CustomFormInsights";
 import styles from "./Overview.module.css";
 
 export default function EditOverviewPage() {
@@ -83,6 +87,29 @@ export default function EditOverviewPage() {
     typeof window !== "undefined"
       ? `${window.location.origin}/${event.slug}`
       : `/${event.slug}`;
+
+  const handleUpdateCustomWidgets = async (
+    updatedWidgets: CustomInsightWidget[],
+  ) => {
+    try {
+      setInsights((prev) =>
+        prev
+          ? {
+              ...prev,
+              customInsightsConfig: updatedWidgets,
+            }
+          : prev,
+      );
+
+      await updateCustomInsights(eventId, updatedWidgets);
+      toast.success("Custom insights updated successfully!");
+    } catch {
+      toast.error("Failed to update custom insights.");
+      if (eventId) {
+        getEventInsights(eventId).then((data) => setInsights(data));
+      }
+    }
+  };
 
   const handleCopyLink = async () => {
     try {
@@ -311,6 +338,17 @@ export default function EditOverviewPage() {
           summary={insights.summary}
           tierBreakdown={insights.tierBreakdown}
           availabilityRemaining={availability?.remaining}
+        />
+      )}
+
+      {/* Custom Form Insights */}
+      {insights && (
+        <CustomFormInsights
+          eventId={event.id}
+          widgets={insights.customInsightsConfig || []}
+          formFieldAnalytics={insights.formFieldAnalytics || []}
+          tierBreakdown={insights.tierBreakdown || []}
+          onUpdateWidgets={handleUpdateCustomWidgets}
         />
       )}
 

@@ -105,6 +105,131 @@ const mockInsights: EventInsightsData = {
       timestamp: "2026-05-23T09:40:00.000Z",
     },
   ],
+  customInsightsConfig: [
+    {
+      id: "widget-diet",
+      title: "Dietary Preferences",
+      fieldId: "field-diet",
+      chartType: "donut",
+      filterStatus: "all",
+      filterTicketTypeId: null,
+    },
+    {
+      id: "widget-workshops",
+      title: "Workshop Track Selection",
+      fieldId: "field-workshops",
+      chartType: "bar",
+      filterStatus: "all",
+      filterTicketTypeId: null,
+    },
+    {
+      id: "widget-rating",
+      title: "Attendee Rating",
+      fieldId: "field-rating",
+      chartType: "stat",
+      filterStatus: "all",
+      filterTicketTypeId: null,
+    },
+  ],
+  formFieldAnalytics: [
+    {
+      fieldId: "field-diet",
+      label: "Dietary Preference",
+      fieldType: "single_select",
+      totalResponses: 4,
+      distribution: [
+        { value: "Vegetarian", count: 3, percentage: 75 },
+        { value: "Non-Vegetarian", count: 1, percentage: 25 },
+      ],
+      averageNumeric: null,
+      rawResponses: [
+        {
+          ticketId: "t1",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["Vegetarian"],
+        },
+        {
+          ticketId: "t2",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["Vegetarian"],
+        },
+        {
+          ticketId: "t3",
+          ticketTypeId: "tt-gen-2",
+          isCheckedIn: false,
+          status: "active",
+          values: ["Vegetarian"],
+        },
+        {
+          ticketId: "t4",
+          ticketTypeId: "tt-gen-2",
+          isCheckedIn: true,
+          status: "used",
+          values: ["Non-Vegetarian"],
+        },
+      ],
+    },
+    {
+      fieldId: "field-workshops",
+      label: "Workshop Track",
+      fieldType: "multi_select",
+      totalResponses: 2,
+      distribution: [
+        { value: "AI Agents", count: 2, percentage: 100 },
+        { value: "Next.js 16", count: 1, percentage: 50 },
+      ],
+      averageNumeric: null,
+      rawResponses: [
+        {
+          ticketId: "t1",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["AI Agents", "Next.js 16"],
+        },
+        {
+          ticketId: "t2",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["AI Agents"],
+        },
+      ],
+    },
+    {
+      fieldId: "field-rating",
+      label: "Event Rating",
+      fieldType: "rating",
+      totalResponses: 2,
+      distribution: [
+        { value: "5", count: 1, percentage: 50 },
+        { value: "4", count: 1, percentage: 50 },
+      ],
+      averageNumeric: 4.5,
+      rawResponses: [
+        {
+          ticketId: "t1",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["5"],
+          numericValue: 5,
+        },
+        {
+          ticketId: "t2",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["4"],
+          numericValue: 4,
+        },
+      ],
+    },
+  ],
 };
 
 const mockHosts: EventHost[] = [
@@ -131,6 +256,131 @@ const mockEvent = {
   }),
   capacity: 100,
   requireApproval: true,
+  customInsightsConfig: [
+    {
+      id: "widget-diet",
+      title: "Dietary Preferences",
+      fieldId: "field-diet",
+      chartType: "donut",
+      filterStatus: "all",
+      filterTicketTypeId: null,
+    },
+    {
+      id: "widget-workshops",
+      title: "Workshop Track Selection",
+      fieldId: "field-workshops",
+      chartType: "bar",
+      filterStatus: "all",
+      filterTicketTypeId: null,
+    },
+    {
+      id: "widget-rating",
+      title: "Attendee Rating",
+      fieldId: "field-rating",
+      chartType: "stat",
+      filterStatus: "all",
+      filterTicketTypeId: null,
+    },
+  ],
+  formFieldAnalytics: [
+    {
+      fieldId: "field-diet",
+      label: "Dietary Preference",
+      fieldType: "single_select",
+      totalResponses: 4,
+      distribution: [
+        { value: "Vegetarian", count: 3, percentage: 75 },
+        { value: "Non-Vegetarian", count: 1, percentage: 25 },
+      ],
+      averageNumeric: null,
+      rawResponses: [
+        {
+          ticketId: "t1",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["Vegetarian"],
+        },
+        {
+          ticketId: "t2",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["Vegetarian"],
+        },
+        {
+          ticketId: "t3",
+          ticketTypeId: "tt-gen-2",
+          isCheckedIn: false,
+          status: "active",
+          values: ["Vegetarian"],
+        },
+        {
+          ticketId: "t4",
+          ticketTypeId: "tt-gen-2",
+          isCheckedIn: true,
+          status: "used",
+          values: ["Non-Vegetarian"],
+        },
+      ],
+    },
+    {
+      fieldId: "field-workshops",
+      label: "Workshop Track",
+      fieldType: "multi_select",
+      totalResponses: 2,
+      distribution: [
+        { value: "AI Agents", count: 2, percentage: 100 },
+        { value: "Next.js 16", count: 1, percentage: 50 },
+      ],
+      averageNumeric: null,
+      rawResponses: [
+        {
+          ticketId: "t1",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["AI Agents", "Next.js 16"],
+        },
+        {
+          ticketId: "t2",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["AI Agents"],
+        },
+      ],
+    },
+    {
+      fieldId: "field-rating",
+      label: "Event Rating",
+      fieldType: "rating",
+      totalResponses: 2,
+      distribution: [
+        { value: "5", count: 1, percentage: 50 },
+        { value: "4", count: 1, percentage: 50 },
+      ],
+      averageNumeric: 4.5,
+      rawResponses: [
+        {
+          ticketId: "t1",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["5"],
+          numericValue: 5,
+        },
+        {
+          ticketId: "t2",
+          ticketTypeId: "tt-early-1",
+          isCheckedIn: true,
+          status: "used",
+          values: ["4"],
+          numericValue: 4,
+        },
+      ],
+    },
+  ],
 };
 
 // --- Mocks ---

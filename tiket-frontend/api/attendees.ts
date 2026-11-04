@@ -9,6 +9,7 @@ import type {
   ManualRegisterPayload,
   AttendeeItem,
   EventInsightsData,
+  CustomInsightWidget,
 } from "@/types/attendee";
 
 export const getAttendees = async (
@@ -110,6 +111,17 @@ export const exportAttendees = async (
 ): Promise<{ data: string; format: string; filename: string }> => {
   const response = await api.get(
     `${API_ENDPOINTS.ATTENDEES.EXPORT(eventId)}?format=${format}`,
+  );
+  return response.data;
+};
+
+export const updateCustomInsights = async (
+  eventId: string,
+  widgets: CustomInsightWidget[],
+): Promise<{ message: string; customInsightsConfig: CustomInsightWidget[] }> => {
+  const response = await api.put(
+    API_ENDPOINTS.ATTENDEES.CUSTOM_INSIGHTS(eventId),
+    { widgets },
   );
   return response.data;
 };

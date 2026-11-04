@@ -146,6 +146,15 @@ export interface EventSocialLinks {
   community?: string | null;
 }
 
+export interface CustomInsightWidget {
+  id: string;
+  title: string;
+  fieldId: string;
+  chartType: "bar" | "donut" | "stat" | "table";
+  filterTicketTypeId?: string | null;
+  filterStatus?: "all" | "checked_in" | "active";
+}
+
 export const events = pgTable("events", {
   id: uuid("id").primaryKey().$defaultFn(uuidv7),
   title: varchar("title", { length: 255 }).notNull(),
@@ -170,6 +179,9 @@ export const events = pgTable("events", {
   overbookingLimit: integer("overbooking_limit").notNull().default(0),
   version: integer("version").notNull().default(0),
   status: eventStatusEnum("status").notNull().default("draft"),
+  customInsightsConfig: jsonb("custom_insights_config")
+    .$type<CustomInsightWidget[]>()
+    .default([]),
   organizationId: uuid("organization_id")
     .references(() => users.id)
     .notNull(),

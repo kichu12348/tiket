@@ -9,6 +9,7 @@ import { verifyEventPermission } from "../utils/permissions";
 import { changeAdmission } from "../utils/admission";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
+import type { CustomInsightWidget } from "@db/schema";
 import {
   orderItems,
   refunds,
@@ -758,7 +759,10 @@ export const getEventInsights = async (
 
     // 1. Event capacity & metadata
     const [event] = await db
-      .select({ capacity: events.capacity })
+      .select({
+        capacity: events.capacity,
+        customInsightsConfig: events.customInsightsConfig,
+      })
       .from(events)
       .where(eq(events.id, eventId));
 
@@ -1028,12 +1032,224 @@ export const getEventInsights = async (
       timestamp: r.createdAt.toISOString(),
     }));
 
+    // 7. Form Field Analytics & Response Aggregation
+    const eventFormFields = await db
+      .select({
+        id: formFields.id,
+        name: formFields.name,
+        label: formFields.label,
+        fieldType: formFields.fieldType,
+        sortOrder: formFields.sortOrder,
+      })
+      .from(formFields)
+      .where(eq(formFields.eventId, eventId))
+      .orderBy(formFields.sortOrder);
+
+    const formResponsesRaw = await db
+      .select({
+        fieldId: ticketFormResponses.fieldId,
+        ticketId: tickets.id,
+        ticketTypeId: tickets.ticketTypeId,
+        ticketStatus: tickets.status,
+        responseValue: ticketFormResponses.responseValue,
+      })
+      .from(ticketFormResponses)
+      .innerJoin(tickets, eq(ticketFormResponses.ticketId, tickets.id))
+      .where(
+        and(
+          eq(tickets.eventId, eventId),
+          inArray(tickets.status, ["active", "used", "pending_approval"]),
+        ),
+      );
+
+    const checkedInTicketRows = await db
+      .select({ ticketId: checkIns.ticketId })
+      .from(checkIns)
+      .where(eq(checkIns.eventId, eventId));
+    const checkedInTicketIds = new Set(
+      checkedInTicketRows.map((c) => c.ticketId),
+    );
+
+    const unpackValues = (
+      raw: string | null | undefined,
+      fieldType: string,
+    ): string[] => {
+      if (!raw) return [];
+      const trimmed = raw.trim();
+      if (!trimmed) return [];
+
+      if (
+        fieldType === "multi_select" ||
+        fieldType === "checkbox" ||
+        (trimmed.startsWith("[") && trimmed.endsWith("]"))
+      ) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map((item) => String(item).trim())
+              .filter((item) => item.length > 0);
+          }
+        } catch {
+          if (trimmed.includes(",")) {
+            return trimmed
+              .split(",")
+              .map((v) => v.trim())
+              .filter((v) => v.length > 0);
+          }
+        }
+      }
+      return [trimmed];
+    };
+
+    const responsesByField = new Map<
+      string,
+      Array<{
+        ticketId: string;
+        ticketTypeId: string;
+        isCheckedIn: boolean;
+        status: string;
+        values: string[];
+        numericValue: number | null;
+      }>
+    >();
+
+    for (const r of formResponsesRaw) {
+      const isCheckedIn =
+        checkedInTicketIds.has(r.ticketId) || r.ticketStatus === "used";
+      const fieldDef = eventFormFields.find((f) => f.id === r.fieldId);
+      const fieldType = fieldDef?.fieldType || "text";
+      const values = unpackValues(r.responseValue, fieldType);
+
+      let numericValue: number | null = null;
+      if (fieldType === "rating" || fieldType === "number") {
+        const parsedNum = parseFloat(r.responseValue || "");
+        if (!isNaN(parsedNum)) {
+          numericValue = parsedNum;
+        }
+      }
+
+      const list = responsesByField.get(r.fieldId) || [];
+      list.push({
+        ticketId: r.ticketId,
+        ticketTypeId: r.ticketTypeId,
+        isCheckedIn,
+        status: r.ticketStatus,
+        values,
+        numericValue,
+      });
+      responsesByField.set(r.fieldId, list);
+    }
+
+    const formFieldAnalytics = eventFormFields.map((field) => {
+      const rawResponses = responsesByField.get(field.id) || [];
+      const valueCountMap = new Map<string, number>();
+      let numericSum = 0;
+      let numericCount = 0;
+
+      for (const resp of rawResponses) {
+        for (const val of resp.values) {
+          valueCountMap.set(val, (valueCountMap.get(val) || 0) + 1);
+        }
+        if (resp.numericValue !== null && resp.numericValue !== undefined) {
+          numericSum += resp.numericValue;
+          numericCount += 1;
+        }
+      }
+
+      const totalResponses = rawResponses.length;
+      const distribution = Array.from(valueCountMap.entries())
+        .map(([value, count]) => ({
+          value,
+          count,
+          percentage:
+            totalResponses > 0
+              ? Math.round((count / totalResponses) * 100)
+              : 0,
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      const averageNumeric =
+        numericCount > 0
+          ? Math.round((numericSum / numericCount) * 10) / 10
+          : null;
+
+      return {
+        fieldId: field.id,
+        label: field.label,
+        fieldType: field.fieldType,
+        totalResponses,
+        distribution,
+        averageNumeric,
+        rawResponses,
+      };
+    });
+
     return reply.status(200).send({
       summary,
       dailySeries,
       hourlyCheckIns,
       tierBreakdown,
       recentActivity,
+      customInsightsConfig: event?.customInsightsConfig || [],
+      formFieldAnalytics,
+    });
+  } catch (error) {
+    return handleControllerError(request, reply, error);
+  }
+};
+
+export const updateCustomInsights = async (
+  request: FastifyRequest<{
+    Params: { eventId: string };
+    Body: { widgets: CustomInsightWidget[] };
+  }>,
+  reply: FastifyReply,
+) => {
+  try {
+    await request.jwtVerify();
+    const user = request.user as { id: string };
+    const { eventId } = request.params;
+
+    const hasAnalyticsAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_analytics",
+    );
+    const hasSettingsAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_settings",
+    );
+
+    if (!hasAnalyticsAccess && !hasSettingsAccess) {
+      return reply.status(403).send({
+        error: "You do not have permission to manage custom insights.",
+      });
+    }
+
+    const [event] = await db
+      .select({ id: events.id })
+      .from(events)
+      .where(eq(events.id, eventId));
+
+    if (!event) {
+      return reply.status(404).send({ error: "Event not found." });
+    }
+
+    const widgets = request.body.widgets || [];
+
+    await db
+      .update(events)
+      .set({
+        customInsightsConfig: widgets,
+        updatedAt: new Date(),
+      })
+      .where(eq(events.id, eventId));
+
+    return reply.status(200).send({
+      message: "Custom insights saved successfully.",
+      customInsightsConfig: widgets,
     });
   } catch (error) {
     return handleControllerError(request, reply, error);

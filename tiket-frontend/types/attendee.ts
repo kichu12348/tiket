@@ -144,10 +144,46 @@ export interface RecentActivityItem {
   timestamp: string;
 }
 
+export interface CustomInsightWidget {
+  id: string;
+  title: string;
+  fieldId: string;
+  chartType: "bar" | "donut" | "stat" | "table";
+  filterTicketTypeId?: string | null;
+  filterStatus?: "all" | "checked_in" | "active";
+}
+
+export interface FormFieldDistributionItem {
+  value: string;
+  count: number;
+  percentage: number;
+}
+
+export interface RawResponseBreakdownItem {
+  ticketId: string;
+  ticketTypeId: string;
+  isCheckedIn: boolean;
+  status: string;
+  values: string[];
+  numericValue?: number | null;
+}
+
+export interface FormFieldAnalyticsItem {
+  fieldId: string;
+  label: string;
+  fieldType: string;
+  totalResponses: number;
+  distribution: FormFieldDistributionItem[];
+  averageNumeric?: number | null;
+  rawResponses?: RawResponseBreakdownItem[];
+}
+
 export interface EventInsightsData {
   summary: EventInsightsSummary;
   dailySeries: DailySeriesItem[];
   hourlyCheckIns: HourlyCheckInItem[];
   tierBreakdown: TierBreakdownItem[];
   recentActivity: RecentActivityItem[];
+  customInsightsConfig?: CustomInsightWidget[];
+  formFieldAnalytics?: FormFieldAnalyticsItem[];
 }
