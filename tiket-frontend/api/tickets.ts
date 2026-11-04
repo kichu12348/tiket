@@ -11,6 +11,7 @@ import type {
   TransferTicketPayload,
   TicketTransfer,
   AcceptTransferResponse,
+  MyTicketsResponse,
 } from "@/types/ticket";
 import type {
   DocumentTemplate,
@@ -102,6 +103,41 @@ export const acceptTicketTransfer = async (
 };
 
 export const acceptTransfer = acceptTicketTransfer;
+
+// Fetch current user's tickets and incoming transfers
+export const getMyTickets = async (): Promise<MyTicketsResponse> => {
+  const response = await api.get(API_ENDPOINTS.TICKETS.ME);
+  if (Array.isArray(response.data)) {
+    return {
+      tickets: response.data,
+      incomingTransfers: [],
+    };
+  }
+  return {
+    tickets: response.data?.tickets || [],
+    incomingTransfers: response.data?.incomingTransfers || [],
+  };
+};
+
+// Decline/Cancel an incoming ticket transfer
+export const cancelTicketTransfer = async (
+  transferId: string,
+): Promise<{ message: string }> => {
+  const response = await api.post(
+    API_ENDPOINTS.TICKETS.CANCEL_TRANSFER(transferId),
+  );
+  return response.data;
+};
+
+export const declineTicketTransfer = cancelTicketTransfer;
+
+// Cancel or request refund for a ticket pass
+export const cancelTicket = async (
+  ticketId: string,
+): Promise<{ message: string }> => {
+  const response = await api.post(API_ENDPOINTS.TICKETS.CANCEL(ticketId));
+  return response.data;
+};
 
 // --- Document Templates API ---
 export const getTemplates = async (

@@ -128,6 +128,55 @@ export interface TicketTransfer {
   createdAt: string;
 }
 
+export interface IncomingTransfer {
+  id: string;
+  ticketId: string;
+  fromUserId?: string;
+  senderEmail?: string;
+  senderName?: string;
+  status: string;
+  createdAt: string;
+  event?: {
+    id: string;
+    title: string;
+    slug?: string;
+    startDate?: string;
+    locationDetails?: LocationDetails | string | null;
+  };
+  ticketType?: {
+    id: string;
+    name: string;
+    price?: string;
+  };
+  ticket?: {
+    id: string;
+    event?: {
+      id: string;
+      title: string;
+      slug?: string;
+      startDate?: string;
+    };
+    ticketType?: {
+      id: string;
+      name: string;
+    };
+  };
+}
+
+export interface UserTicketSummary {
+  id: string;
+  status: TicketStatus;
+  qrCode?: string;
+  createdAt: string;
+  event: TicketPassEvent;
+  ticketType: TicketPassType;
+}
+
+export interface MyTicketsResponse {
+  tickets: (TicketPassData | UserTicketSummary)[];
+  incomingTransfers: IncomingTransfer[];
+}
+
 export interface AcceptTransferResponse {
   message: string;
   transfer: TicketTransfer;

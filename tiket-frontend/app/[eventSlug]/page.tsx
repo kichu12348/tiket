@@ -12,6 +12,8 @@ import {
   FiLinkedin,
   FiYoutube,
   FiMessageCircle,
+  FiCalendar,
+  FiDownload,
 } from "react-icons/fi";
 import {
   getEventBySlug,
@@ -20,6 +22,7 @@ import {
   getEventAvailability,
 } from "./api/eventApi";
 import { formatEventDates } from "./utils/formatters";
+import { buildGoogleCalendarUrl, buildIcsContent } from "@/lib/calendar";
 import RegistrationCard from "./components/RegistrationCard";
 import EventLocation from "./components/EventLocation";
 import { TRANSPARENT_BG } from "@/constants/util";
@@ -34,21 +37,34 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
   const event = await getEventBySlug(resolvedParams.eventSlug);
-  if (!event) return { title: "Event Not Found" };
+  if (!event) return { title: "Event Not Found | Tiket" };
+  const title = event.title || "Event";
+  const rawDescription = event.description || "Join this event on Tiket!";
+  const cleanDesc = rawDescription.replace(/<[^>]*>/g, "").slice(0, 200);
+  const imageUrl = event.coverImage ? getImageUrl(event.coverImage) : undefined;
   return {
-    title: `${event.title}`,
-    description: event.description || "Join this amazing event!",
+    title: `${title} | Tiket`,
+    description: cleanDesc,
     openGraph: {
-      title: event.title,
-      description: event.description || "",
-      images: [
-        {
-          url: getImageUrl(event.coverImage || ""),
-          width: 800,
-          height: 600,
-          alt: event.title,
-        },
-      ],
+      title,
+      description: cleanDesc,
+      type: "website",
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: title,
+            },
+          ]
+        : [],
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title,
+      description: cleanDesc,
+      images: imageUrl ? [imageUrl] : [],
     },
   };
 }
@@ -121,6 +137,18 @@ export default async function EventPage({ params }: PageProps) {
     (item): item is { key: string; url: string; label: string; icon: typeof FiGlobe } =>
       Boolean(item.url && typeof item.url === "string" && item.url.trim().length > 0),
   );
+
+  const calendarEvent = {
+    title: event.title,
+    startDate: event.startDate,
+    endDate: event.endDate,
+    description: event.description,
+    locationDetails: locationData,
+    locationType: event.locationType,
+    slug: event.slug,
+  };
+  const googleCalUrl = buildGoogleCalendarUrl(calendarEvent);
+  const icsContent = buildIcsContent(calendarEvent);
 
   return (
     <div
@@ -296,6 +324,59 @@ export default async function EventPage({ params }: PageProps) {
                       </span>
                     )}
                   </div>
+                </a>
+              </div>
+
+              {/* Add to Calendar */}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0.6rem",
+                  marginTop: "0.85rem",
+                }}
+                data-testid="calendar-buttons"
+              >
+                <a
+                  href={googleCalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="add-to-google-calendar-btn"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.45rem",
+                    background: "var(--color-soft-bg, rgba(255, 255, 255, 0.05))",
+                    color: "var(--color-text-soft, rgba(255, 255, 255, 0.75))",
+                    padding: "0.45rem 0.85rem",
+                    borderRadius: "var(--radius-sm, 8px)",
+                    fontSize: "0.82rem",
+                    fontWeight: 500,
+                    textDecoration: "none",
+                  }}
+                >
+                  <FiCalendar size={14} />
+                  <span>Add to Google Calendar</span>
+                </a>
+                <a
+                  href={`data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`}
+                  download={`${event.slug || "event"}.ics`}
+                  data-testid="download-ics-btn"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.45rem",
+                    background: "var(--color-soft-bg, rgba(255, 255, 255, 0.05))",
+                    color: "var(--color-text-soft, rgba(255, 255, 255, 0.75))",
+                    padding: "0.45rem 0.85rem",
+                    borderRadius: "var(--radius-sm, 8px)",
+                    fontSize: "0.82rem",
+                    fontWeight: 500,
+                    textDecoration: "none",
+                  }}
+                >
+                  <FiDownload size={14} />
+                  <span>Download .ics</span>
                 </a>
               </div>
             </div>

@@ -81,10 +81,14 @@ export const API_ENDPOINTS = {
       `/api/forms/${eventId}/pages/${pageNum}`,
   },
   TICKETS: {
+    ME: "/api/tickets/me",
     GET: (ticketId: string) => `/api/tickets/${ticketId}`,
     TRANSFER: (ticketId: string) => `/api/tickets/${ticketId}/transfer`,
     ACCEPT_TRANSFER: (transferId: string) =>
       `/api/tickets/transfers/${transferId}/accept`,
+    CANCEL_TRANSFER: (transferId: string) =>
+      `/api/tickets/transfers/${transferId}/cancel`,
+    CANCEL: (ticketId: string) => `/api/tickets/${ticketId}/cancel`,
   },
   TEMPLATES: {
     CREATE: (eventId: string) => `/api/templates/events/${eventId}`,
