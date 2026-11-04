@@ -6,6 +6,7 @@ import type {
   SendTestEmailPayload,
   SendBatchEmailPayload,
   EmailLog,
+  EmailLogsResponse,
 } from "@/types/email";
 
 export const getEmailTemplates = async (
@@ -99,7 +100,47 @@ export const sendBatchEmail = async (
   return response.data;
 };
 
-export const getEmailLogs = async (eventId: string): Promise<EmailLog[]> => {
+export const getEmailLogs = async (
+  eventId: string,
+): Promise<EmailLogsResponse> => {
   const response = await api.get(API_ENDPOINTS.EMAILS.LOGS(eventId));
+  if (Array.isArray(response.data)) {
+    const logs: EmailLog[] = response.data;
+    const totalSent = logs.filter((l) => l.status === "sent").length;
+    const totalFailed = logs.filter((l) => l.status === "failed").length;
+    const totalOpened = logs.filter(
+      (l) => (l.openCount && l.openCount > 0) || l.openedAt,
+    ).length;
+    const totalUnopened = logs.filter(
+      (l) =>
+        l.status === "sent" &&
+        (!l.openCount || l.openCount === 0) &&
+        !l.openedAt,
+    ).length;
+    const openRatePercent =
+      totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
+    return {
+      logs,
+      analytics: {
+        totalSent,
+        totalFailed,
+        totalOpened,
+        totalUnopened,
+        openRatePercent,
+        byType: [],
+        timeline: [],
+      },
+    };
+  }
+  return response.data;
+};
+
+export const resendEmailLog = async (
+  eventId: string,
+  logId: string,
+): Promise<EmailLog> => {
+  const response = await api.post(
+    API_ENDPOINTS.EMAILS.RESEND_LOG(eventId, logId),
+  );
   return response.data;
 };

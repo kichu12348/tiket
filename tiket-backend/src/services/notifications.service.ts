@@ -15,6 +15,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { Transaction } from "../db/types";
 import { deliverMail } from "./mail.service";
 import { sanitizeEmailHtml } from "../utils/html";
+import { v7 as uuidv7 } from "uuid";
 import {
   DEFAULT_TEMPLATES,
   interpolateTemplate,
@@ -163,6 +164,7 @@ export async function enqueueOrderEmail(
         subject,
         body,
         templateId,
+        templateType: kind === "confirmation" ? "confirmation" : "custom",
       },
     })
     .onConflictDoNothing();
@@ -283,6 +285,7 @@ export async function enqueueCheckInEmail(
         subject,
         body,
         templateId: activeTemplate.id,
+        templateType: activeTemplate.type || "checkin",
       },
     })
     .onConflictDoNothing();
@@ -304,7 +307,33 @@ export async function processDeliveries() {
       .returning();
     if (!claim) continue;
     try {
-      await deliverMail(job.payload, job.eventId, job.key);
+      const logId = uuidv7();
+      const renderedBody = sanitizeEmailHtml(job.payload.body);
+      const trackingPixel = `<img src="${process.env.CDN_URL || "http://localhost:3001"}/api/emails/track/${logId}.gif" width="1" height="1" alt="" style="display:none;width:1px;height:1px;" />`;
+      const bodyWithPixel = `${renderedBody}${trackingPixel}`;
+
+      let templateType = job.payload.templateType;
+      if (!templateType && job.payload.templateId) {
+        try {
+          const [tpl] = await db
+            .select({ type: emailTemplates.type })
+            .from(emailTemplates)
+            .where(eq(emailTemplates.id, job.payload.templateId));
+          if (tpl) templateType = tpl.type;
+        } catch {
+          // fallback
+        }
+      }
+      templateType = templateType || "custom";
+
+      await deliverMail(
+        {
+          ...job.payload,
+          body: bodyWithPixel,
+        },
+        job.eventId,
+        job.key,
+      );
       await db.transaction(async (tx) => {
         await tx
           .update(deliveryJobs)
@@ -312,7 +341,18 @@ export async function processDeliveries() {
           .where(eq(deliveryJobs.key, job.key));
         await tx
           .insert(emailLogs)
-          .values({ ...job.payload, eventId: job.eventId, status: "sent" });
+          .values({
+            id: logId,
+            eventId: job.eventId,
+            templateId: job.payload.templateId || null,
+            templateType,
+            recipientEmail: job.payload.recipientEmail,
+            recipientName: job.payload.recipientName || null,
+            subject: job.payload.subject,
+            renderedBody,
+            status: "sent",
+            errorMessage: null,
+          });
       });
     } catch (error) {
       // Delivery may have succeeded before a timeout. Do not automatically duplicate SMTP messages.

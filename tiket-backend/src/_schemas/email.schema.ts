@@ -43,12 +43,54 @@ const emailLogObj = {
     id: { type: "string" },
     eventId: { type: "string" },
     templateId: { type: ["string", "null"] },
+    templateType: { type: "string" },
     recipientEmail: { type: "string" },
     recipientName: { type: ["string", "null"] },
     subject: { type: "string" },
+    renderedBody: { type: ["string", "null"] },
     status: { type: "string" },
     errorMessage: { type: ["string", "null"] },
+    openedAt: { type: ["string", "null"] },
+    openCount: { type: "number" },
+    resentCount: { type: "number" },
+    lastResentAt: { type: ["string", "null"] },
     sentAt: { type: "string" },
+  },
+};
+
+const emailAnalyticsObj = {
+  type: "object",
+  properties: {
+    totalSent: { type: "number" },
+    totalFailed: { type: "number" },
+    totalOpened: { type: "number" },
+    totalUnopened: { type: "number" },
+    openRatePercent: { type: "number" },
+    byType: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          templateType: { type: "string" },
+          sent: { type: "number" },
+          opened: { type: "number" },
+          unopened: { type: "number" },
+          failed: { type: "number" },
+          openRatePercent: { type: "number" },
+        },
+      },
+    },
+    timeline: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          bucket: { type: "string" },
+          sent: { type: "number" },
+          opened: { type: "number" },
+        },
+      },
+    },
   },
 };
 
@@ -335,10 +377,58 @@ export const getEmailLogsSchema = {
     },
     response: {
       200: {
-        type: "array",
-        items: emailLogObj,
+        anyOf: [
+          {
+            type: "object",
+            properties: {
+              logs: {
+                type: "array",
+                items: emailLogObj,
+              },
+              analytics: emailAnalyticsObj,
+            },
+          },
+          {
+            type: "array",
+            items: emailLogObj,
+          },
+        ],
       },
+      401: errorResponseSchema,
+      403: errorResponseSchema,
       500: errorResponseSchema,
+    },
+  },
+};
+
+export const resendEmailLogSchema = {
+  schema: {
+    params: {
+      type: "object",
+      required: ["eventId", "logId"],
+      properties: {
+        eventId: { type: "string" },
+        logId: { type: "string" },
+      },
+    },
+    response: {
+      200: emailLogObj,
+      401: errorResponseSchema,
+      403: errorResponseSchema,
+      404: errorResponseSchema,
+      500: errorResponseSchema,
+    },
+  },
+};
+
+export const trackEmailOpenSchema = {
+  schema: {
+    params: {
+      type: "object",
+      required: ["logId"],
+      properties: {
+        logId: { type: "string" },
+      },
     },
   },
 };

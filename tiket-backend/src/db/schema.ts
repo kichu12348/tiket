@@ -524,11 +524,17 @@ export const emailLogs = pgTable("email_logs", {
   templateId: uuid("template_id").references(() => emailTemplates.id, {
     onDelete: "set null",
   }),
+  templateType: varchar("template_type", { length: 50 }).notNull().default("custom"),
   recipientEmail: varchar("recipient_email", { length: 255 }).notNull(),
   recipientName: varchar("recipient_name", { length: 255 }),
   subject: text("subject").notNull(),
+  renderedBody: text("rendered_body"),
   status: emailDeliveryStatusEnum("status").notNull().default("sent"),
   errorMessage: text("error_message"),
+  openedAt: timestamp("opened_at", { withTimezone: true }),
+  openCount: integer("open_count").notNull().default(0),
+  resentCount: integer("resent_count").notNull().default(0),
+  lastResentAt: timestamp("last_resent_at", { withTimezone: true }),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
 });
 
@@ -864,6 +870,7 @@ export const deliveryJobs = pgTable("delivery_jobs", {
       subject: string;
       body: string;
       templateId?: string;
+      templateType?: string;
     }>()
     .notNull(),
   status: varchar("status", {

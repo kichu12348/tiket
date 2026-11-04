@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, spyOn } from "bun:test";
 import {
   interpolateTemplate,
   DEFAULT_TEMPLATES,
@@ -152,6 +152,279 @@ describe("Email HTML Sanitization", () => {
       expect(sanitized).toContain("style=");
       expect(sanitized).not.toContain("<script");
       expect(sanitized).not.toContain("javascript:");
+    }
+  });
+});
+
+import {
+  calculateEmailAnalytics,
+  trackEmailOpen,
+  resendEmailLog,
+} from "../src/controllers/email.controller";
+import db from "../src/db";
+import { emailLogs } from "../src/db/schema";
+import * as permissions from "../src/utils/permissions";
+import * as mailService from "../src/services/mail.service";
+
+describe("Email Analytics Calculation", () => {
+  test("aggregates totalSent, totalFailed, totalOpened, totalUnopened and openRatePercent correctly", () => {
+    const fixtureLogs = [
+      {
+        templateType: "confirmation",
+        status: "sent",
+        openedAt: new Date("2026-11-01T10:00:00Z"),
+        openCount: 2,
+        sentAt: new Date("2026-11-01T09:00:00Z"),
+      },
+      {
+        templateType: "confirmation",
+        status: "sent",
+        openedAt: null,
+        openCount: 0,
+        sentAt: new Date("2026-11-01T09:30:00Z"),
+      },
+      {
+        templateType: "checkin",
+        status: "sent",
+        openedAt: new Date("2026-11-02T12:00:00Z"),
+        openCount: 1,
+        sentAt: new Date("2026-11-02T11:00:00Z"),
+      },
+      {
+        templateType: "invitation",
+        status: "failed",
+        openedAt: null,
+        openCount: 0,
+        sentAt: new Date("2026-11-02T11:30:00Z"),
+      },
+    ];
+
+    const analytics = calculateEmailAnalytics(fixtureLogs);
+
+    expect(analytics.totalSent).toBe(3);
+    expect(analytics.totalFailed).toBe(1);
+    expect(analytics.totalOpened).toBe(2);
+    expect(analytics.totalUnopened).toBe(1);
+    expect(analytics.openRatePercent).toBe(67); // 2 / 3 * 100 = 66.66% -> 67%
+  });
+
+  test("calculates breakdown by template type across standard and custom types", () => {
+    const fixtureLogs = [
+      {
+        templateType: "confirmation",
+        status: "sent",
+        openedAt: new Date("2026-11-01T10:00:00Z"),
+        openCount: 1,
+        sentAt: new Date("2026-11-01T09:00:00Z"),
+      },
+      {
+        templateType: "confirmation",
+        status: "sent",
+        openedAt: null,
+        openCount: 0,
+        sentAt: new Date("2026-11-01T09:30:00Z"),
+      },
+      {
+        templateType: "custom",
+        status: "sent",
+        openedAt: new Date("2026-11-03T10:00:00Z"),
+        openCount: 3,
+        sentAt: new Date("2026-11-03T09:00:00Z"),
+      },
+    ];
+
+    const analytics = calculateEmailAnalytics(fixtureLogs);
+
+    const confirmationStat = analytics.byType.find(
+      (t) => t.templateType === "confirmation",
+    );
+    expect(confirmationStat).toBeDefined();
+    expect(confirmationStat?.sent).toBe(2);
+    expect(confirmationStat?.opened).toBe(1);
+    expect(confirmationStat?.unopened).toBe(1);
+    expect(confirmationStat?.openRatePercent).toBe(50);
+
+    const customStat = analytics.byType.find((t) => t.templateType === "custom");
+    expect(customStat).toBeDefined();
+    expect(customStat?.sent).toBe(1);
+    expect(customStat?.opened).toBe(1);
+    expect(customStat?.unopened).toBe(0);
+    expect(customStat?.openRatePercent).toBe(100);
+
+    const checkinStat = analytics.byType.find((t) => t.templateType === "checkin");
+    expect(checkinStat).toBeDefined();
+    expect(checkinStat?.sent).toBe(0);
+    expect(checkinStat?.opened).toBe(0);
+  });
+
+  test("groups timeline velocity by date bucket", () => {
+    const fixtureLogs = [
+      {
+        templateType: "confirmation",
+        status: "sent",
+        openedAt: new Date("2026-11-01T12:00:00Z"),
+        openCount: 1,
+        sentAt: new Date("2026-11-01T08:00:00Z"),
+      },
+      {
+        templateType: "checkin",
+        status: "sent",
+        openedAt: new Date("2026-11-02T15:00:00Z"),
+        openCount: 1,
+        sentAt: new Date("2026-11-02T10:00:00Z"),
+      },
+    ];
+
+    const analytics = calculateEmailAnalytics(fixtureLogs);
+    expect(analytics.timeline.length).toBe(2);
+    expect(analytics.timeline[0]!.bucket).toBe("2026-11-01");
+    expect(analytics.timeline[0]!.sent).toBe(1);
+    expect(analytics.timeline[0]!.opened).toBe(1);
+    expect(analytics.timeline[1]!.bucket).toBe("2026-11-02");
+  });
+});
+
+describe("Tracking Pixel & Resend Endpoints", () => {
+  function createMockReply() {
+    const headers: Record<string, string> = {};
+    let statusCode = 200;
+    let sentData: any = null;
+
+    const reply: any = {
+      header: (name: string, value: string) => {
+        headers[name.toLowerCase()] = value;
+        return reply;
+      },
+      status: (code: number) => {
+        statusCode = code;
+        return reply;
+      },
+      send: (data: any) => {
+        sentData = data;
+        return reply;
+      },
+      getHeaders: () => headers,
+      getStatusCode: () => statusCode,
+      getSentData: () => sentData,
+    };
+    return reply;
+  }
+
+  test("GET /api/emails/track/:logId.gif strips .gif, increments openCount, and returns transparent GIF", async () => {
+    const mockReply = createMockReply();
+    const testLogId = "0192e123-4567-789a-bcde-f0123456789a";
+
+    let updateCalledWithId = "";
+    const origUpdate = db.update;
+    (db as any).update = (table: any) => {
+      return {
+        set: (_values: any) => ({
+          where: (clause: any) => {
+            updateCalledWithId = testLogId;
+            return Promise.resolve();
+          },
+        }),
+      };
+    };
+
+    try {
+      const mockRequest: any = {
+        params: { logId: `${testLogId}.gif` },
+      };
+
+      await trackEmailOpen(mockRequest, mockReply);
+
+      // Verify header and 1x1 gif payload
+      expect(mockReply.getHeaders()["content-type"]).toBe("image/gif");
+      expect(mockReply.getHeaders()["cache-control"]).toBe(
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      );
+      expect(Buffer.isBuffer(mockReply.getSentData())).toBe(true);
+      expect(mockReply.getSentData().length).toBe(42);
+      expect(updateCalledWithId).toBe(testLogId);
+    } finally {
+      db.update = origUpdate;
+    }
+  });
+
+  test("resendEmailLog redelivers message, increments resentCount and returns updated log", async () => {
+    const mockReply = createMockReply();
+    const eventId = "0192e123-4567-789a-bcde-f0123456789a";
+    const logId = "0192e999-4567-789a-bcde-f0123456789a";
+
+    const mockRequest: any = {
+      jwtVerify: async () => {},
+      user: { id: "user-organizer-1" },
+      params: { eventId, logId },
+    };
+
+    const spyVerify = spyOn(permissions, "verifyEventPermission").mockResolvedValue(
+      true as any,
+    );
+
+    let deliverMailCalled = false;
+    let deliveredBody = "";
+    const spyDeliverMail = spyOn(mailService, "deliverMail").mockImplementation(
+      async (msg: any) => {
+        deliverMailCalled = true;
+        deliveredBody = msg.body;
+      },
+    );
+
+    const origSelect = db.select;
+    (db as any).select = () => ({
+      from: () => ({
+        where: () => [
+          {
+            id: logId,
+            eventId,
+            recipientEmail: "attendee@test.com",
+            recipientName: "Test Attendee",
+            subject: "Your Confirmation",
+            renderedBody: "<p>Original Body</p>",
+            status: "sent",
+            resentCount: 0,
+          },
+        ],
+      }),
+    });
+
+    const origUpdate = db.update;
+    (db as any).update = () => ({
+      set: () => ({
+        where: () => ({
+          returning: () => [
+            {
+              id: logId,
+              eventId,
+              recipientEmail: "attendee@test.com",
+              recipientName: "Test Attendee",
+              subject: "Your Confirmation",
+              renderedBody: "<p>Original Body</p>",
+              status: "sent",
+              resentCount: 1,
+              lastResentAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      }),
+    });
+
+    try {
+      await resendEmailLog(mockRequest, mockReply);
+
+      expect(deliverMailCalled).toBe(true);
+      expect(deliveredBody).toContain("<p>Original Body</p>");
+      expect(deliveredBody).toContain(`/api/emails/track/${logId}.gif`);
+
+      const sentLog = mockReply.getSentData();
+      expect(sentLog.id).toBe(logId);
+      expect(sentLog.resentCount).toBe(1);
+    } finally {
+      spyVerify.mockRestore();
+      spyDeliverMail.mockRestore();
+      db.select = origSelect;
+      db.update = origUpdate;
     }
   });
 });

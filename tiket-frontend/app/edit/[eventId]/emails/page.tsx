@@ -8,6 +8,7 @@ import type {
   EmailTemplateType,
   AvailableVariables,
   EmailLog,
+  EmailAnalytics,
 } from "@/types/email";
 import {
   getEmailTemplates,
@@ -20,6 +21,7 @@ import {
   sendTestEmail,
   sendBatchEmail,
   getEmailLogs,
+  resendEmailLog,
 } from "@/api/emails";
 import { toast } from "sonner";
 import { Power } from "lucide-react";
@@ -50,6 +52,7 @@ export default function EditEmailsPage() {
   );
   const [variables, setVariables] = useState<AvailableVariables | null>(null);
   const [logs, setLogs] = useState<EmailLog[]>([]);
+  const [analytics, setAnalytics] = useState<EmailAnalytics | null>(null);
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isTemplateLoading, setIsTemplateLoading] = useState(false);
@@ -70,7 +73,16 @@ export default function EditEmailsPage() {
       .then(async ([tplData, varData, logData]) => {
         setTemplates(tplData);
         setVariables(varData);
-        setLogs(logData);
+        if (Array.isArray(logData)) {
+          setLogs(logData);
+          setAnalytics(null);
+        } else if (logData && typeof logData === "object" && "logs" in logData) {
+          setLogs(logData.logs);
+          setAnalytics(logData.analytics || null);
+        } else {
+          setLogs([]);
+          setAnalytics(null);
+        }
 
         // Select first template matching activeType
         const match =
@@ -367,8 +379,13 @@ export default function EditEmailsPage() {
       toast.success("Test email dispatched successfully!");
       // Reload logs to reflect freshly logged email
       setIsLogsLoading(true);
-      const updatedLogs = await getEmailLogs(event.id);
-      setLogs(updatedLogs);
+      const res = await getEmailLogs(event.id);
+      if (Array.isArray(res)) {
+        setLogs(res);
+      } else if (res && typeof res === "object" && "logs" in res) {
+        setLogs(res.logs);
+        setAnalytics(res.analytics || null);
+      }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to send test email");
     } finally {
@@ -394,12 +411,32 @@ export default function EditEmailsPage() {
       toast.success(res.message);
       // Reload logs to reflect freshly sent batch emails
       setIsLogsLoading(true);
-      const updatedLogs = await getEmailLogs(event.id);
-      setLogs(updatedLogs);
+      const updatedRes = await getEmailLogs(event.id);
+      if (Array.isArray(updatedRes)) {
+        setLogs(updatedRes);
+      } else if (updatedRes && typeof updatedRes === "object" && "logs" in updatedRes) {
+        setLogs(updatedRes.logs);
+        setAnalytics(updatedRes.analytics || null);
+      }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to send batch email");
     } finally {
       setIsLogsLoading(false);
+    }
+  };
+
+  // Resend single email log
+  const handleResendEmail = async (logId: string) => {
+    if (!event?.id) return;
+    try {
+      const updated = await resendEmailLog(event.id, logId);
+      setLogs((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      toast.success(
+        `Email resent successfully to ${updated.recipientEmail}!`,
+      );
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to resend email");
+      throw err;
     }
   };
 
@@ -507,7 +544,13 @@ export default function EditEmailsPage() {
           )}
 
           <div className={styles.logsSection}>
-            <EmailLogsTable logs={logs} isLoading={isLogsLoading} />
+            <EmailLogsTable
+              logs={logs}
+              analytics={analytics}
+              isLoading={isLogsLoading}
+              onResend={handleResendEmail}
+              eventId={event?.id}
+            />
           </div>
 
           {currentTemplate && (

@@ -10,6 +10,8 @@ import {
   sendTestEmail,
   sendBatchEmail,
   getEmailLogs,
+  trackEmailOpen,
+  resendEmailLog,
 } from "@controllers/email";
 import {
   getEmailTemplatesSchema,
@@ -22,6 +24,8 @@ import {
   sendTestEmailSchema,
   sendBatchEmailSchema,
   getEmailLogsSchema,
+  trackEmailOpenSchema,
+  resendEmailLogSchema,
 } from "@schemas/email";
 
 export default async function emailRoutes(fastify: FastifyInstance) {
@@ -72,4 +76,15 @@ export default async function emailRoutes(fastify: FastifyInstance) {
     sendBatchEmail,
   );
   fastify.get("/events/:eventId/logs", getEmailLogsSchema, getEmailLogs);
+  fastify.get(
+    "/events/:eventId/analytics",
+    getEmailLogsSchema,
+    getEmailLogs,
+  );
+  fastify.post(
+    "/events/:eventId/logs/:logId/resend",
+    resendEmailLogSchema,
+    resendEmailLog,
+  );
+  fastify.get("/track/:logId", trackEmailOpenSchema, trackEmailOpen);
 }

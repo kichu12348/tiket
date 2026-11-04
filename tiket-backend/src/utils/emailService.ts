@@ -3,6 +3,7 @@ import { sanitizeEmailHtml } from "./html";
 import db from "@db";
 import { emailLogs, emailTemplates } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
 
 export interface InterpolationData {
   event?: {
@@ -80,6 +81,7 @@ export interface SendEmailOptions {
   subject: string;
   body: string;
   templateId?: string;
+  templateType?: string;
   data?: InterpolationData;
 }
 
@@ -88,21 +90,39 @@ export interface SendEmailOptions {
  * To be wired to real SMTP/provider later.
  */
 export async function sendEmail(options: SendEmailOptions) {
+  const logId = uuidv7();
   const interpolatedSubject = interpolateTemplate(
     options.subject,
     options.data,
   );
   const interpolatedBody = interpolateTemplate(options.body, options.data);
+  const sanitizedBody = sanitizeEmailHtml(interpolatedBody);
 
-  let status: "sent" | "failed" = "sent";
-  let errorMessage: string | undefined = undefined;
+  let templateType = options.templateType;
+  if (!templateType && options.templateId) {
+    try {
+      const [tpl] = await db
+        .select({ type: emailTemplates.type })
+        .from(emailTemplates)
+        .where(eq(emailTemplates.id, options.templateId));
+      if (tpl) {
+        templateType = tpl.type;
+      }
+    } catch {
+      // Fallback to custom
+    }
+  }
+  templateType = templateType || "custom";
+
+  const trackingPixel = `<img src="${process.env.CDN_URL || "http://localhost:3001"}/api/emails/track/${logId}.gif" width="1" height="1" alt="" style="display:none;width:1px;height:1px;" />`;
+  const bodyWithPixel = `${sanitizedBody}${trackingPixel}`;
 
   try {
     await deliverMail(
       {
         ...options,
         subject: interpolatedSubject,
-        body: sanitizeEmailHtml(interpolatedBody),
+        body: bodyWithPixel,
       },
       options.eventId,
     );
@@ -110,13 +130,16 @@ export async function sendEmail(options: SendEmailOptions) {
     const [log] = await db
       .insert(emailLogs)
       .values({
+        id: logId,
         eventId: options.eventId,
         templateId: options.templateId || null,
+        templateType,
         recipientEmail: options.recipientEmail,
         recipientName: options.recipientName || null,
         subject: interpolatedSubject,
-        status: status,
-        errorMessage: errorMessage || null,
+        renderedBody: sanitizedBody,
+        status: "sent",
+        errorMessage: null,
       })
       .returning();
 
@@ -125,11 +148,14 @@ export async function sendEmail(options: SendEmailOptions) {
     console.error("[EMAIL DISPATCH ERROR]", error);
     try {
       await db.insert(emailLogs).values({
+        id: logId,
         eventId: options.eventId,
         templateId: options.templateId || null,
+        templateType,
         recipientEmail: options.recipientEmail,
         recipientName: options.recipientName || null,
         subject: interpolatedSubject,
+        renderedBody: sanitizedBody,
         status: "failed",
         errorMessage:
           (error instanceof Error ? error.message : "Email delivery failed") ||

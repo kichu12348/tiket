@@ -59,10 +59,46 @@ export interface EmailLog {
   id: string;
   eventId: string;
   templateId: string | null;
+  templateType?: EmailTemplateType | string;
   recipientEmail: string;
   recipientName: string | null;
   subject: string;
+  renderedBody?: string | null;
   status: "sent" | "failed" | "queued";
   errorMessage: string | null;
+  openedAt?: string | null;
+  openCount?: number;
+  resentCount?: number;
+  lastResentAt?: string | null;
   sentAt: string;
+}
+
+export interface EmailTypeAnalytics {
+  templateType: string;
+  sent: number;
+  opened: number;
+  unopened: number;
+  failed: number;
+  openRatePercent: number;
+}
+
+export interface EmailTimelinePoint {
+  bucket: string;
+  sent: number;
+  opened: number;
+}
+
+export interface EmailAnalytics {
+  totalSent: number;
+  totalFailed: number;
+  totalOpened: number;
+  totalUnopened: number;
+  openRatePercent: number;
+  byType: EmailTypeAnalytics[];
+  timeline: EmailTimelinePoint[];
+}
+
+export interface EmailLogsResponse {
+  logs: EmailLog[];
+  analytics: EmailAnalytics;
 }

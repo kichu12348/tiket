@@ -128,11 +128,17 @@ const mockLogs: EmailLog[] = [
     id: "log-1",
     eventId: "evt-test-101",
     templateId: "tpl-confirm-1",
+    templateType: "confirmation",
     recipientEmail: "attendee1@example.com",
     recipientName: "John Doe",
     subject: "Confirmed: Your Ticket to Tech Innovation Summit 2026",
+    renderedBody: "<div><p>Your confirmed ticket</p></div>",
     status: "sent",
     errorMessage: null,
+    openedAt: "2026-11-01T12:30:00.000Z",
+    openCount: 1,
+    resentCount: 0,
+    lastResentAt: null,
     sentAt: "2026-11-01T12:00:00.000Z",
   },
 ];
@@ -222,6 +228,23 @@ const fnCreateCustomEmailTemplate = mock(
 const fnDeleteCustomEmailTemplate = mock(async () => ({
   message: "Deleted custom template",
 }));
+const fnResendEmailLog = mock(async (_evtId: string, logId: string) => ({
+  id: logId,
+  eventId: "evt-test-101",
+  templateId: "tpl-confirm-1",
+  templateType: "confirmation",
+  recipientEmail: "attendee1@example.com",
+  recipientName: "John Doe",
+  subject: "Confirmed: Your Ticket to Tech Innovation Summit 2026",
+  renderedBody: "<div><p>Your confirmed ticket</p></div>",
+  status: "sent" as const,
+  errorMessage: null,
+  openedAt: null,
+  openCount: 0,
+  resentCount: 1,
+  lastResentAt: new Date().toISOString(),
+  sentAt: "2026-11-01T12:00:00.000Z",
+}));
 
 mock.module("@/api/emails", () => ({
   getEmailTemplates: fnGetEmailTemplates,
@@ -234,6 +257,7 @@ mock.module("@/api/emails", () => ({
   sendBatchEmail: fnSendBatchEmail,
   createCustomEmailTemplate: fnCreateCustomEmailTemplate,
   deleteCustomEmailTemplate: fnDeleteCustomEmailTemplate,
+  resendEmailLog: fnResendEmailLog,
 }));
 
 // Import page under test
@@ -255,6 +279,7 @@ describe("EditEmailsPage Component", () => {
     fnResetEmailTemplate.mockClear();
     fnSendTestEmail.mockClear();
     fnSendBatchEmail.mockClear();
+    fnResendEmailLog.mockClear();
   });
 
   test("1. Renders the emails page with templates, variable picker, live preview and logs", async () => {
@@ -266,9 +291,9 @@ describe("EditEmailsPage Component", () => {
     ).toBeInTheDocument();
 
     // Verify TemplateTypeSelector loaded
-    expect(screen.getByText("Confirmation")).toBeInTheDocument();
-    expect(screen.getByText("Check-in")).toBeInTheDocument();
-    expect(screen.getByText("Invitation")).toBeInTheDocument();
+    expect(screen.getAllByText("Confirmation").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Check-in").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Invitation").length).toBeGreaterThanOrEqual(1);
 
     // Verify VariablePicker loaded
     expect(
@@ -296,8 +321,8 @@ describe("EditEmailsPage Component", () => {
     await screen.findByRole("button", { name: /Save Template/i });
 
     // Click "Check-in" category tab
-    const checkinTab = screen.getByText("Check-in");
-    fireEvent.click(checkinTab);
+    const checkinTabs = screen.getAllByText("Check-in");
+    fireEvent.click(checkinTabs[0]);
 
     await waitFor(() => {
       // Must call getEmailTemplateById for the check-in template
@@ -460,6 +485,59 @@ describe("EditEmailsPage Component", () => {
         body: expect.any(String),
         templateId: "tpl-confirm-1",
       });
+    });
+  });
+
+  test("9. Renders Email Analytics dashboard with KPI cards and charts", async () => {
+    render(<EditEmailsPage />);
+
+    // KPI cards render
+    expect(await screen.findByText("Total Sent")).toBeInTheDocument();
+    expect(screen.getAllByText(/Opened/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Unopened")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("100% Open Rate")).toBeInTheDocument();
+
+    // Chart titles render
+    expect(
+      screen.getByText("Sent vs. Opened by Email Type"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Opens Timeline Chart")).toBeInTheDocument();
+  });
+
+  test("10. Opens the Sent Email Preview modal and renders email content safely", async () => {
+    render(<EditEmailsPage />);
+
+    const previewBtn = await screen.findByRole("button", {
+      name: /Preview Sent Email/i,
+    });
+    expect(previewBtn).toBeInTheDocument();
+    fireEvent.click(previewBtn);
+
+    // Modal opens
+    expect(await screen.findByText("Sent Email HTML Preview")).toBeInTheDocument();
+    expect(screen.getByTitle("Sent Email Preview")).toBeInTheDocument();
+
+    // Close modal
+    const closeBtn = screen.getByText("Close Preview");
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Sent Email HTML Preview")).not.toBeInTheDocument();
+    });
+  });
+
+  test("11. Clicking 1-Click Resend calls resendEmailLog", async () => {
+    render(<EditEmailsPage />);
+
+    const resendBtn = await screen.findByRole("button", {
+      name: /Resend Email/i,
+    });
+    expect(resendBtn).toBeInTheDocument();
+    fireEvent.click(resendBtn);
+
+    await waitFor(() => {
+      expect(fnResendEmailLog).toHaveBeenCalledWith("evt-test-101", "log-1");
     });
   });
 });

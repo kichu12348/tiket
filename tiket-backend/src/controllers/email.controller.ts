@@ -13,12 +13,21 @@ import {
   formFields,
   ticketTypes,
 } from "@db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { deliverMail } from "../services/mail.service";
 import {
   sendEmail,
   DEFAULT_TEMPLATES,
   type InterpolationData,
 } from "../utils/emailService";
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const TRANSPARENT_1X1_GIF = Buffer.from(
+  "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+  "base64",
+);
 
 export const getEmailTemplates = async (
   request: FastifyRequest<{ Params: { eventId: string } }>,
@@ -672,6 +681,105 @@ export const sendBatchEmail = async (
   }
 };
 
+export function calculateEmailAnalytics(
+  logs: {
+    templateType?: string | null;
+    status: string;
+    openedAt?: Date | string | null;
+    openCount?: number | null;
+    sentAt: Date | string;
+  }[],
+) {
+  const totalSent = logs.filter((l) => l.status === "sent").length;
+  const totalFailed = logs.filter((l) => l.status === "failed").length;
+  const totalOpened = logs.filter(
+    (l) =>
+      (l.openCount !== null && l.openCount !== undefined && l.openCount > 0) ||
+      (l.openedAt !== null && l.openedAt !== undefined),
+  ).length;
+  const totalUnopened = logs.filter(
+    (l) =>
+      l.status === "sent" &&
+      (!l.openCount || l.openCount === 0) &&
+      !l.openedAt,
+  ).length;
+  const openRatePercent =
+    totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
+
+  const standardTypes = [
+    "confirmation",
+    "checkin",
+    "invitation",
+    "thank_you",
+    "sorry",
+    "custom",
+  ];
+  const allTypesSet = new Set(standardTypes);
+  for (const log of logs) {
+    if (log.templateType) {
+      allTypesSet.add(log.templateType);
+    }
+  }
+
+  const byType = Array.from(allTypesSet).map((type) => {
+    const typeLogs = logs.filter(
+      (l) => (l.templateType || "custom") === type,
+    );
+    const sent = typeLogs.filter((l) => l.status === "sent").length;
+    const opened = typeLogs.filter(
+      (l) =>
+        (l.openCount !== null && l.openCount !== undefined && l.openCount > 0) ||
+        (l.openedAt !== null && l.openedAt !== undefined),
+    ).length;
+    const unopened = Math.max(0, sent - opened);
+    const failed = typeLogs.filter((l) => l.status === "failed").length;
+    const rate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
+    return {
+      templateType: type,
+      sent,
+      opened,
+      unopened,
+      failed,
+      openRatePercent: rate,
+    };
+  });
+
+  const timelineMap = new Map<
+    string,
+    { bucket: string; sent: number; opened: number }
+  >();
+  for (const log of logs) {
+    if (log.sentAt) {
+      const bucket = new Date(log.sentAt).toISOString().slice(0, 10);
+      const entry = timelineMap.get(bucket) || { bucket, sent: 0, opened: 0 };
+      if (log.status === "sent") {
+        entry.sent += 1;
+      }
+      timelineMap.set(bucket, entry);
+    }
+    if (log.openedAt) {
+      const bucket = new Date(log.openedAt).toISOString().slice(0, 10);
+      const entry = timelineMap.get(bucket) || { bucket, sent: 0, opened: 0 };
+      entry.opened += 1;
+      timelineMap.set(bucket, entry);
+    }
+  }
+
+  const timeline = Array.from(timelineMap.values()).sort((a, b) =>
+    a.bucket.localeCompare(b.bucket),
+  );
+
+  return {
+    totalSent,
+    totalFailed,
+    totalOpened,
+    totalUnopened,
+    openRatePercent,
+    byType,
+    timeline,
+  };
+}
+
 export const getEmailLogs = async (
   request: FastifyRequest<{ Params: { eventId: string } }>,
   reply: FastifyReply,
@@ -693,9 +801,128 @@ export const getEmailLogs = async (
     const logs = await db
       .select()
       .from(emailLogs)
-      .where(eq(emailLogs.eventId, eventId));
+      .where(eq(emailLogs.eventId, eventId))
+      .orderBy(desc(emailLogs.sentAt));
 
-    return reply.send(logs);
+    const analytics = calculateEmailAnalytics(logs);
+
+    return reply.send({ logs, analytics });
+  } catch (error) {
+    return handleControllerError(request, reply, error);
+  }
+};
+
+export const trackEmailOpen = async (
+  request: FastifyRequest<{ Params: { logId: string } }>,
+  reply: FastifyReply,
+) => {
+  try {
+    const rawLogId = request.params.logId || "";
+    const logId = rawLogId.replace(/\.gif$/i, "").trim();
+
+    if (UUID_REGEX.test(logId)) {
+      await db
+        .update(emailLogs)
+        .set({
+          openedAt: sql`coalesce(${emailLogs.openedAt}, now())`,
+          openCount: sql`${emailLogs.openCount} + 1`,
+        })
+        .where(eq(emailLogs.id, logId));
+    }
+
+    return reply
+      .header("Content-Type", "image/gif")
+      .header(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      )
+      .send(TRANSPARENT_1X1_GIF);
+  } catch {
+    return reply
+      .header("Content-Type", "image/gif")
+      .header(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      )
+      .send(TRANSPARENT_1X1_GIF);
+  }
+};
+
+export const resendEmailLog = async (
+  request: FastifyRequest<{ Params: { eventId: string; logId: string } }>,
+  reply: FastifyReply,
+) => {
+  try {
+    await request.jwtVerify();
+    const user = request.user as { id: string };
+    const { eventId, logId } = request.params;
+
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_emails",
+    );
+    if (!isOwner) {
+      return reply.status(403).send({ error: "Unauthorized" });
+    }
+
+    const [log] = await db
+      .select()
+      .from(emailLogs)
+      .where(and(eq(emailLogs.id, logId), eq(emailLogs.eventId, eventId)));
+
+    if (!log) {
+      return reply.status(404).send({ error: "Email log not found." });
+    }
+
+    const trackingPixel = `<img src="${process.env.CDN_URL || "http://localhost:3001"}/api/emails/track/${log.id}.gif" width="1" height="1" alt="" style="display:none;width:1px;height:1px;" />`;
+    const emailBody = `${log.renderedBody || log.subject}${trackingPixel}`;
+
+    try {
+      await deliverMail(
+        {
+          recipientEmail: log.recipientEmail,
+          recipientName: log.recipientName || undefined,
+          subject: log.subject,
+          body: emailBody,
+        },
+        eventId,
+      );
+
+      const [updatedLog] = await db
+        .update(emailLogs)
+        .set({
+          status: "sent",
+          resentCount: sql`${emailLogs.resentCount} + 1`,
+          lastResentAt: new Date(),
+          errorMessage: null,
+        })
+        .where(and(eq(emailLogs.id, logId), eq(emailLogs.eventId, eventId)))
+        .returning();
+
+      return reply.send(updatedLog);
+    } catch (deliverError) {
+      const errorMsg =
+        deliverError instanceof Error
+          ? deliverError.message
+          : "Resend delivery failed";
+
+      const [failedLog] = await db
+        .update(emailLogs)
+        .set({
+          status: "failed",
+          resentCount: sql`${emailLogs.resentCount} + 1`,
+          lastResentAt: new Date(),
+          errorMessage: errorMsg,
+        })
+        .where(and(eq(emailLogs.id, logId), eq(emailLogs.eventId, eventId)))
+        .returning();
+
+      return reply.status(500).send({
+        error: errorMsg,
+        log: failedLog,
+      });
+    }
   } catch (error) {
     return handleControllerError(request, reply, error);
   }

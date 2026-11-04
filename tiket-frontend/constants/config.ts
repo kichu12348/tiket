@@ -148,6 +148,9 @@ export const API_ENDPOINTS = {
     SEND_TEST: (eventId: string) => `/api/emails/events/${eventId}/send-test`,
     SEND_BATCH: (eventId: string) => `/api/emails/events/${eventId}/send-batch`,
     LOGS: (eventId: string) => `/api/emails/events/${eventId}/logs`,
+    ANALYTICS: (eventId: string) => `/api/emails/events/${eventId}/analytics`,
+    RESEND_LOG: (eventId: string, logId: string) =>
+      `/api/emails/events/${eventId}/logs/${logId}/resend`,
   },
 };
 
