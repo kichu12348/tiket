@@ -62,6 +62,28 @@ export default function SortableTicketCard({
                   Hidden
                 </span>
               )}
+              {Number(ticket.price) > 0 && (
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 500,
+                    padding: "0.15rem 0.45rem",
+                    borderRadius: "4px",
+                    background:
+                      ticket.passFeeToCustomer !== false
+                        ? "rgba(59, 130, 246, 0.12)"
+                        : "rgba(16, 185, 129, 0.12)",
+                    color:
+                      ticket.passFeeToCustomer !== false
+                        ? "var(--color-primary, #60a5fa)"
+                        : "var(--status-success, #34d399)",
+                  }}
+                >
+                  {ticket.passFeeToCustomer !== false
+                    ? "Fee passed to buyer"
+                    : "Fee absorbed by host"}
+                </span>
+              )}
             </div>
             <span className={styles.ticketPrice}>
               {Number(ticket.price) === 0 ? "Free" : `₹${ticket.price}`}

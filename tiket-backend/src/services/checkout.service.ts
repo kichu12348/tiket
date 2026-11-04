@@ -252,14 +252,16 @@ async function cart(
     allEventTiers,
     event.overbookingLimit ?? 0,
   );
-  const policy = pricingPolicy();
+  const policy = pricingPolicy(event.platformFeeBps);
   const pricing = priceCart(
-    body.purchases.map((p) => ({
-      ticketTypeId: p.ticketTypeId,
-      unitPricePaise: complimentary
-        ? 0
-        : toPaise(tiers.find((t) => t.id === p.ticketTypeId)!.price),
-    })),
+    body.purchases.map((p) => {
+      const tier = tiers.find((t) => t.id === p.ticketTypeId)!;
+      return {
+        ticketTypeId: p.ticketTypeId,
+        unitPricePaise: complimentary ? 0 : toPaise(tier.price),
+        passFeeToCustomer: tier.passFeeToCustomer,
+      };
+    }),
     policy,
     coupon,
   );
@@ -386,6 +388,7 @@ export async function createCheckout(
           refundableUntil: tier.refundableUntil?.toISOString() ?? null,
           isTransferable: tier.isTransferable,
           maxTransfers: tier.maxTransfers,
+          passFeeToCustomer: tier.passFeeToCustomer,
         },
       });
       if (purchase.formResponses?.length)

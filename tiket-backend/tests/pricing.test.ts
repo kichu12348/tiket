@@ -64,4 +64,57 @@ describe("integer pricing", () => {
       ).totalPaise,
     ).toBe(0);
   });
+  test("single ticket with platformFeeBps = 400 and passFeeToCustomer = true", () => {
+    const policy: PricingPolicy = { ...zero, platformFeeBps: 400 };
+    const result = priceCart(
+      [{ ticketTypeId: "a", unitPricePaise: 10000, passFeeToCustomer: true }],
+      policy,
+    );
+    expect(result.totalPaise).toBe(10400);
+    expect(result.customerFeePaise).toBe(400);
+    expect(result.absorbedFeePaise).toBe(0);
+    expect(result.lines[0]).toMatchObject({
+      unitPricePaise: 10000,
+      platformFeePaise: 400,
+      totalPaise: 10400,
+      organizerNetPaise: 10000,
+      passFeeToCustomer: true,
+    });
+  });
+  test("single ticket with platformFeeBps = 400 and passFeeToCustomer = false", () => {
+    const policy: PricingPolicy = { ...zero, platformFeeBps: 400 };
+    const result = priceCart(
+      [{ ticketTypeId: "a", unitPricePaise: 10000, passFeeToCustomer: false }],
+      policy,
+    );
+    expect(result.totalPaise).toBe(10000);
+    expect(result.customerFeePaise).toBe(0);
+    expect(result.absorbedFeePaise).toBe(400);
+    expect(result.lines[0]).toMatchObject({
+      unitPricePaise: 10000,
+      platformFeePaise: 400,
+      totalPaise: 10000,
+      organizerNetPaise: 9600,
+      passFeeToCustomer: false,
+    });
+  });
+  test("mixed cart with 1 passed fee ticket and 1 absorbed fee ticket", () => {
+    const policy: PricingPolicy = { ...zero, platformFeeBps: 400 };
+    const result = priceCart(
+      [
+        { ticketTypeId: "a", unitPricePaise: 10000, passFeeToCustomer: true },
+        { ticketTypeId: "b", unitPricePaise: 10000, passFeeToCustomer: false },
+      ],
+      policy,
+    );
+    expect(result.totalPaise).toBe(20400);
+    expect(result.customerFeePaise).toBe(400);
+    expect(result.absorbedFeePaise).toBe(400);
+    const totalPlatformFeePaise =
+      result.lines[0]!.platformFeePaise + result.lines[1]!.platformFeePaise;
+    expect(totalPlatformFeePaise).toBe(800);
+    const totalOrganizerNetPaise =
+      result.lines[0]!.organizerNetPaise + result.lines[1]!.organizerNetPaise;
+    expect(totalOrganizerNetPaise).toBe(19600);
+  });
 });

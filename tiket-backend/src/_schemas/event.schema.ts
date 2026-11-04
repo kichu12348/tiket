@@ -47,6 +47,7 @@ const eventResponseObj = {
     capacity: { type: ["integer", "null"] },
     maxTicketsPerUser: { type: ["integer", "null"] },
     overbookingLimit: { type: "integer" },
+    platformFeeBps: { type: "integer" },
     status: {
       type: "string",
       enum: ["draft", "published", "completed", "cancelled"],

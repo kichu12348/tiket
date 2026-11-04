@@ -151,6 +151,7 @@ export async function calculateFinanceSummary(
   let totalDiscountsPaise = 0;
   let platformFeesPaise = 0;
   let taxesPaise = 0;
+  let totalOrganizerNetPaise = 0;
 
   if (paidOrderIds.length > 0) {
     const items = await executor
@@ -160,6 +161,7 @@ export async function calculateFinanceSummary(
         platformFeePaise: orderItems.platformFeePaise,
         ticketTaxPaise: orderItems.ticketTaxPaise,
         feeTaxPaise: orderItems.feeTaxPaise,
+        organizerNetPaise: orderItems.organizerNetPaise,
       })
       .from(orderItems)
       .where(inArray(orderItems.orderId, paidOrderIds));
@@ -169,6 +171,11 @@ export async function calculateFinanceSummary(
       totalDiscountsPaise += item.discountPaise;
       platformFeesPaise += item.platformFeePaise;
       taxesPaise += item.ticketTaxPaise + item.feeTaxPaise;
+      const net =
+        item.organizerNetPaise !== undefined && !Number.isNaN(item.organizerNetPaise)
+          ? item.organizerNetPaise
+          : item.unitPricePaise - item.discountPaise;
+      totalOrganizerNetPaise += net;
     }
   }
 
@@ -210,7 +217,7 @@ export async function calculateFinanceSummary(
 
   const netEarningsPaise = Math.max(
     0,
-    grossSalesPaise - totalDiscountsPaise - totalRefundedPaise,
+    totalOrganizerNetPaise - totalRefundedPaise,
   );
   const availableToWithdrawPaise = Math.max(
     0,

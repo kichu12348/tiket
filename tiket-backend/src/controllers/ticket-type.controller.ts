@@ -19,6 +19,7 @@ interface CreateTicketTypeBody {
   name: string;
   description?: string;
   price?: number;
+  passFeeToCustomer?: boolean;
   quantityLimit?: number | null;
   poolName?: string | null;
   poolCapacity?: number | null;
@@ -86,6 +87,7 @@ export const createTicketType = async (
           isHidden: body.isHidden ?? false,
           description: body.description,
           price: normalizedPrice,
+          passFeeToCustomer: body.passFeeToCustomer ?? true,
           quantityLimit: body.quantityLimit,
           poolName: body.poolName ?? null,
           poolCapacity: body.poolCapacity ?? null,
@@ -189,6 +191,8 @@ export const updateTicketType = async (
     if (body.description !== undefined) payload.description = body.description;
     if (body.price !== undefined)
       payload.price = fromPaise(toPaise(String(body.price)));
+    if (body.passFeeToCustomer !== undefined)
+      payload.passFeeToCustomer = body.passFeeToCustomer;
     if (body.quantityLimit !== undefined)
       payload.quantityLimit = body.quantityLimit;
     if (body.poolName !== undefined) payload.poolName = body.poolName;

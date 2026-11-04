@@ -177,6 +177,7 @@ export const events = pgTable("events", {
   capacity: integer("capacity"), // null means unlimited
   maxTicketsPerUser: integer("max_tickets_per_user"),
   overbookingLimit: integer("overbooking_limit").notNull().default(0),
+  platformFeeBps: integer("platform_fee_bps").notNull().default(400),
   version: integer("version").notNull().default(0),
   status: eventStatusEnum("status").notNull().default("draft"),
   customInsightsConfig: jsonb("custom_insights_config")
@@ -233,6 +234,7 @@ export const ticketTypes = pgTable("ticket_types", {
   quantityLimit: integer("quantity_limit"), // null means unlimited
   poolName: varchar("pool_name", { length: 100 }),
   poolCapacity: integer("pool_capacity"),
+  passFeeToCustomer: boolean("pass_fee_to_customer").notNull().default(true),
   eligibilityRules: jsonb("eligibility_rules").$type<ConditionGroup | null>(),
   saleStart: timestamp("sale_start"),
   saleEnd: timestamp("sale_end"),
@@ -761,19 +763,26 @@ export const orderItems = pgTable(
     platformFeePaise: integer("platform_fee_paise").notNull().default(0),
     feeTaxPaise: integer("fee_tax_paise").notNull().default(0),
     totalPaise: integer("total_paise").notNull(),
+    passFeeToCustomer: boolean("pass_fee_to_customer").notNull().default(true),
+    organizerNetPaise: integer("organizer_net_paise").notNull().default(0),
     policy: jsonb("policy")
       .$type<{
         isRefundable: boolean;
         refundableUntil: string | null;
         isTransferable: boolean;
         maxTransfers: number;
+        passFeeToCustomer: boolean;
       }>()
       .notNull(),
   },
   (table) => [
     check(
       "order_item_amounts",
-      sql`${table.unitPricePaise} >= 0 and ${table.discountPaise} >= 0 and ${table.discountPaise} <= ${table.unitPricePaise} and ${table.ticketTaxPaise} >= 0 and ${table.platformFeePaise} >= 0 and ${table.feeTaxPaise} >= 0 and ${table.totalPaise} = ${table.unitPricePaise} - ${table.discountPaise} + ${table.ticketTaxPaise} + ${table.platformFeePaise} + ${table.feeTaxPaise}`,
+      sql`${table.unitPricePaise} >= 0 and ${table.discountPaise} >= 0 and ${table.discountPaise} <= ${table.unitPricePaise} and ${table.ticketTaxPaise} >= 0 and ${table.platformFeePaise} >= 0 and ${table.feeTaxPaise} >= 0 and (
+        (${table.passFeeToCustomer} = true and ${table.totalPaise} = ${table.unitPricePaise} - ${table.discountPaise} + ${table.ticketTaxPaise} + ${table.platformFeePaise} + ${table.feeTaxPaise})
+        or
+        (${table.passFeeToCustomer} = false and ${table.totalPaise} = ${table.unitPricePaise} - ${table.discountPaise} + ${table.ticketTaxPaise})
+      )`,
     ),
   ],
 );

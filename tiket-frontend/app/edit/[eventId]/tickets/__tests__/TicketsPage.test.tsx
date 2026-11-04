@@ -61,6 +61,7 @@ const mockEvent: Event = {
   registrationEnd: "2026-05-30T23:59:59.000Z",
   requireApproval: false,
   capacity: 500,
+  platformFeeBps: 400,
   status: "published",
   organizationId: "org-1",
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -76,6 +77,7 @@ const initialTiers: TicketType[] = [
     name: "General Admission",
     description: "Access to all keynotes",
     price: "499",
+    passFeeToCustomer: true,
     quantityLimit: 200,
     isHidden: false,
     isRefundable: true,
@@ -94,6 +96,7 @@ const initialTiers: TicketType[] = [
     name: "Backstage Secret VIP",
     description: "Exclusive backstage entry",
     price: "1999",
+    passFeeToCustomer: true,
     quantityLimit: 25,
     isHidden: true,
     isRefundable: false,
@@ -119,6 +122,7 @@ const mockCreateTicketType = mock(
       name: payload.name,
       description: payload.description || null,
       price: String(payload.price ?? 0),
+      passFeeToCustomer: payload.passFeeToCustomer ?? true,
       quantityLimit: payload.quantityLimit ?? null,
       isHidden: Boolean(payload.isHidden),
       isRefundable: Boolean(payload.isRefundable),
@@ -312,5 +316,59 @@ describe("TicketsPage Integration", () => {
     const callArgs = mockCreateTicketType.mock.calls[0];
     expect(callArgs[1].name).toBe("VIP Hidden Tier");
     expect(callArgs[1].isHidden).toBe(true);
+  });
+
+  test("6. Toggles passFeeToCustomer inside TicketEditModal and verifies live payout preview updates", async () => {
+    render(<EditTicketsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("General Admission")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId("add-ticket-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ticket-name-input")).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByTestId("ticket-name-input"), {
+      target: { value: "Pro Workshop" },
+    });
+    fireEvent.change(screen.getByTestId("ticket-price-input"), {
+      target: { value: "100" },
+    });
+
+    // Verify breakdown with passFeeToCustomer = true (default)
+    await waitFor(() => {
+      const preview = screen.getByTestId("fee-breakdown-preview");
+      expect(preview.textContent).toContain(
+        "Customer pays ₹104 (+4% fee) • You receive ₹100",
+      );
+    });
+
+    // Toggle switch off (absorb fee)
+    const passFeeSwitch = document.getElementById("ticket-pass-fee-switch");
+    expect(passFeeSwitch).toBeDefined();
+    if (passFeeSwitch) {
+      fireEvent.click(passFeeSwitch);
+    }
+
+    // Verify breakdown with passFeeToCustomer = false
+    await waitFor(() => {
+      const preview = screen.getByTestId("fee-breakdown-preview");
+      expect(preview.textContent).toContain(
+        "Customer pays ₹100 (Fee included) • You receive ₹96 (4% fee deducted)",
+      );
+    });
+
+    fireEvent.click(screen.getByTestId("ticket-submit-btn"));
+
+    await waitFor(() => {
+      expect(mockCreateTicketType).toHaveBeenCalled();
+    });
+
+    const callArgs = mockCreateTicketType.mock.calls[0];
+    expect(callArgs[1].name).toBe("Pro Workshop");
+    expect(callArgs[1].passFeeToCustomer).toBe(false);
   });
 });

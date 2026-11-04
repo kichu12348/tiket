@@ -24,6 +24,7 @@ export interface Event {
   fontFamily: string;
   requireApproval: boolean;
   capacity: number | null;
+  platformFeeBps?: number;
   status: "draft" | "published" | "completed" | "cancelled";
   slug: string;
   organizationId: string;

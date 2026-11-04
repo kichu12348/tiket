@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import Dropdown from "@/components/Dropdown";
+import { useEventStore } from "@/store/useEventStore";
 
 const TIME_OPTIONS = Array.from({ length: 48 }).map((_, i) => {
   const hours = Math.floor(i / 2);
@@ -62,6 +63,7 @@ interface TicketEditModalProps {
   eventRegistrationStart?: string | null;
   eventRegistrationEnd?: string | null;
   eventEndDate?: string | null;
+  platformFeeBps?: number;
 }
 
 function TicketEditModalContent({
@@ -74,10 +76,18 @@ function TicketEditModalContent({
   eventRegistrationStart,
   eventRegistrationEnd,
   eventEndDate,
+  platformFeeBps,
 }: TicketEditModalProps) {
+  const storeEvent = useEventStore((state) => state.event);
+  const effectiveFeeBps = platformFeeBps ?? storeEvent?.platformFeeBps ?? 400;
+  const feePercent = effectiveFeeBps / 100;
+
   const [name, setName] = useState(ticket?.name ?? "");
   const [description, setDescription] = useState(ticket?.description ?? "");
   const [price, setPrice] = useState(ticket?.price.toString() ?? "0");
+  const [passFeeToCustomer, setPassFeeToCustomer] = useState(
+    ticket?.passFeeToCustomer ?? true,
+  );
   const [quantityLimit, setQuantityLimit] = useState(
     ticket?.quantityLimit?.toString() ?? "",
   );
@@ -197,6 +207,7 @@ function TicketEditModalContent({
         name,
         description,
         price: Number(price),
+        passFeeToCustomer,
         quantityLimit: quantityLimit ? parseInt(quantityLimit, 10) : null,
         poolName: poolName.trim() || null,
         poolCapacity: poolCapacity ? parseInt(poolCapacity, 10) : null,
@@ -225,6 +236,16 @@ function TicketEditModalContent({
       setIsSubmitting(false);
     }
   };
+
+  const parsedPrice = Number(price);
+  const isPaid = !isNaN(parsedPrice) && parsedPrice > 0;
+  const unitPricePaise = isPaid ? Math.round(parsedPrice * 100) : 0;
+  const feePaise = isPaid
+    ? Math.round((unitPricePaise * effectiveFeeBps) / 10000)
+    : 0;
+  const feeRupees = feePaise / 100;
+  const formatRupees = (val: number) =>
+    val % 1 === 0 ? val.toFixed(0) : val.toFixed(2);
 
   return (
     <Modal
@@ -273,6 +294,26 @@ function TicketEditModalContent({
               data-testid="ticket-price-input"
             />
           </div>
+          {isPaid && (
+            <>
+              <div className={styles.switchRow}>
+                <span>Pass platform fee to customer</span>
+                <Switch
+                  id="ticket-pass-fee-switch"
+                  checked={passFeeToCustomer}
+                  onChange={setPassFeeToCustomer}
+                />
+              </div>
+              <div
+                className={styles.feeBreakdownBox}
+                data-testid="fee-breakdown-preview"
+              >
+                {passFeeToCustomer
+                  ? `Customer pays ₹${formatRupees(parsedPrice + feeRupees)} (+${feePercent}% fee) • You receive ₹${formatRupees(parsedPrice)}`
+                  : `Customer pays ₹${formatRupees(parsedPrice)} (Fee included) • You receive ₹${formatRupees(parsedPrice - feeRupees)} (${feePercent}% fee deducted)`}
+              </div>
+            </>
+          )}
           <div className={styles.formGroup}>
             <label>Quantity Limit</label>
             <input

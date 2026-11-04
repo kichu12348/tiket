@@ -54,9 +54,16 @@ export function TicketSelector({
               </div>
 
               <div className={styles.cardRight}>
-                <span className={styles.ticketPrice}>
-                  {formatPrice(tt.price)}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                  <span className={styles.ticketPrice}>
+                    {formatPrice(tt.price)}
+                  </span>
+                  {Number(tt.price) > 0 && (
+                    <span style={{ fontSize: "0.7rem", color: "var(--text-muted, #a1a1aa)" }}>
+                      {tt.passFeeToCustomer === false ? "Fee included" : "+ fee"}
+                    </span>
+                  )}
+                </div>
                 <div
                   className={`${styles.radioCheck} ${
                     isSelected ? styles.radioCheckActive : ""

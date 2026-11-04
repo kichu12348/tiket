@@ -174,3 +174,16 @@ textarea.input::-webkit-scrollbar-thumb {
 textarea.input::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-text-primary);
 }
+
+.feeBreakdownBox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}

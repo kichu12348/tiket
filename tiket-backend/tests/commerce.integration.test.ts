@@ -168,6 +168,7 @@ integration("commerce against PostgreSQL", () => {
         startDate: new Date(Date.now() + 86400000),
         endDate: new Date(Date.now() + 172800000),
         timezone: "Asia/Kolkata",
+        platformFeeBps: Number(process.env.PLATFORM_FEE_BPS ?? 0),
       })
       .returning();
     const [tier] = await db

@@ -7,6 +7,7 @@ export interface TicketType {
   name: string;
   description: string | null;
   price: string;
+  passFeeToCustomer?: boolean;
   quantityLimit: number | null;
   poolName?: string | null;
   poolCapacity?: number | null;
@@ -27,6 +28,7 @@ export interface CreateTicketTypePayload {
   name: string;
   description?: string;
   price?: number;
+  passFeeToCustomer?: boolean;
   quantityLimit?: number | null;
   poolName?: string | null;
   poolCapacity?: number | null;

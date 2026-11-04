@@ -1,4 +1,31 @@
-import type { PriceLine } from "./commerce";
+export interface PriceLine {
+  ticketTypeId: string;
+  unitPricePaise: number;
+  discountPaise: number;
+  ticketTaxPaise: number;
+  platformFeePaise: number;
+  feeTaxPaise: number;
+  totalPaise: number;
+  passFeeToCustomer?: boolean;
+  organizerNetPaise?: number;
+}
+
+export interface OrderItem extends PriceLine {
+  id: string;
+  orderId: string;
+  ticketId: string;
+  name: string;
+  passFeeToCustomer: boolean;
+  organizerNetPaise: number;
+  policy: {
+    isRefundable: boolean;
+    refundableUntil: string | null;
+    isTransferable: boolean;
+    maxTransfers: number;
+    passFeeToCustomer: boolean;
+  };
+}
+
 export interface PurchaseFormResponse {
   fieldId: string;
   responseValue: string;

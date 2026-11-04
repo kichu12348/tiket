@@ -128,6 +128,7 @@ export const createEvent = async (
         status: "draft",
         organizationId: user.id,
         slug: slug,
+        platformFeeBps: Number(process.env.PLATFORM_FEE_BPS ?? 400),
       })
       .returning();
 

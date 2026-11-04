@@ -35,6 +35,21 @@ export default function CheckoutReview({
       | "platformFeePaise"
       | "feeTaxPaise",
   ) => items.reduce((total, line) => total + line[key], 0);
+
+  const paidItems = items.filter((line) => line.unitPricePaise > 0);
+  const allAbsorbed =
+    paidItems.length > 0 &&
+    paidItems.every((line) => line.passFeeToCustomer === false);
+  const passedItems = items.filter((line) => line.passFeeToCustomer !== false);
+  const passedPlatformFee = passedItems.reduce(
+    (total, line) => total + line.platformFeePaise,
+    0,
+  );
+  const passedFeeTax = passedItems.reduce(
+    (total, line) => total + line.feeTaxPaise,
+    0,
+  );
+
   return (
     <section className={styles.card} aria-live="polite">
       <h2>
@@ -80,12 +95,18 @@ export default function CheckoutReview({
         </div>
         <div>
           <dt>Platform fee</dt>
-          <dd>{money(sum("platformFeePaise"))}</dd>
+          <dd>
+            {allAbsorbed
+              ? "Included in ticket price"
+              : money(passedPlatformFee)}
+          </dd>
         </div>
-        <div>
-          <dt>Tax on fee</dt>
-          <dd>{money(sum("feeTaxPaise"))}</dd>
-        </div>
+        {!allAbsorbed && (
+          <div>
+            <dt>Tax on fee</dt>
+            <dd>{money(passedFeeTax)}</dd>
+          </div>
+        )}
         <div>
           <dt>Total</dt>
           <dd>{money(order.totalPaise)}</dd>
