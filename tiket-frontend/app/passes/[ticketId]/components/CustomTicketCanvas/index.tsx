@@ -6,9 +6,12 @@ import { Lock } from "lucide-react";
 import type {
   TicketPassData,
   TicketPassTemplate,
+} from "@/types/ticket";
+import type {
   TicketCanvasConfig,
   TicketCanvasElement,
-} from "@/types/ticket";
+  ResolvedTicketLayer,
+} from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
 import { formatLocation } from "../../utils/formatLocation";
 import styles from "./CustomTicketCanvas.module.css";
 
@@ -36,7 +39,7 @@ export function formatEventDate(dateString?: string | null): string {
   }
 }
 
-export function resolveVariable(key: string, pass: TicketPassData): string {
+export function resolveVariable(key: string, pass: Partial<TicketPassData>): string {
   const normalizedKey = key.replace(/[{}]/g, "").trim().toLowerCase();
 
   switch (normalizedKey) {
@@ -76,14 +79,20 @@ export function resolveVariable(key: string, pass: TicketPassData): string {
       return pass.id || "";
     case "order.id":
     case "orderid":
+    case "order_id":
       return pass.order?.id || "";
     default: {
-      const cleanKey = normalizedKey.replace(/^responses?\./, "");
-      const match = pass.responses?.find(
-        (r) =>
-          r.label.toLowerCase() === cleanKey ||
-          r.label.toLowerCase() === normalizedKey,
-      );
+      const cleanKey = normalizedKey
+        .replace(/^responses?\./, "")
+        .replace(/^form\./, "");
+      const match = pass.responses?.find((r) => {
+        const cleanLabel = r.label.trim().toLowerCase();
+        return (
+          cleanLabel === cleanKey ||
+          cleanLabel === normalizedKey ||
+          r.label.toLowerCase() === cleanKey
+        );
+      });
       if (match && match.value) {
         return match.value;
       }
@@ -92,7 +101,7 @@ export function resolveVariable(key: string, pass: TicketPassData): string {
   }
 }
 
-export function interpolateText(text: string, pass: TicketPassData): string {
+export function interpolateText(text: string, pass: Partial<TicketPassData>): string {
   return text.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
     return resolveVariable(key, pass);
   });
@@ -100,15 +109,156 @@ export function interpolateText(text: string, pass: TicketPassData): string {
 
 export function getElementText(
   el: TicketCanvasElement,
-  pass: TicketPassData,
+  pass: Partial<TicketPassData>,
 ): string {
+  // If element is a form field
+  if (el.type === "form_field") {
+    // 1. If content or variableKey is present, resolve that first
+    if (el.content) {
+      const text = interpolateText(el.content, pass);
+      if (text) return text;
+    }
+    if (el.variableKey) {
+      const text = resolveVariable(el.variableKey, pass);
+      if (text) return text;
+    }
+    // 2. Search responses directly by fieldLabel or label or fieldId
+    const targetLabel = (el.fieldLabel || el.label || "").trim().toLowerCase();
+    const match = pass?.responses?.find(
+      (r) => r.label.trim().toLowerCase() === targetLabel,
+    );
+    if (match && match.value) {
+      return match.value;
+    }
+    // 3. If optional form field was left blank / unanswered, return fallbackText
+    return el.fallbackText || "";
+  }
+
+  // If badge element
+  if (el.type === "badge") {
+    if (el.content) return interpolateText(el.content, pass);
+    if (el.customText) return interpolateText(el.customText, pass);
+    return el.label || "";
+  }
+
   if (el.content) {
     return interpolateText(el.content, pass);
   }
   if (el.variableKey) {
     return resolveVariable(el.variableKey, pass);
   }
-  return "";
+  if (el.customText) {
+    return interpolateText(el.customText, pass);
+  }
+  return el.label || "";
+}
+
+/**
+ * Pure evaluator for element If / Else conditions against pass data.
+ */
+export function resolveTicketLayer(
+  element: TicketCanvasElement,
+  passData: Partial<TicketPassData>,
+): ResolvedTicketLayer {
+  const defaultText = getElementText(element, passData);
+  const defaultColor = element.style?.color;
+  const defaultBgColor =
+    element.style?.backgroundColor || element.style?.bgColor;
+
+  // 1. If no rules exist, default to visible with existing text and styles
+  if (!element.conditionalRules || element.conditionalRules.length === 0) {
+    return {
+      visible: true,
+      text: defaultText,
+      color: defaultColor,
+      bgColor: defaultBgColor,
+    };
+  }
+
+  // 2. Evaluate sequential branches (first matching rule wins)
+  for (const branch of element.conditionalRules) {
+    let actualValue = "";
+
+    if (branch.sourceType === "ticketType") {
+      actualValue =
+        passData.ticketType?.name || passData.ticketType?.id || "";
+    } else if (branch.sourceType === "formField") {
+      const cleanSourceKey = branch.sourceKey
+        .replace(/[{}]/g, "")
+        .replace(/^form\./i, "")
+        .replace(/^responses?\./i, "")
+        .trim()
+        .toLowerCase();
+
+      const matchedResponse = passData.responses?.find((r) => {
+        const cleanLabel = r.label
+          .replace(/[{}]/g, "")
+          .replace(/^form\./i, "")
+          .replace(/^responses?\./i, "")
+          .trim()
+          .toLowerCase();
+        return (
+          cleanLabel === cleanSourceKey ||
+          r.label.toLowerCase() === branch.sourceKey.toLowerCase()
+        );
+      });
+
+      actualValue = matchedResponse?.value || "";
+    }
+
+    const normActual = actualValue.trim().toLowerCase();
+    const normExpected = (branch.value || "").trim().toLowerCase();
+
+    let matched = false;
+    switch (branch.operator) {
+      case "equals":
+        matched = normActual === normExpected;
+        break;
+      case "not_equals":
+        matched = normActual !== normExpected;
+        break;
+      case "contains":
+        matched = normActual.includes(normExpected);
+        break;
+      default:
+        matched = false;
+    }
+
+    if (matched) {
+      return {
+        visible: branch.thenEffect.visible,
+        text:
+          branch.thenEffect.textOverride !== undefined &&
+          branch.thenEffect.textOverride !== ""
+            ? branch.thenEffect.textOverride
+            : defaultText,
+        color: branch.thenEffect.colorOverride || defaultColor,
+        bgColor: branch.thenEffect.bgColorOverride || defaultBgColor,
+      };
+    }
+  }
+
+  // 3. Fallback to elseBehavior if defined
+  if (element.elseBehavior) {
+    return {
+      visible: element.elseBehavior.visible,
+      text:
+        element.elseBehavior.textOverride !== undefined &&
+        element.elseBehavior.textOverride !== ""
+          ? element.elseBehavior.textOverride
+          : defaultText,
+      color: element.elseBehavior.colorOverride || defaultColor,
+      bgColor: element.elseBehavior.bgColorOverride || defaultBgColor,
+    };
+  }
+
+  // 4. Default if no branch matched and no elseBehavior
+  return {
+    visible: true,
+    text: defaultText,
+    color: defaultColor,
+    bgColor: defaultBgColor,
+  };
 }
 
 function calculateAutoFitFontSize(
@@ -229,6 +379,11 @@ export function CustomTicketCanvas({
 
         {/* Elements mapped over canvas */}
         {elements.map((el) => {
+          const resolved = resolveTicketLayer(el, pass);
+          if (!resolved.visible) {
+            return null;
+          }
+
           const isQr = el.type === "qr";
           const rotation = el.rotation ?? 0;
 
@@ -244,6 +399,7 @@ export function CustomTicketCanvas({
               height: `${el.height}px`,
               transform: `rotate(${rotation}deg)`,
               transformOrigin: "center center",
+              zIndex: el.zIndex,
             };
 
             if (isScannable) {
@@ -254,12 +410,22 @@ export function CustomTicketCanvas({
                   style={elementStyle}
                   data-testid="qr-container"
                 >
-                  <div className={styles.qrContainer}>
+                  <div
+                    className={styles.qrContainer}
+                    style={{
+                      backgroundColor:
+                        resolved.bgColor || el.style?.qrBgColor || "#ffffff",
+                      borderRadius: el.style?.borderRadius || 6,
+                      padding: 6,
+                    }}
+                  >
                     <QRCode
                       value={pass.qrCode}
-                      size={Math.min(el.width, el.height)}
-                      fgColor={el.style?.qrFgColor || "#000000"}
-                      bgColor={el.style?.qrBgColor || "#ffffff"}
+                      size={Math.max(20, Math.min(el.width, el.height) - 12)}
+                      fgColor={resolved.color || el.style?.qrFgColor || "#000000"}
+                      bgColor={
+                        resolved.bgColor || el.style?.qrBgColor || "#ffffff"
+                      }
                       className={styles.qrSvg}
                     />
                   </div>
@@ -287,9 +453,12 @@ export function CustomTicketCanvas({
             );
           }
 
-          const rawText = getElementText(el, pass);
+          const rawText = resolved.text ?? getElementText(el, pass);
           const baseFontSize = el.style?.fontSize ?? 16;
-          const isVariable = el.type === "variable" || Boolean(el.variableKey);
+          const isVariable =
+            el.type === "variable" ||
+            el.type === "form_field" ||
+            Boolean(el.variableKey);
           const autoFit =
             el.style?.autoFitText ?? (isVariable ? true : false);
 
@@ -303,6 +472,8 @@ export function CustomTicketCanvas({
               )
             : baseFontSize;
 
+          const isBadge = el.type === "badge";
+
           const elementStyle: React.CSSProperties = {
             position: "absolute",
             left: `${el.x}px`,
@@ -311,7 +482,14 @@ export function CustomTicketCanvas({
             height: `${el.height}px`,
             transform: `rotate(${rotation}deg)`,
             transformOrigin: "center center",
-            color: el.style?.color || "inherit",
+            color: resolved.color || el.style?.color || "inherit",
+            backgroundColor:
+              resolved.bgColor ||
+              el.style?.backgroundColor ||
+              el.style?.bgColor ||
+              (isBadge ? "rgba(255, 255, 255, 0.15)" : undefined),
+            borderRadius:
+              el.style?.borderRadius ?? (isBadge ? 8 : undefined),
             fontFamily: el.style?.fontFamily,
             fontWeight: el.style?.fontWeight,
             fontSize: `${finalFontSize}px`,
@@ -320,12 +498,18 @@ export function CustomTicketCanvas({
             lineHeight: el.style?.lineHeight,
             letterSpacing: el.style?.letterSpacing,
             textTransform: el.style?.textTransform,
+            zIndex: el.zIndex,
+            display: "flex",
+            alignItems: "center",
             justifyContent:
               el.style?.textAlign === "center"
                 ? "center"
                 : el.style?.textAlign === "right"
                   ? "flex-end"
                   : "flex-start",
+            boxSizing: "border-box",
+            padding:
+              el.style?.padding ?? (isBadge ? "4px 8px" : undefined),
           };
 
           return (
@@ -340,6 +524,7 @@ export function CustomTicketCanvas({
                 className={styles.textContent}
                 style={{
                   textAlign: el.style?.textAlign || "left",
+                  width: "100%",
                 }}
               >
                 {rawText}

@@ -1,4 +1,37 @@
-export type TicketElementType = "qr" | "variable" | "text";
+export type TicketElementType =
+  | "qr"
+  | "variable"
+  | "form_field"
+  | "text"
+  | "badge";
+
+export interface TicketLayerConditionBranch {
+  id: string;
+  sourceType: "ticketType" | "formField";
+  sourceKey: string; // ticketType.name / ticketType.id or formField.label
+  operator: "equals" | "not_equals" | "contains";
+  value: string;
+  thenEffect: {
+    visible: boolean;
+    textOverride?: string;
+    colorOverride?: string;
+    bgColorOverride?: string;
+  };
+}
+
+export interface TicketLayerElseBehavior {
+  visible: boolean;
+  textOverride?: string;
+  colorOverride?: string;
+  bgColorOverride?: string;
+}
+
+export interface ResolvedTicketLayer {
+  visible: boolean;
+  text?: string;
+  color?: string;
+  bgColor?: string;
+}
 
 export interface TicketElementStyle {
   fontFamily?: string;
@@ -9,21 +42,35 @@ export interface TicketElementStyle {
   autoFitText?: boolean;
   qrFgColor?: string;
   qrBgColor?: string;
+  backgroundColor?: string;
+  bgColor?: string;
+  borderRadius?: number;
+  padding?: number | string;
+  opacity?: number;
+  lineHeight?: number | string;
+  letterSpacing?: number | string;
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
 }
 
 export interface TicketCanvasElement {
   id: string;
   type: TicketElementType;
-  label: string;
+  label?: string;
   variableKey?: string;
   customText?: string;
+  content?: string;
+  fieldId?: string;
+  fieldLabel?: string;
+  fallbackText?: string;
   x: number;
   y: number;
   width: number;
   height: number;
-  rotation: number; // degrees
-  zIndex: number;
+  rotation?: number; // degrees
+  zIndex?: number;
   style: TicketElementStyle;
+  conditionalRules?: TicketLayerConditionBranch[];
+  elseBehavior?: TicketLayerElseBehavior;
 }
 
 export interface TicketCanvasConfig {
@@ -55,4 +102,3 @@ export interface UpdateTemplatePayload {
   backgroundImageUrl?: string | null;
   elementsJson?: TicketCanvasConfig | unknown;
 }
-

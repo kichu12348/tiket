@@ -3,9 +3,14 @@ import qrcode from "qrcode-generator";
 import type {
   TicketPassData,
   TicketPassTemplate,
-  TicketCanvasConfig,
 } from "@/types/ticket";
-import { getElementText } from "../components/CustomTicketCanvas";
+import type {
+  TicketCanvasConfig,
+} from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
+import {
+  getElementText,
+  resolveTicketLayer,
+} from "../components/CustomTicketCanvas";
 
 async function exportCustomTicketToCanvas(
   template: TicketPassTemplate,
@@ -70,8 +75,13 @@ async function exportCustomTicketToCanvas(
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   }
 
-  // 2. Draw elements
+  // 2. Draw elements with conditional evaluation
   for (const el of elements) {
+    const resolved = resolveTicketLayer(el, pass);
+    if (!resolved.visible) {
+      continue;
+    }
+
     const rotation = el.rotation ?? 0;
     const cx = el.x + el.width / 2;
     const cy = el.y + el.height / 2;
@@ -81,8 +91,29 @@ async function exportCustomTicketToCanvas(
     ctx.rotate((rotation * Math.PI) / 180);
     ctx.translate(-cx, -cy);
 
+    // If element has a background color (badge, or overridden bgColor)
+    const bgColor =
+      resolved.bgColor ||
+      el.style?.backgroundColor ||
+      el.style?.bgColor ||
+      (el.type === "badge" ? "rgba(255, 255, 255, 0.15)" : undefined);
+
+    if (bgColor && el.type !== "qr") {
+      ctx.fillStyle = bgColor;
+      const radius = el.style?.borderRadius ?? (el.type === "badge" ? 6 : 0);
+      if (radius > 0 && typeof ctx.roundRect === "function") {
+        ctx.beginPath();
+        ctx.roundRect(el.x, el.y, el.width, el.height, radius);
+        ctx.fill();
+      } else {
+        ctx.fillRect(el.x, el.y, el.width, el.height);
+      }
+    }
+
     if (el.type === "qr") {
       const isScannable = pass.status === "active" || pass.status === "used";
+      const qrBg = resolved.bgColor || el.style?.qrBgColor || "#ffffff";
+
       if (isScannable && pass.qrCode) {
         try {
           const qr = qrcode(0, "M");
@@ -96,10 +127,12 @@ async function exportCustomTicketToCanvas(
             qrImg.src = qrDataUrl;
           });
           if (qrImg.complete && qrImg.naturalWidth > 0) {
+            ctx.fillStyle = qrBg;
+            ctx.fillRect(el.x, el.y, el.width, el.height);
             ctx.drawImage(qrImg, el.x, el.y, el.width, el.height);
           }
         } catch {
-          ctx.fillStyle = el.style?.qrBgColor || "#ffffff";
+          ctx.fillStyle = qrBg;
           ctx.fillRect(el.x, el.y, el.width, el.height);
         }
       } else {
@@ -120,12 +153,15 @@ async function exportCustomTicketToCanvas(
         );
       }
     } else {
-      const text = getElementText(el, pass);
+      const text = resolved.text ?? getElementText(el, pass);
       if (text) {
         const baseFontSize = el.style?.fontSize ?? 16;
         const fontFamily = el.style?.fontFamily || "sans-serif";
         const fontWeight = el.style?.fontWeight || "normal";
-        const isVariable = el.type === "variable" || Boolean(el.variableKey);
+        const isVariable =
+          el.type === "variable" ||
+          el.type === "form_field" ||
+          Boolean(el.variableKey);
         const autoFit = el.style?.autoFitText ?? (isVariable ? true : false);
 
         let finalFontSize = baseFontSize;
@@ -139,7 +175,7 @@ async function exportCustomTicketToCanvas(
         }
 
         ctx.font = `${fontWeight} ${finalFontSize}px ${fontFamily}`;
-        ctx.fillStyle = el.style?.color || "#ffffff";
+        ctx.fillStyle = resolved.color || el.style?.color || "#ffffff";
         ctx.textBaseline = "middle";
 
         let textX = el.x;

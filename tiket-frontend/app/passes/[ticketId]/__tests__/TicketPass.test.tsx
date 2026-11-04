@@ -51,7 +51,12 @@ import { PassQRCode } from "../components/PassQRCode";
 import { PassDetails } from "../components/PassDetails";
 import { PassActions } from "../components/PassActions";
 import { PassError } from "../components/PassError";
-import { CustomTicketCanvas } from "../components/CustomTicketCanvas";
+import {
+  CustomTicketCanvas,
+  resolveTicketLayer,
+  getElementText,
+} from "../components/CustomTicketCanvas";
+import type { TicketCanvasElement } from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
 import TicketPassPage from "../page";
 
 // Mock next/navigation
@@ -633,5 +638,280 @@ describe("CustomTicketCanvas component", () => {
 
     // Raw QR text must not be exposed
     expect(screen.queryByText("TIKET_ENTRY_QR_PENDING")).toBeNull();
+  });
+});
+
+describe("resolveTicketLayer condition evaluator & form field bindings", () => {
+  const vipPass: TicketPassData = {
+    ...mockActiveTicket,
+    ticketType: {
+      id: "tt-early-bird",
+      name: "Early Bird VIP",
+      price: "12000",
+      isTransferable: true,
+      isRefundable: true,
+    },
+    responses: [
+      { label: "Food", value: "Veg" },
+      { label: "Track", value: "AI & Systems" },
+    ],
+  };
+
+  const regularPass: TicketPassData = {
+    ...mockActiveTicket,
+    ticketType: {
+      id: "tt-regular",
+      name: "General Admission",
+      price: "5000",
+      isTransferable: true,
+      isRefundable: false,
+    },
+    responses: [
+      { label: "Food", value: "Non-Veg" },
+      { label: "Track", value: "Product Design" },
+    ],
+  };
+
+  test("IF ticketType == 'Early Bird VIP' THEN show 'EARLY BIRD VIP' in Gold ELSE show 'REGULAR'", () => {
+    const layerElement: TicketCanvasElement = {
+      id: "el-tier-banner",
+      type: "variable",
+      label: "Tier Banner",
+      variableKey: "{{ticket.type}}",
+      x: 20,
+      y: 20,
+      width: 200,
+      height: 40,
+      rotation: 0,
+      zIndex: 1,
+      style: {
+        color: "#ffffff",
+      },
+      conditionalRules: [
+        {
+          id: "r1",
+          sourceType: "ticketType",
+          sourceKey: "ticketType.name",
+          operator: "equals",
+          value: "Early Bird VIP",
+          thenEffect: {
+            visible: true,
+            textOverride: "EARLY BIRD VIP",
+            colorOverride: "#FFD700", // Gold
+          },
+        },
+      ],
+      elseBehavior: {
+        visible: true,
+        textOverride: "REGULAR",
+        colorOverride: "#CCCCCC",
+      },
+    };
+
+    // When pass is Early Bird VIP
+    const vipResult = resolveTicketLayer(layerElement, vipPass);
+    expect(vipResult.visible).toBe(true);
+    expect(vipResult.text).toBe("EARLY BIRD VIP");
+    expect(vipResult.color).toBe("#FFD700");
+
+    // When pass is General Admission (fallback to ELSE)
+    const regularResult = resolveTicketLayer(layerElement, regularPass);
+    expect(regularResult.visible).toBe(true);
+    expect(regularResult.text).toBe("REGULAR");
+    expect(regularResult.color).toBe("#CCCCCC");
+  });
+
+  test("IF form.Food == 'Veg' THEN show green badge ELSE hide", () => {
+    const vegBadgeElement: TicketCanvasElement = {
+      id: "el-veg-badge",
+      type: "badge",
+      label: "Dietary Badge",
+      customText: "VEG GUEST",
+      x: 100,
+      y: 100,
+      width: 120,
+      height: 32,
+      rotation: 0,
+      zIndex: 2,
+      style: {
+        color: "#ffffff",
+        backgroundColor: "#28a745",
+      },
+      conditionalRules: [
+        {
+          id: "r-veg",
+          sourceType: "formField",
+          sourceKey: "Food",
+          operator: "equals",
+          value: "Veg",
+          thenEffect: {
+            visible: true,
+            bgColorOverride: "#28a745", // Green
+            colorOverride: "#ffffff",
+          },
+        },
+      ],
+      elseBehavior: {
+        visible: false,
+      },
+    };
+
+    // When Food == Veg -> Show green badge
+    const vegResult = resolveTicketLayer(vegBadgeElement, vipPass);
+    expect(vegResult.visible).toBe(true);
+    expect(vegResult.bgColor).toBe("#28a745");
+
+    // When Food == Non-Veg -> Hide
+    const nonVegResult = resolveTicketLayer(vegBadgeElement, regularPass);
+    expect(nonVegResult.visible).toBe(false);
+  });
+
+  test("evaluates 'contains' and 'not_equals' operators accurately", () => {
+    const trackElement: TicketCanvasElement = {
+      id: "el-track-cond",
+      type: "text",
+      label: "Track Notice",
+      customText: "Standard Track",
+      x: 10,
+      y: 10,
+      width: 150,
+      height: 30,
+      rotation: 0,
+      zIndex: 1,
+      style: {},
+      conditionalRules: [
+        {
+          id: "r-contains",
+          sourceType: "formField",
+          sourceKey: "Track",
+          operator: "contains",
+          value: "Systems",
+          thenEffect: {
+            visible: true,
+            textOverride: "SYSTEMS ENGINEER PASS",
+          },
+        },
+      ],
+    };
+
+    const result = resolveTicketLayer(trackElement, vipPass);
+    expect(result.visible).toBe(true);
+    expect(result.text).toBe("SYSTEMS ENGINEER PASS");
+
+    const notEqualsElement: TicketCanvasElement = {
+      ...trackElement,
+      conditionalRules: [
+        {
+          id: "r-not-equals",
+          sourceType: "formField",
+          sourceKey: "Track",
+          operator: "not_equals",
+          value: "Product Design",
+          thenEffect: {
+            visible: true,
+            textOverride: "NON-DESIGN TRACK",
+          },
+        },
+      ],
+    };
+
+    expect(resolveTicketLayer(notEqualsElement, vipPass).text).toBe(
+      "NON-DESIGN TRACK",
+    );
+    expect(resolveTicketLayer(notEqualsElement, regularPass).text).toBe(
+      "Standard Track",
+    );
+  });
+
+  test("resolves form_field element with fallbackText when response is empty", () => {
+    const blankResponsePass: TicketPassData = {
+      ...mockActiveTicket,
+      responses: [],
+    };
+
+    const formFieldElement: TicketCanvasElement = {
+      id: "el-dietary-field",
+      type: "form_field",
+      label: "Dietary Preference",
+      fieldLabel: "Dietary Preference",
+      fallbackText: "No dietary restrictions",
+      x: 50,
+      y: 50,
+      width: 250,
+      height: 35,
+      rotation: 0,
+      zIndex: 1,
+      style: {},
+    };
+
+    expect(getElementText(formFieldElement, blankResponsePass)).toBe(
+      "No dietary restrictions",
+    );
+
+    const answeredPass: TicketPassData = {
+      ...mockActiveTicket,
+      responses: [{ label: "Dietary Preference", value: "Gluten-Free" }],
+    };
+
+    expect(getElementText(formFieldElement, answeredPass)).toBe("Gluten-Free");
+  });
+
+  test("CustomTicketCanvas suppresses elements that resolve to visible: false", () => {
+    const templateWithConditionalLayer = {
+      id: "tpl-cond-1",
+      name: "Conditional Template",
+      backgroundImageUrl: "https://cdn.example.com/bg.png",
+      elementsJson: {
+        canvasWidth: 600,
+        canvasHeight: 300,
+        elements: [
+          {
+            id: "vip-exclusive-badge",
+            type: "badge" as const,
+            label: "VIP Badge",
+            customText: "VIP ACCESS ONLY",
+            x: 50,
+            y: 50,
+            width: 160,
+            height: 36,
+            rotation: 0,
+            zIndex: 1,
+            style: { color: "#FFD700" },
+            conditionalRules: [
+              {
+                id: "r1",
+                sourceType: "ticketType" as const,
+                sourceKey: "ticketType.name",
+                operator: "contains" as const,
+                value: "VIP",
+                thenEffect: { visible: true },
+              },
+            ],
+            elseBehavior: { visible: false },
+          },
+        ],
+      },
+    };
+
+    // Render with VIP pass -> Element should be present
+    const { unmount } = render(
+      <CustomTicketCanvas
+        pass={vipPass}
+        template={templateWithConditionalLayer}
+      />,
+    );
+    expect(screen.getByTestId("custom-element-vip-exclusive-badge")).toBeInTheDocument();
+    expect(screen.getByText("VIP ACCESS ONLY")).toBeInTheDocument();
+    unmount();
+
+    // Render with Regular pass -> Element should NOT be rendered
+    render(
+      <CustomTicketCanvas
+        pass={regularPass}
+        template={templateWithConditionalLayer}
+      />,
+    );
+    expect(screen.queryByTestId("custom-element-vip-exclusive-badge")).toBeNull();
+    expect(screen.queryByText("VIP ACCESS ONLY")).toBeNull();
   });
 });
