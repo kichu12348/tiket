@@ -611,4 +611,121 @@ describe("OverviewPage (Lu.ma / MakeMyPass caliber Dashboard)", () => {
       expect(writeTextMock).toHaveBeenCalled();
     });
   });
+
+  test("9. Renders Custom Form Insights with aggregated single_select, multi_select, and rating responses", async () => {
+    render(<EditOverviewPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Custom Form Insights")).toBeInTheDocument();
+    });
+
+    // Check widget titles
+    expect(screen.getByText("Dietary Preferences")).toBeInTheDocument();
+    expect(screen.getByText("Workshop Track Selection")).toBeInTheDocument();
+    expect(screen.getByText("Attendee Rating")).toBeInTheDocument();
+
+    // Verify Donut widget choices
+    expect(screen.getByText("Vegetarian")).toBeInTheDocument();
+    expect(screen.getByText("Non-Vegetarian")).toBeInTheDocument();
+
+    // Verify multi_select answers counted
+    expect(screen.getByText("AI Agents")).toBeInTheDocument();
+    expect(screen.getByText("Next.js 16")).toBeInTheDocument();
+
+    // Verify rating average
+    expect(screen.getByText("4.5")).toBeInTheDocument();
+    expect(screen.getByText("Average Rating")).toBeInTheDocument();
+  });
+
+  test("10. Opens + Add Form Insight modal, configures Donut chart with Checked-In Only filter, and updates counts accurately", async () => {
+    render(<EditOverviewPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Add Form Insight/i }),
+      ).toBeInTheDocument();
+    });
+
+    // Click Add Form Insight button
+    const addBtn = screen.getByRole("button", { name: /Add Form Insight/i });
+    fireEvent.click(addBtn);
+
+    // Modal opens
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Add Form Insight" }),
+      ).toBeInTheDocument();
+    });
+
+    // Select Field: Dietary Preference
+    const fieldSelect = screen.getByLabelText(/Registration Form Question/i);
+    fireEvent.change(fieldSelect, { target: { value: "field-diet" } });
+
+    // Set title
+    const titleInput = screen.getByLabelText(/Widget Title/i);
+    fireEvent.change(titleInput, {
+      target: { value: "Checked-In Food Requirements" },
+    });
+
+    // Select Donut Chart style
+    const donutBtn = screen.getByRole("button", { name: /Donut Chart/i });
+    fireEvent.click(donutBtn);
+
+    // Select Audience filter: Checked-In Attendees Only
+    const audienceSelect = screen.getByLabelText(/Audience Filter/i);
+    fireEvent.change(audienceSelect, { target: { value: "checked_in" } });
+
+    // Submit modal
+    const saveBtn = screen.getByRole("button", { name: /Save Insight/i });
+    fireEvent.click(saveBtn);
+
+    // Verify update API called
+    await waitFor(() => {
+      expect(mockUpdateCustomInsights).toHaveBeenCalled();
+    });
+
+    // Modal closed
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // Verify new widget rendered with Checked-In Only badge
+    expect(
+      screen.getByText("Checked-In Food Requirements"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Checked-In Only")).toBeInTheDocument();
+
+    // Verified checked-in count: among checked-in attendees (t1, t2, t4), Vegetarian is 2 (67%), Non-Vegetarian is 1 (33%)
+    expect(screen.getByText("2 (67%)")).toBeInTheDocument();
+    expect(screen.getByText("1 (33%)")).toBeInTheDocument();
+  });
+
+  test("11. Reorders and deletes custom insight widgets", async () => {
+    render(<EditOverviewPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Custom Form Insights")).toBeInTheDocument();
+    });
+
+    // Move first widget down
+    const moveDownBtns = screen.getAllByRole("button", { name: /Move Down/i });
+    expect(moveDownBtns.length).toBeGreaterThan(0);
+    fireEvent.click(moveDownBtns[0]!);
+
+    await waitFor(() => {
+      expect(mockUpdateCustomInsights).toHaveBeenCalled();
+    });
+
+    // Delete a widget
+    const deleteBtns = screen.getAllByRole("button", {
+      name: /Delete Insight/i,
+    });
+    expect(deleteBtns.length).toBeGreaterThan(0);
+    fireEvent.click(deleteBtns[0]!);
+
+    await waitFor(() => {
+      expect(mockUpdateCustomInsights).toHaveBeenCalledTimes(2);
+    });
+  });
 });
