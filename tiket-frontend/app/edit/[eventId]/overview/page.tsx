@@ -295,7 +295,12 @@ export default function EditOverviewPage() {
               Manage who has admin access to this event.
             </span>
           </div>
-          <button className={styles.btnSecondary}>+ Add Host</button>
+          <Link
+            href={`/edit/${event.id}/team`}
+            className={styles.btnSecondary}
+          >
+            + Manage Team
+          </Link>
         </div>
 
         <div className={styles.listContainer}>

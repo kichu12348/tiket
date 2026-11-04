@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 export default function Signin() {
   const router = useRouter();
   const returnTo = () => {
+    if (typeof window === "undefined") return "/home";
     const path = new URLSearchParams(window.location.search).get("redirect");
     return path?.startsWith("/") &&
       !path.startsWith("//") &&
@@ -33,7 +34,7 @@ export default function Signin() {
   const [needsName, setNeedsName] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
 
-  const handleOtp = async (e: React.SubmitEvent) => {
+  const handleOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
@@ -54,7 +55,7 @@ export default function Signin() {
     }
   };
 
-  const handlePassword = async (e: React.SubmitEvent) => {
+  const handlePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createTicketType, updateTicketType } from "@/api/tickets";
 import type { TicketType } from "@/types/ticketType";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errors";
 import { Globe, CalendarIcon, Clock } from "lucide-react";
 import Modal from "@/components/Modal";
 import Switch from "@/components/Switch";
@@ -150,9 +151,9 @@ function TicketEditModalContent({
       }
       onSave();
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to save ticket type", error);
-      toast.error("Failed to save ticket type.");
+      toast.error(getErrorMessage(error) || "Failed to save ticket type.");
     } finally {
       setIsSubmitting(false);
     }
@@ -177,6 +178,7 @@ function TicketEditModalContent({
               placeholder="e.g. General Admission"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              data-testid="ticket-name-input"
             />
           </div>
           <div className={styles.formGroup}>
@@ -188,6 +190,7 @@ function TicketEditModalContent({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               style={{ resize: "vertical", minHeight: "80px" }}
+              data-testid="ticket-description-input"
             />
           </div>
           <div className={styles.formGroup}>
@@ -200,6 +203,7 @@ function TicketEditModalContent({
               onChange={(e) => setPrice(e.target.value)}
               min="0"
               step="0.01"
+              data-testid="ticket-price-input"
             />
           </div>
           <div className={styles.formGroup}>
@@ -211,6 +215,7 @@ function TicketEditModalContent({
               value={quantityLimit}
               onChange={(e) => setQuantityLimit(e.target.value)}
               min="1"
+              data-testid="ticket-quantity-input"
             />
           </div>
           <div className={styles.formGroup}>
@@ -347,15 +352,27 @@ function TicketEditModalContent({
           </div>
           <div className={styles.switchRow}>
             <span>Require an access code</span>
-            <Switch checked={isHidden} onChange={setIsHidden} />
+            <Switch
+              id="ticket-hidden-switch"
+              checked={isHidden}
+              onChange={setIsHidden}
+            />
           </div>
           <div className={styles.switchRow}>
             <span>Allow Refunds</span>
-            <Switch checked={isRefundable} onChange={setIsRefundable} />
+            <Switch
+              id="ticket-refundable-switch"
+              checked={isRefundable}
+              onChange={setIsRefundable}
+            />
           </div>
           <div className={styles.switchRow}>
             <span>Allow Transfers</span>
-            <Switch checked={isTransferable} onChange={setIsTransferable} />
+            <Switch
+              id="ticket-transferable-switch"
+              checked={isTransferable}
+              onChange={setIsTransferable}
+            />
           </div>
           {isTransferable && (
             <div className={styles.formGroup}>
@@ -367,6 +384,7 @@ function TicketEditModalContent({
                 value={maxTransfers}
                 onChange={(e) => setMaxTransfers(e.target.value)}
                 min="1"
+                data-testid="ticket-max-transfers-input"
               />
             </div>
           )}
@@ -375,6 +393,7 @@ function TicketEditModalContent({
               className={styles.submitBtn}
               onClick={handleSave}
               disabled={isSubmitting}
+              data-testid="ticket-submit-btn"
             >
               {isSubmitting
                 ? "Saving..."

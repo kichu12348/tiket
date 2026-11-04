@@ -46,7 +46,23 @@ export default function SortableTicketCard({
           style={{ flex: 1, marginLeft: "0.5rem" }}
         >
           <div className={styles.ticketHeader}>
-            <span className={styles.ticketName}>{ticket.name}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span className={styles.ticketName}>{ticket.name}</span>
+              {ticket.isHidden && (
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    padding: "0.15rem 0.45rem",
+                    borderRadius: "4px",
+                    background: "var(--status-warning-bg, rgba(255, 193, 7, 0.15))",
+                    color: "var(--status-warning, #ffc107)",
+                  }}
+                >
+                  Hidden
+                </span>
+              )}
+            </div>
             <span className={styles.ticketPrice}>
               {Number(ticket.price) === 0 ? "Free" : `₹${ticket.price}`}
             </span>
@@ -64,10 +80,21 @@ export default function SortableTicketCard({
             </div>
           )}
           <div className={styles.ticketMeta}>
-            {ticket.quantityLimit
-              ? `Limit: ${ticket.quantityLimit}`
-              : "Unlimited"}
-            {ticket.isTransferable ? " • Transferable" : " • Non-transferable"}
+            <span>
+              {ticket.quantityLimit
+                ? `Limit: ${ticket.quantityLimit}`
+                : "Unlimited"}
+            </span>
+            <span> • </span>
+            <span>
+              {ticket.isRefundable ? "Refundable" : "Non-refundable"}
+            </span>
+            <span> • </span>
+            <span>
+              {ticket.isTransferable
+                ? `Transferable (${ticket.maxTransfers || 1} max)`
+                : "Non-transferable"}
+            </span>
           </div>
         </div>
         <div className={styles.ticketActions}>

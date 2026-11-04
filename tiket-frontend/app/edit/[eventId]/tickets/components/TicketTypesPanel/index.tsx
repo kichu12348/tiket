@@ -133,7 +133,11 @@ export default function TicketTypesPanel({ eventId }: Props) {
     <div className={styles.panel}>
       <div className={styles.header}>
         <h3 className={styles.title}>Ticket Types</h3>
-        <button className={styles.createBtn} onClick={() => openModal()}>
+        <button
+          className={styles.createBtn}
+          onClick={() => openModal()}
+          data-testid="add-ticket-btn"
+        >
           <Plus size={16} />
           <span>Add Ticket</span>
         </button>

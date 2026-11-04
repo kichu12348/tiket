@@ -124,9 +124,10 @@ export default function CreateEventPage() {
       if (coverImageFile) {
         toast.info("Uploading cover image...");
         try {
+          const contentType = coverImageFile.type || "image/jpeg";
           const { url: signedUrl, max_size } = await getSignedUrl(
             coverImageFile.name,
-            coverImageFile.type.split("/")[1],
+            contentType,
           );
 
           if (coverImageFile.size / 1024 / 1024 > max_size) {
@@ -151,7 +152,11 @@ export default function CreateEventPage() {
         coverImage: finalCoverImage,
         locationType,
         locationDetails:
-          locationType === "online" ? { link: virtualLink } : locationDetails,
+          locationType === "online"
+            ? { link: virtualLink }
+            : locationType === "hybrid"
+              ? { ...(locationDetails || {}), link: virtualLink }
+              : locationDetails,
         startDate,
         endDate,
         timezone,

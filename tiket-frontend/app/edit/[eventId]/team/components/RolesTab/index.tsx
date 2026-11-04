@@ -142,7 +142,11 @@ export default function RolesTab({ eventId }: { eventId: string }) {
     <div className={styles.container}>
       <div className={styles.header}>
         <h3 className={styles.sectionTitle}>Event Roles</h3>
-        <button className={styles.primaryBtn} onClick={() => openModal()}>
+        <button
+          className={styles.primaryBtn}
+          onClick={() => openModal()}
+          data-testid="create-role-btn"
+        >
           <Plus size={18} /> Create Role
         </button>
       </div>
@@ -249,6 +253,7 @@ export default function RolesTab({ eventId }: { eventId: string }) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Volunteer"
                 required
+                data-testid="role-name-input"
               />
             </div>
 
@@ -263,6 +268,7 @@ export default function RolesTab({ eventId }: { eventId: string }) {
                       id={perm.id}
                       checked={selectedPerms.includes(perm.id)}
                       onCheckedChange={() => togglePermission(perm.id)}
+                      data-testid={`perm-checkbox-${perm.id}`}
                     />
                     <span className={styles.permName}>{perm.label}</span>
                   </label>
@@ -275,6 +281,7 @@ export default function RolesTab({ eventId }: { eventId: string }) {
                 type="submit"
                 className={styles.submitBtn}
                 onClick={handleSave}
+                data-testid="role-submit-btn"
               >
                 {editingRole ? "Save Changes" : "Create Role"}
               </button>

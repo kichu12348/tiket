@@ -2,16 +2,29 @@
 
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { useToken } from "@/hooks/useToken";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import SidebarNav from "@/components/SidebarNav";
 import { getEvent } from "@/api/events";
+import api from "@/lib/api";
+import { API_ENDPOINTS } from "@/constants/config";
 import { useEventStore } from "@/store/useEventStore";
 import SkeletonLoader from "./components/SkeletonLoader";
 import FormsSkeletonLoader from "./forms/components/SkeletonLoader";
 import styles from "./EditLayout.module.css";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
+
+const TAB_PERMISSIONS: Record<string, string | string[]> = {
+  details: "manage_settings",
+  tickets: "manage_tickets",
+  attendees: ["view_guests", "manage_guests"],
+  operations: ["scan_tickets", "view_payments", "manage_refunds"],
+  forms: "manage_forms",
+  emails: "manage_emails",
+  team: "manage_team",
+  settings: "manage_settings",
+};
 
 export default function EditEventLayout({
   children,
@@ -25,7 +38,15 @@ export default function EditEventLayout({
   useLiveEvent(eventId);
   const { logout } = useToken();
 
-  const { setEvent, isLoading, setIsLoading } = useEventStore();
+  const {
+    setEvent,
+    isLoading,
+    setIsLoading,
+    permissions,
+    isOwner,
+    setPermissions,
+  } = useEventStore();
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -46,8 +67,56 @@ export default function EditEventLayout({
       }
     };
 
+    const fetchPermissions = async () => {
+      if (!eventId) return;
+
+      try {
+        const res = await api.get<{ owner: boolean; permissions: string[] }>(
+          API_ENDPOINTS.COMMERCE.PERMISSIONS(eventId),
+        );
+        if (res.data) {
+          setPermissions(res.data.permissions || [], Boolean(res.data.owner));
+        }
+      } catch (err) {
+        console.error("Failed to load permissions", err);
+      } finally {
+        setPermissionsLoaded(true);
+      }
+    };
+
     fetchEvent();
-  }, [eventId, setEvent, setIsLoading, router]);
+    fetchPermissions();
+  }, [eventId, setEvent, setIsLoading, setPermissions, router]);
+
+  useEffect(() => {
+    if (!permissionsLoaded || isOwner || !eventId) return;
+
+    for (const [tab, requiredPerm] of Object.entries(TAB_PERMISSIONS)) {
+      if (pathname?.includes(`/edit/${eventId}/${tab}`)) {
+        const hasPerm = Array.isArray(requiredPerm)
+          ? requiredPerm.some((p) => permissions.includes(p))
+          : permissions.includes(requiredPerm);
+
+        if (!hasPerm) {
+          toast.error("You do not have permission to access this page.");
+          router.replace(`/edit/${eventId}/overview`);
+          break;
+        }
+      }
+    }
+  }, [pathname, permissions, isOwner, permissionsLoaded, eventId, router]);
+
+  const hiddenTabHrefs: string[] = [];
+  if (permissionsLoaded && !isOwner) {
+    Object.entries(TAB_PERMISSIONS).forEach(([tab, requiredPerm]) => {
+      const hasPerm = Array.isArray(requiredPerm)
+        ? requiredPerm.some((p) => permissions.includes(p))
+        : permissions.includes(requiredPerm);
+      if (!hasPerm) {
+        hiddenTabHrefs.push(`/edit/${eventId}/${tab}`);
+      }
+    });
+  }
 
   const isDetailsPage = pathname?.endsWith("/details");
   const isFormsPage = pathname?.endsWith("/forms");
@@ -78,6 +147,15 @@ export default function EditEventLayout({
   return (
     <div className={styles.pageWrapper}>
       <div className={styles.background} />
+      {hiddenTabHrefs.length > 0 && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: hiddenTabHrefs
+              .map((href) => `a[href="${href}"] { display: none !important; }`)
+              .join("\n"),
+          }}
+        />
+      )}
       <div style={{ position: "relative", zIndex: 20 }}>
         {!isDetailsPage && (
           <Navbar

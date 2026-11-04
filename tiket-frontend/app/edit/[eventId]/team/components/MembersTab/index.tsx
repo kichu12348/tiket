@@ -93,6 +93,7 @@ export default function MembersTab({ eventId }: { eventId: string }) {
         <button
           className={styles.primaryBtn}
           onClick={() => setIsModalOpen(true)}
+          data-testid="invite-member-btn"
         >
           <Plus size={18} /> Invite Member
         </button>
@@ -168,6 +169,7 @@ export default function MembersTab({ eventId }: { eventId: string }) {
                   placeholder="teammate@example.com"
                   style={{ paddingLeft: "32px" }}
                   required
+                  data-testid="member-email-input"
                 />
               </div>
             </div>
@@ -201,6 +203,7 @@ export default function MembersTab({ eventId }: { eventId: string }) {
                 className={styles.submitBtn}
                 onClick={handleInvite}
                 disabled={roles.length === 0}
+                data-testid="member-submit-btn"
               >
                 Send Invite
               </button>

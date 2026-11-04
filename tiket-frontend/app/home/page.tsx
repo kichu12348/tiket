@@ -16,6 +16,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -27,7 +29,25 @@ export default function Home() {
     fetchEvents();
   }, []);
 
-  const filteredEvents = events;
+  const now = new Date().getTime();
+  const filteredEvents = events.filter((event) => {
+    const end = new Date(event.endDate || event.startDate).getTime();
+    const isPast = end < now;
+    if (activeTab === "upcoming" && isPast) return false;
+    if (activeTab === "past" && !isPast) return false;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const titleMatch = event.title?.toLowerCase().includes(q);
+      const locationMatch =
+        typeof event.locationDetails === "object" && event.locationDetails?.name
+          ? event.locationDetails.name.toLowerCase().includes(q)
+          : false;
+      return Boolean(titleMatch || locationMatch);
+    }
+
+    return true;
+  });
 
   return (
     <div className={styles.page}>
@@ -46,7 +66,29 @@ export default function Home() {
               <Plus size={18} strokeWidth={2.5} />
               <span>Create Event</span>
             </Link>
-            <button className={styles.softIconBtn} aria-label="Search">
+            {showSearch && (
+              <input
+                type="text"
+                placeholder="Search events..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                style={{
+                  background: "var(--color-soft-bg)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "9999px",
+                  padding: "0.4rem 0.8rem",
+                  fontSize: "0.85rem",
+                  color: "var(--text-primary)",
+                  outline: "none",
+                }}
+              />
+            )}
+            <button
+              className={styles.softIconBtn}
+              onClick={() => setShowSearch((prev) => !prev)}
+              aria-label="Search"
+            >
               <Search size={18} />
             </button>
             <button
@@ -90,10 +132,19 @@ export default function Home() {
                 <BsCalendar4Week size={56} />
               </div>
 
-              <h2 className={styles.emptyTitle}>No events here</h2>
+              <h2 className={styles.emptyTitle}>
+                {searchQuery
+                  ? "No matching events"
+                  : activeTab === "past"
+                    ? "No past events"
+                    : "No upcoming events"}
+              </h2>
               <p className={styles.emptySubtitle}>
-                You haven&apos;t scheduled anything yet. Create your first event
-                to get started.
+                {searchQuery
+                  ? "Try searching for a different event title or location."
+                  : activeTab === "past"
+                    ? "Events that have ended will appear here."
+                    : "You haven't scheduled anything yet. Create your first event to get started."}
               </p>
             </div>
           )}
