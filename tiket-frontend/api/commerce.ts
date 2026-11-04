@@ -7,6 +7,10 @@ import type {
   CreateBlacklistPayload,
   Finance,
   MailConfig,
+  OrganizerBankAccount,
+  PayoutRequest,
+  RequestPayoutPayload,
+  SaveBankAccountPayload,
 } from "@/types/commerce";
 export async function getAvailability(
   eventId: string,
@@ -20,6 +24,20 @@ export async function getAvailability(
 }
 export async function getFinance(eventId: string): Promise<Finance> {
   return (await api.get(API_ENDPOINTS.COMMERCE.FINANCE(eventId))).data;
+}
+export async function saveBankAccount(
+  eventId: string,
+  payload: SaveBankAccountPayload,
+): Promise<{ success: boolean; bankAccount: OrganizerBankAccount }> {
+  return (await api.put(API_ENDPOINTS.COMMERCE.BANK_ACCOUNT(eventId), payload))
+    .data;
+}
+export async function requestPayout(
+  eventId: string,
+  payload: RequestPayoutPayload,
+): Promise<PayoutRequest> {
+  return (await api.post(API_ENDPOINTS.COMMERCE.PAYOUTS(eventId), payload))
+    .data;
 }
 export async function refundOrder(
   eventId: string,

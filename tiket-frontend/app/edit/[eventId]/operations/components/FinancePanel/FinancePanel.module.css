@@ -282,6 +282,26 @@
   color: var(--text-muted);
 }
 
+.statusPill[data-status="requested"] {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+}
+
+.statusPill[data-status="processing"] {
+  background: rgba(30, 114, 224, 0.15);
+  color: #58a6ff;
+}
+
+.statusPill[data-status="paid"] {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+}
+
+.statusPill[data-status="rejected"] {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+
 .chevronIcon {
   color: var(--text-muted);
   transition: transform 0.2s ease;
@@ -512,6 +532,446 @@
   margin: 0;
 }
 
+/* Header Action Buttons */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.btnPrimary {
+  background: var(--btn-primary-bg, #ffffff);
+  color: var(--btn-primary-text, #000000);
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  padding: 0.5rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.btnSecondary:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #ffffff);
+}
+
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bank Account Card & Banner */
+.bankCard {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bankCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.bankCardLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bankIcon {
+  color: var(--text-primary);
+}
+
+.bankCardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bankCardSubtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.bankDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.bankDetailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.bankDetailLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bankDetailValue {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.bankAlertBanner {
+  background: rgba(255, 193, 7, 0.08);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.bankAlertLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--status-warning);
+}
+
+.bankAlertText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bankAlertTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bankAlertDesc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Tabs Navigation */
+.tabsNav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.5rem;
+  overflow-x: auto;
+}
+
+.tabBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tabBtn:hover {
+  background: var(--color-soft-bg);
+  color: var(--text-primary);
+}
+
+.tabBtn[data-active="true"] {
+  background: var(--color-soft-bg-hover);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tabBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 10px;
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+.tabBtn[data-active="true"] .tabBadge {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+/* Payouts and Refunds Lists */
+.payoutCard,
+.refundCard {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: background 0.2s ease;
+}
+
+.payoutCard:hover,
+.refundCard:hover {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.payoutCardHeader,
+.refundCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.payoutHeaderLeft,
+.refundHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.payoutAmount,
+.refundAmount {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.payoutHeaderRight,
+.refundHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.payoutDate,
+.refundDate {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.payoutDetailsGrid,
+.refundDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.65rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+}
+
+.payoutDetailItem,
+.refundDetailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.payoutDetailLabel,
+.refundDetailLabel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.payoutDetailValue,
+.refundDetailValue {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Modals */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modalContainer {
+  background: #1c1c1e;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modalTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modalSubtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0 0;
+  line-height: 1.4;
+}
+
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modalCloseBtn:hover {
+  background: var(--color-soft-bg);
+  color: var(--text-primary);
+}
+
+.modalBody {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.15rem 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.modalBalanceCard {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 0.95rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.modalBalanceLabel {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.modalBalanceValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.quickActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.quickActionBtn {
+  background: var(--color-soft-bg);
+  border: none;
+  color: #58a6ff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.quickActionBtn:hover {
+  background: var(--color-soft-bg-hover);
+}
+
+.modalAlertBox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
 @media (max-width: 640px) {
   .orderHeader {
     flex-direction: column;
@@ -524,4 +984,13 @@
   .refundInputsGrid {
     grid-template-columns: 1fr;
   }
+  .headerActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .bankCardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
+

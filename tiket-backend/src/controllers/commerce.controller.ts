@@ -1,4 +1,4 @@
-import type { FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import db from "@db";
 import {
   coupons,
@@ -8,7 +8,9 @@ import {
   eventTeamMembers,
   orders,
   orderItems,
+  organizerBankAccounts,
   paymentAttempts,
+  payoutRequests,
   refunds,
   tickets,
   ticketTypes,
@@ -16,6 +18,7 @@ import {
 } from "@db/schema";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
+import type { Database } from "../db/types";
 import {
   verifyEventPermission,
   type EventPermission,
@@ -109,8 +112,131 @@ async function authorize(
     throw new HttpError(403, "Permission denied.");
   return id;
 }
+export function validateIfscCode(ifsc: string): boolean {
+  return /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc.trim().toUpperCase());
+}
+
+export function validateAccountNumber(accountNumber: string): boolean {
+  return /^[0-9]{6,20}$/.test(accountNumber.trim());
+}
+
+export function maskAccountNumber(accountNumber: string): string {
+  const trimmed = accountNumber.trim();
+  if (trimmed.length <= 4) return trimmed;
+  const last4 = trimmed.slice(-4);
+  const maskedLength = Math.max(4, trimmed.length - 4);
+  return "•".repeat(maskedLength) + last4;
+}
+
+export async function calculateFinanceSummary(
+  executor: Database,
+  eventId: string,
+) {
+  const paidOrders = await executor
+    .select({ id: orders.id, totalPaise: orders.totalPaise })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.eventId, eventId),
+        inArray(orders.paymentStatus, [
+          "success",
+          "partially_refunded",
+          "refunded",
+        ]),
+      ),
+    );
+  const paidOrderIds = paidOrders.map((o) => o.id);
+
+  let grossSalesPaise = 0;
+  let totalDiscountsPaise = 0;
+  let platformFeesPaise = 0;
+  let taxesPaise = 0;
+
+  if (paidOrderIds.length > 0) {
+    const items = await executor
+      .select({
+        unitPricePaise: orderItems.unitPricePaise,
+        discountPaise: orderItems.discountPaise,
+        platformFeePaise: orderItems.platformFeePaise,
+        ticketTaxPaise: orderItems.ticketTaxPaise,
+        feeTaxPaise: orderItems.feeTaxPaise,
+      })
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, paidOrderIds));
+
+    for (const item of items) {
+      grossSalesPaise += item.unitPricePaise;
+      totalDiscountsPaise += item.discountPaise;
+      platformFeesPaise += item.platformFeePaise;
+      taxesPaise += item.ticketTaxPaise + item.feeTaxPaise;
+    }
+  }
+
+  let totalRefundedPaise = 0;
+  if (paidOrderIds.length > 0) {
+    const activeRefunds = await executor
+      .select({ amountPaise: refunds.amountPaise })
+      .from(refunds)
+      .where(
+        and(
+          inArray(refunds.orderId, paidOrderIds),
+          inArray(refunds.status, [
+            "requested",
+            "processing",
+            "uncertain",
+            "processed",
+          ]),
+        ),
+      );
+    totalRefundedPaise = activeRefunds.reduce(
+      (sum, r) => sum + r.amountPaise,
+      0,
+    );
+  }
+
+  const activePayouts = await executor
+    .select({ amountPaise: payoutRequests.amountPaise })
+    .from(payoutRequests)
+    .where(
+      and(
+        eq(payoutRequests.eventId, eventId),
+        inArray(payoutRequests.status, ["requested", "processing", "paid"]),
+      ),
+    );
+  const withdrawnOrPendingPaise = activePayouts.reduce(
+    (sum, p) => sum + p.amountPaise,
+    0,
+  );
+
+  const netEarningsPaise = Math.max(
+    0,
+    grossSalesPaise - totalDiscountsPaise - totalRefundedPaise,
+  );
+  const availableToWithdrawPaise = Math.max(
+    0,
+    netEarningsPaise - withdrawnOrPendingPaise,
+  );
+
+  return {
+    grossSalesPaise,
+    totalDiscountsPaise,
+    platformFeesPaise,
+    taxesPaise,
+    totalRefundedPaise,
+    netEarningsPaise,
+    withdrawnOrPendingPaise,
+    availableToWithdrawPaise,
+  };
+}
+
 export async function getFinance(request: EventRequest) {
-  await authorize(request, request.params.eventId, "view_payments");
+  const actor = await authorize(request, request.params.eventId, "view_payments");
+  const [event] = await db
+    .select()
+    .from(events)
+    .where(eq(events.id, request.params.eventId));
+  if (!event) throw new HttpError(404, "Event not found.");
+
   const list = await db
     .select({
       order: orders,
@@ -128,6 +254,29 @@ export async function getFinance(request: EventRequest) {
         .from(paymentAttempts)
         .where(inArray(paymentAttempts.orderId, ids))
     : [];
+
+  const summary = await calculateFinanceSummary(db, request.params.eventId);
+
+  const [bankRecord] = await db
+    .select()
+    .from(organizerBankAccounts)
+    .where(eq(organizerBankAccounts.userId, event.organizationId));
+  const isOwner = event.organizationId === actor;
+  const bankAccount = bankRecord
+    ? {
+        ...bankRecord,
+        accountNumber: isOwner
+          ? bankRecord.accountNumber
+          : maskAccountNumber(bankRecord.accountNumber),
+      }
+    : null;
+
+  const payouts = await db
+    .select()
+    .from(payoutRequests)
+    .where(eq(payoutRequests.eventId, request.params.eventId))
+    .orderBy(desc(payoutRequests.createdAt));
+
   return {
     orders: list,
     capturedPaise: attempts
@@ -142,8 +291,145 @@ export async function getFinance(request: EventRequest) {
           .from(orderItems)
           .where(inArray(orderItems.orderId, ids))
       : [],
+    summary,
+    bankAccount,
+    payouts,
   };
 }
+
+export async function updateBankAccount(
+  request: FastifyRequest<{
+    Params: { eventId: string };
+    Body: {
+      accountHolderName: string;
+      accountNumber: string;
+      ifscCode: string;
+      bankName: string;
+      upiId?: string | null;
+    };
+  }>,
+) {
+  await request.jwtVerify();
+  const actor = (request.user as { id: string }).id;
+  const [event] = await db
+    .select()
+    .from(events)
+    .where(eq(events.id, request.params.eventId));
+  if (!event) throw new HttpError(404, "Event not found.");
+  if (event.organizationId !== actor) {
+    throw new HttpError(
+      403,
+      "Only the event owner can manage bank account details.",
+    );
+  }
+
+  const ifsc = request.body.ifscCode.trim().toUpperCase();
+  if (!validateIfscCode(ifsc)) {
+    throw new HttpError(400, "Invalid IFSC code format.");
+  }
+
+  const accountNumber = request.body.accountNumber.trim();
+  if (!validateAccountNumber(accountNumber)) {
+    throw new HttpError(400, "Account number must be 6 to 20 digits.");
+  }
+
+  const [saved] = await db
+    .insert(organizerBankAccounts)
+    .values({
+      userId: actor,
+      accountHolderName: request.body.accountHolderName.trim(),
+      accountNumber,
+      ifscCode: ifsc,
+      bankName: request.body.bankName.trim(),
+      upiId: request.body.upiId?.trim() || null,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: organizerBankAccounts.userId,
+      set: {
+        accountHolderName: request.body.accountHolderName.trim(),
+        accountNumber,
+        ifscCode: ifsc,
+        bankName: request.body.bankName.trim(),
+        upiId: request.body.upiId?.trim() || null,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  return { success: true, bankAccount: saved };
+}
+
+export async function requestPayout(
+  request: FastifyRequest<{
+    Params: { eventId: string };
+    Body: {
+      amountPaise: number;
+      notes?: string | null;
+    };
+  }>,
+  reply: FastifyReply,
+) {
+  await request.jwtVerify();
+  const actor = (request.user as { id: string }).id;
+
+  const createdPayout = await db.transaction(async (tx) => {
+    const event = await lockEvent(tx, request.params.eventId);
+    if (event.organizationId !== actor) {
+      throw new HttpError(
+        403,
+        "Only the event owner can request withdrawals.",
+      );
+    }
+
+    const [bankAccount] = await tx
+      .select()
+      .from(organizerBankAccounts)
+      .where(eq(organizerBankAccounts.userId, actor));
+    if (!bankAccount) {
+      throw new HttpError(
+        400,
+        "Please configure bank account details before requesting a withdrawal.",
+      );
+    }
+
+    const summary = await calculateFinanceSummary(tx, event.id);
+    if (request.body.amountPaise <= 0) {
+      throw new HttpError(400, "Withdrawal amount must be greater than zero.");
+    }
+    if (request.body.amountPaise > summary.availableToWithdrawPaise) {
+      throw new HttpError(
+        400,
+        `Withdrawal amount of ₹${(request.body.amountPaise / 100).toFixed(2)} exceeds available balance of ₹${(summary.availableToWithdrawPaise / 100).toFixed(2)}.`,
+      );
+    }
+
+    const maskedAccountNumber = maskAccountNumber(bankAccount.accountNumber);
+
+    const [created] = await tx
+      .insert(payoutRequests)
+      .values({
+        eventId: event.id,
+        requestedBy: actor,
+        amountPaise: request.body.amountPaise,
+        status: "requested",
+        bankSnapshot: {
+          accountHolderName: bankAccount.accountHolderName,
+          maskedAccountNumber,
+          ifscCode: bankAccount.ifscCode,
+          bankName: bankAccount.bankName,
+          upiId: bankAccount.upiId || null,
+        },
+        notes: request.body.notes?.trim() || null,
+      })
+      .returning();
+
+    return created;
+  });
+
+  return reply.code(201).send(createdPayout);
+}
+
 export async function refundOrder(
   request: FastifyRequest<{
     Params: { eventId: string; orderId: string };

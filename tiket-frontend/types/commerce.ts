@@ -28,7 +28,50 @@ export interface Refund {
   status: string;
   reason: string;
   error: string | null;
+  providerRefundId?: string | null;
+  createdAt?: string;
 }
+
+export interface OrganizerBankAccount {
+  userId: string;
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName: string;
+  upiId?: string | null;
+  updatedAt: string;
+}
+
+export interface PayoutRequest {
+  id: string;
+  eventId: string;
+  requestedBy: string;
+  amountPaise: number;
+  status: "requested" | "processing" | "paid" | "rejected";
+  bankSnapshot: {
+    accountHolderName: string;
+    maskedAccountNumber: string;
+    ifscCode: string;
+    bankName: string;
+    upiId?: string | null;
+  };
+  referenceNumber?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceSummary {
+  grossSalesPaise: number;
+  totalDiscountsPaise: number;
+  platformFeesPaise: number;
+  taxesPaise: number;
+  totalRefundedPaise: number;
+  netEarningsPaise: number;
+  withdrawnOrPendingPaise: number;
+  availableToWithdrawPaise: number;
+}
+
 export interface Finance {
   capturedPaise: number;
   orders: { order: Order; attendee: { name: string; email: string } }[];
@@ -39,6 +82,22 @@ export interface Finance {
     name: string;
     ticketId: string;
   })[];
+  summary?: FinanceSummary;
+  bankAccount?: OrganizerBankAccount | null;
+  payouts?: PayoutRequest[];
+}
+
+export interface SaveBankAccountPayload {
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName: string;
+  upiId?: string | null;
+}
+
+export interface RequestPayoutPayload {
+  amountPaise: number;
+  notes?: string | null;
 }
 export interface Coupon {
   code: string;

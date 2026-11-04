@@ -15,6 +15,8 @@ export const API_ENDPOINTS = {
     APPROVALS: (id: string) => `/api/commerce/${id}/approvals`,
     AVAILABILITY: (id: string) => `/api/commerce/${id}/availability`,
     FINANCE: (id: string) => `/api/commerce/${id}/finance`,
+    BANK_ACCOUNT: (id: string) => `/api/commerce/${id}/bank-account`,
+    PAYOUTS: (id: string) => `/api/commerce/${id}/payouts`,
     COUPONS: (id: string) => `/api/commerce/${id}/coupons`,
     REFUND: (id: string, order: string) =>
       `/api/commerce/${id}/orders/${order}/refunds`,

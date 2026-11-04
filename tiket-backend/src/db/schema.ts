@@ -945,3 +945,70 @@ export const eventBlacklistRelations = relations(eventBlacklist, ({ one }) => ({
   }),
 }));
 
+export const organizerBankAccounts = pgTable("organizer_bank_accounts", {
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .primaryKey(),
+  accountHolderName: varchar("account_holder_name", { length: 255 }).notNull(),
+  accountNumber: varchar("account_number", { length: 64 }).notNull(),
+  ifscCode: varchar("ifsc_code", { length: 32 }).notNull(),
+  bankName: varchar("bank_name", { length: 255 }).notNull(),
+  upiId: varchar("upi_id", { length: 255 }),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const organizerBankAccountsRelations = relations(
+  organizerBankAccounts,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [organizerBankAccounts.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const payoutRequests = pgTable("payout_requests", {
+  id: uuid("id").primaryKey().$defaultFn(uuidv7),
+  eventId: uuid("event_id")
+    .references(() => events.id, { onDelete: "cascade" })
+    .notNull(),
+  requestedBy: uuid("requested_by")
+    .references(() => users.id)
+    .notNull(),
+  amountPaise: integer("amount_paise").notNull(),
+  status: varchar("status", {
+    enum: ["requested", "processing", "paid", "rejected"],
+  })
+    .notNull()
+    .default("requested"),
+  bankSnapshot: jsonb("bank_snapshot")
+    .$type<{
+      accountHolderName: string;
+      maskedAccountNumber: string;
+      ifscCode: string;
+      bankName: string;
+      upiId?: string | null;
+    }>()
+    .notNull(),
+  referenceNumber: varchar("reference_number", { length: 255 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const payoutRequestsRelations = relations(payoutRequests, ({ one }) => ({
+  event: one(events, {
+    fields: [payoutRequests.eventId],
+    references: [events.id],
+  }),
+  requester: one(users, {
+    fields: [payoutRequests.requestedBy],
+    references: [users.id],
+  }),
+}));
+
+

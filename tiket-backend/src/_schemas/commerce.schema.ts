@@ -117,3 +117,37 @@ export const deleteBlacklistSchema = {
   },
 };
 
+export const bankAccountSchema = {
+  schema: {
+    params: eventParams,
+    body: {
+      type: "object",
+      additionalProperties: false,
+      required: ["accountHolderName", "accountNumber", "ifscCode", "bankName"],
+      properties: {
+        accountHolderName: { type: "string", minLength: 1, maxLength: 255 },
+        accountNumber: { type: "string", pattern: "^[0-9]{6,20}$" },
+        ifscCode: { type: "string", pattern: "^[A-Za-z]{4}0[A-Za-z0-9]{6}$" },
+        bankName: { type: "string", minLength: 1, maxLength: 255 },
+        upiId: { type: ["string", "null"], maxLength: 255 },
+      },
+    },
+  },
+};
+
+export const payoutSchema = {
+  schema: {
+    params: eventParams,
+    body: {
+      type: "object",
+      additionalProperties: false,
+      required: ["amountPaise"],
+      properties: {
+        amountPaise: { type: "integer", minimum: 1, maximum: 2000000000 },
+        notes: { type: ["string", "null"], maxLength: 500 },
+      },
+    },
+  },
+};
+
+
