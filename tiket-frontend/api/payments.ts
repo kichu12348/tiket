@@ -4,9 +4,13 @@ import { API_ENDPOINTS } from "@/constants/config";
 
 export interface VerifyPaymentPayload {
   orderId: string;
-  razorpayOrderId: string;
-  razorpayPaymentId: string;
-  razorpaySignature: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  providerOrderId?: string;
+  providerPaymentId?: string;
+  providerSignature?: string;
+  providerPayload?: Record<string, string>;
 }
 
 export const verifyPayment = async (

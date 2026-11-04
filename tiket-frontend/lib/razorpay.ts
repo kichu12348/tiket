@@ -1,10 +1,25 @@
 import type { CreateOrderResponse } from "@/types/order";
 import { verifyPayment } from "@/api/payments";
+
+export interface GatewayCheckoutConfig {
+  provider: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  publicKey?: string;
+  [key: string]: unknown;
+}
+
+export type OrderWithGateway = CreateOrderResponse & {
+  gatewayCheckout?: GatewayCheckoutConfig | null;
+};
+
 interface Result {
   razorpay_payment_id: string;
   razorpay_order_id: string;
   razorpay_signature: string;
 }
+
 interface Options {
   key: string;
   amount: number;
@@ -15,16 +30,20 @@ interface Options {
   handler: (result: Result) => void;
   modal: { ondismiss: () => void };
 }
+
 interface Checkout {
   open: () => void;
   on: (event: "payment.failed", callback: () => void) => void;
 }
+
 declare global {
   interface Window {
     Razorpay?: new (options: Options) => Checkout;
   }
 }
+
 let loading: Promise<void> | undefined;
+
 function loadScript() {
   if (window.Razorpay) return Promise.resolve();
   loading ??= new Promise<void>((resolve, reject) => {
@@ -39,24 +58,38 @@ function loadScript() {
   });
   return loading;
 }
+
 export async function openRazorpay(
-  order: CreateOrderResponse,
+  order: CreateOrderResponse | OrderWithGateway,
   user: { name: string; email: string },
 ): Promise<"submitted" | "abandoned"> {
   await loadScript();
-  const remote = order.razorpayOrder;
-  if (!remote || !window.Razorpay || !remote.keyId)
+  const gatewayConfig = (order as OrderWithGateway).gatewayCheckout;
+  const keyId = gatewayConfig?.publicKey ?? order.razorpayOrder?.keyId;
+  const orderId = gatewayConfig?.orderId ?? order.razorpayOrder?.id;
+  const amount = gatewayConfig?.amount ?? order.razorpayOrder?.amount;
+  const currency = gatewayConfig?.currency ?? order.razorpayOrder?.currency;
+
+  if (
+    !keyId ||
+    !orderId ||
+    amount === undefined ||
+    !currency ||
+    !window.Razorpay
+  ) {
     throw new Error(
       "Payment initialization is pending. Refresh the order status shortly.",
     );
+  }
+
   return new Promise((resolve, reject) => {
     let submitted = false;
     const checkout = new window.Razorpay!({
-      key: remote.keyId,
-      amount: remote.amount,
-      currency: remote.currency,
+      key: keyId,
+      amount,
+      currency,
       name: "Tiket",
-      order_id: remote.id,
+      order_id: orderId,
       prefill: user,
       handler: (result) => {
         submitted = true;
@@ -65,6 +98,9 @@ export async function openRazorpay(
           razorpayOrderId: result.razorpay_order_id,
           razorpayPaymentId: result.razorpay_payment_id,
           razorpaySignature: result.razorpay_signature,
+          providerOrderId: result.razorpay_order_id,
+          providerPaymentId: result.razorpay_payment_id,
+          providerSignature: result.razorpay_signature,
         })
           .then(() => resolve("submitted"))
           .catch(reject);

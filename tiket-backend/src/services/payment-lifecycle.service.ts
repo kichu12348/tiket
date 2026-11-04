@@ -1,26 +1,22 @@
 import db from "@db";
 import {
-  orderItems,
   orders,
   paymentAttempts,
-  refunds,
   tickets,
   webhookInbox,
 } from "@db/schema";
-import { asc, and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Transaction } from "../db/types";
 import { HttpError } from "../utils/errors";
 import {
   emitEvent,
-  expireHolds,
   lockEvent,
   releaseHold,
 } from "./inventory.service";
 import {
   gateway,
-  validHmac,
   type GatewayPayment,
-  type GatewayRefund,
+  type NormalizedWebhookEvent,
 } from "./gateway.service";
 import { applyRefund, queueRefund } from "./refund.service";
 import { fingerprint } from "./checkout.service";
@@ -40,7 +36,8 @@ export async function applyPayment(tx: Transaction, remote: GatewayPayment) {
     .where(eq(orders.id, order.id));
   if (
     !current ||
-    current.paymentProvider !== "razorpay" ||
+    (current.paymentProvider !== gateway().providerName &&
+      current.paymentProvider !== "razorpay") ||
     remote.amount !== current.totalPaise ||
     remote.currency !== current.currency
   )
@@ -158,53 +155,57 @@ export async function applyPayment(tx: Transaction, remote: GatewayPayment) {
   );
   await emitEvent(tx, current.eventId, "payment.captured");
 }
+
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new HttpError(400, "Invalid gateway event payload.");
   return value as Record<string, unknown>;
 }
-function string(value: unknown) {
-  if (typeof value !== "string" || !value)
-    throw new HttpError(400, "Invalid gateway entity.");
-  return value;
-}
-function amount(value: unknown) {
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
-    throw new HttpError(400, "Invalid gateway amount.");
-  return value;
-}
+
 export async function acceptWebhook(
   raw: Buffer,
-  signature: string,
-  eventId: string,
+  headersOrSignature: Record<string, string | string[] | undefined> | string,
+  maybeEventId?: string,
 ) {
-  if (!validHmac(raw, signature, process.env.RAZORPAY_WEBHOOK_SECRET))
-    throw new HttpError(400, "Invalid webhook signature.");
-  if (!/^[A-Za-z0-9_-]{1,255}$/.test(eventId))
-    throw new HttpError(400, "Missing gateway event ID.");
+  const headers: Record<string, string | string[] | undefined> =
+    typeof headersOrSignature === "string"
+      ? {
+          "x-razorpay-signature": headersOrSignature,
+          "x-razorpay-event-id": maybeEventId,
+        }
+      : headersOrSignature;
+
+  const { eventId, normalizedEvent } = gateway().verifyAndParseWebhook(
+    raw,
+    headers,
+  );
+
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw.toString("utf8"));
   } catch {
     throw new HttpError(400, "Malformed webhook JSON.");
   }
-  const payload = object(parsed);
-  if (
-    process.env.RAZORPAY_ACCOUNT_ID &&
-    payload.account_id !== process.env.RAZORPAY_ACCOUNT_ID
-  )
-    throw new HttpError(400, "Unexpected Razorpay account.");
+  const rawPayload = object(parsed);
+  const payloadToStore = {
+    ...rawPayload,
+    _normalized: normalizedEvent,
+  };
+
   await db
     .insert(webhookInbox)
-    .values({ id: eventId, payload })
+    .values({ id: eventId, payload: payloadToStore })
     .onConflictDoNothing();
+
   const [stored] = await db
     .select()
     .from(webhookInbox)
     .where(eq(webhookInbox.id, eventId));
-  if (!stored || fingerprint(stored.payload) !== fingerprint(payload))
+
+  if (!stored || fingerprint(stored.payload) !== fingerprint(payloadToStore))
     throw new HttpError(409, "Webhook ID conflicts with another payload.");
 }
+
 export async function processInbox() {
   const pending = await db
     .select({ id: webhookInbox.id })
@@ -212,6 +213,7 @@ export async function processInbox() {
     .where(isNull(webhookInbox.processedAt))
     .orderBy(sql`${webhookInbox.lastAttemptAt} asc nulls first`)
     .limit(100);
+
   for (const { id } of pending) {
     try {
       await db.transaction(async (tx) => {
@@ -221,47 +223,41 @@ export async function processInbox() {
           .where(and(eq(webhookInbox.id, id), isNull(webhookInbox.processedAt)))
           .for("update", { skipLocked: true });
         if (!entry) return;
-        const name = string(entry.payload.event);
+
+        const payloadObj = object(entry.payload);
+        let normalized: NormalizedWebhookEvent;
+
         if (
-          [
-            "payment.captured",
-            "payment.failed",
-            "payment.authorized",
-            "order.paid",
-          ].includes(name)
+          payloadObj._normalized &&
+          typeof payloadObj._normalized === "object"
         ) {
-          const entity = object(
-            object(object(entry.payload.payload).payment).entity,
-          );
-          await applyPayment(tx, {
-            id: string(entity.id),
-            order_id: string(entity.order_id),
-            amount: amount(entity.amount),
-            currency: string(entity.currency),
-            status: string(entity.status),
-            amount_refunded: amount(entity.amount_refunded ?? 0),
-          });
+          normalized = payloadObj._normalized as NormalizedWebhookEvent;
         } else if (
-          ["refund.created", "refund.processed", "refund.failed"].includes(name)
+          payloadObj.normalized &&
+          typeof payloadObj.normalized === "object"
         ) {
-          const entity = object(
-            object(object(entry.payload.payload).refund).entity,
-          );
-          const remote: GatewayRefund = {
-            id: string(entity.id),
-            payment_id: string(entity.payment_id),
-            amount: amount(entity.amount),
-            status: string(entity.status),
-            notes:
-              entity.notes && !Array.isArray(entity.notes)
-                ? Object.fromEntries(
-                    Object.entries(object(entity.notes)).map(([k, v]) => [
-                      k,
-                      String(v),
-                    ]),
-                  )
-                : {},
-          };
+          normalized = payloadObj.normalized as NormalizedWebhookEvent;
+        } else if (
+          "kind" in payloadObj &&
+          (payloadObj.kind === "payment" ||
+            payloadObj.kind === "refund" ||
+            payloadObj.kind === "ignored")
+        ) {
+          normalized = payloadObj as unknown as NormalizedWebhookEvent;
+        } else {
+          // Direct test fixture insertion or legacy row: parse and normalize via gateway
+          const rawBuffer = Buffer.from(JSON.stringify(entry.payload));
+          const parsed = gateway().verifyAndParseWebhook(rawBuffer, {
+            "x-skip-signature-verify": "true",
+            "x-razorpay-event-id": entry.id,
+          });
+          normalized = parsed.normalizedEvent;
+        }
+
+        if (normalized.kind === "payment") {
+          await applyPayment(tx, normalized.payment);
+        } else if (normalized.kind === "refund") {
+          const remote = normalized.refund;
           const [mapped] = await tx
             .select()
             .from(paymentAttempts)
@@ -278,6 +274,7 @@ export async function processInbox() {
           await lockEvent(tx, order!.eventId);
           await applyRefund(tx, remote);
         }
+
         await tx
           .update(webhookInbox)
           .set({
@@ -300,12 +297,16 @@ export async function processInbox() {
     }
   }
 }
+
 export async function reconcilePayments() {
   const pending = await db
     .select()
     .from(orders)
     .where(
-      and(eq(orders.paymentProvider, "razorpay"), isNull(orders.paymentId)),
+      and(
+        inArray(orders.paymentProvider, [gateway().providerName, "razorpay"]),
+        isNull(orders.paymentId),
+      ),
     )
     .orderBy(sql`${orders.lastReconciledAt} asc nulls first`)
     .limit(100);
@@ -344,7 +345,7 @@ export async function reconcilePayments() {
     .where(
       and(
         inArray(orders.paymentStatus, ["success", "partially_refunded"]),
-        eq(orders.paymentProvider, "razorpay"),
+        inArray(orders.paymentProvider, [gateway().providerName, "razorpay"]),
       ),
     )
     .orderBy(sql`${orders.lastReconciledAt} asc nulls first`)

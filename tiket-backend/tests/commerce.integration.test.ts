@@ -25,6 +25,7 @@ import {
 } from "../src/services/payment-lifecycle.service";
 import {
   setTestGateway,
+  RazorpayGatewayAdapter,
   type GatewayOrder,
   type GatewayPayment,
   type GatewayRefund,
@@ -50,7 +51,18 @@ integration("commerce against PostgreSQL", () => {
   let refundCalls = 0;
   let createCalls = 0;
   let unknownRefund = false;
+  const razorpayAdapter = new RazorpayGatewayAdapter();
   const fake: PaymentGateway = {
+    providerName: "razorpay",
+    getClientConfig(order) {
+      return razorpayAdapter.getClientConfig(order);
+    },
+    verifyClientCallback(params) {
+      return razorpayAdapter.verifyClientCallback(params);
+    },
+    verifyAndParseWebhook(rawBody, headers) {
+      return razorpayAdapter.verifyAndParseWebhook(rawBody, headers);
+    },
     async createOrder(amount, receipt) {
       createCalls++;
       const order = {

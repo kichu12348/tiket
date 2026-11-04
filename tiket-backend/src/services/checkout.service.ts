@@ -341,7 +341,7 @@ export async function createCheckout(
           ? "complimentary"
           : isFree
             ? "free"
-            : "razorpay",
+            : gateway().providerName,
         reservationState: isFree ? "confirmed" : "held",
         registrationStatus: isFree
           ? requireApproval
@@ -478,6 +478,14 @@ export async function checkoutStatus(orderId: string, userId: string) {
             currency: order.currency,
             keyId: process.env.RAZORPAY_KEY_ID,
           }
+        : null,
+    gatewayCheckout:
+      order?.paymentIntentId && order.reservationState === "held"
+        ? gateway().getClientConfig({
+            paymentIntentId: order.paymentIntentId,
+            totalPaise: order.totalPaise,
+            currency: order.currency,
+          })
         : null,
   };
 }
