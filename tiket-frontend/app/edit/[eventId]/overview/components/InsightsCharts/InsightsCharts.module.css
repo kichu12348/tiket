@@ -1,0 +1,453 @@
+.insightsWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+/* Approval Alert Banner */
+.approvalAlert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--status-warning-bg, rgba(255, 193, 7, 0.15));
+  border-radius: var(--radius-lg, 16px);
+  padding: 1rem 1.25rem;
+  color: var(--text-primary);
+  border: none;
+}
+
+.alertLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.alertIcon {
+  color: var(--status-warning, #ffc107);
+  flex-shrink: 0;
+}
+
+.alertLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.alertLink:hover {
+  background: var(--surface-elevated, rgba(255, 255, 255, 0.2));
+}
+
+/* Main Chart Card */
+.chartCard {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: none;
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: relative;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.metricSwitcher {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.25rem;
+  gap: 0.25rem;
+  border: none;
+}
+
+.metricTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm, 8px);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.metricTab:hover {
+  color: var(--text-primary);
+}
+
+.activeTab {
+  background: var(--surface-elevated, rgba(255, 255, 255, 0.15));
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.headlineMetrics {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.headlineValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.headlineLabel {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.rangeSwitcher {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.2rem;
+  gap: 0.2rem;
+}
+
+.rangeBtn {
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm, 8px);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.rangeBtn:hover {
+  color: var(--text-primary);
+}
+
+.activeRange {
+  background: var(--surface-elevated, rgba(255, 255, 255, 0.15));
+  color: var(--text-primary);
+}
+
+/* SVG Chart Container */
+.svgContainer {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  min-height: 220px;
+}
+
+.svgChart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.chartPoint {
+  cursor: pointer;
+  transition: r 0.2s ease, fill 0.2s ease;
+}
+
+.chartPoint:hover {
+  r: 6;
+}
+
+.emptyChart {
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Chart Tooltip */
+.tooltip {
+  position: absolute;
+  transform: translate(-50%, -120%);
+  background: var(--surface-base, #1c1c1e);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.5rem 0.75rem;
+  pointer-events: none;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  white-space: nowrap;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.tooltipDate {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.tooltipValue {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Dual Grid: Velocity & Funnel */
+.dualGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.subCard {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: none;
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.subCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.9rem;
+}
+
+.subCardTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.subCardSubtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.peakBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--status-success-bg, rgba(40, 167, 69, 0.15));
+  color: var(--status-success, #28a745);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Velocity Bars */
+.velocityBarsContainer {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-soft-bg) transparent;
+  padding-bottom: 0.5rem;
+}
+
+.barsScroll {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  min-height: 140px;
+  min-width: 100%;
+  padding-top: 1.5rem;
+}
+
+.barColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 32px;
+  position: relative;
+  height: 100%;
+}
+
+.barTrack {
+  width: 100%;
+  height: 110px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.03));
+  border-radius: var(--radius-sm, 6px);
+  overflow: hidden;
+}
+
+.barFill {
+  width: 100%;
+  background: var(--text-primary);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease, background 0.2s ease;
+}
+
+.barColumn:hover .barFill {
+  background: var(--status-success, #28a745);
+}
+
+.barLabel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.barTooltip {
+  position: absolute;
+  top: -1.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-base, #1c1c1e);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.emptyVelocity {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.85rem;
+  padding: 1rem;
+}
+
+.emptyIcon {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* Funnel Container */
+.funnelContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.funnelStep {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.stepTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stepTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.stepMetrics {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stepCount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stepPercent {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.stepPercentHighlight {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--status-success, #28a745);
+}
+
+.funnelBar {
+  width: 100%;
+  height: 8px;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.funnelProgress {
+  height: 100%;
+  background: var(--text-secondary);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.funnelProgressHighlight {
+  height: 100%;
+  background: var(--status-success, #28a745);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.couponNote {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  padding: 0.5rem 0.75rem;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.03));
+  border-radius: var(--radius-sm, 8px);
+}
+

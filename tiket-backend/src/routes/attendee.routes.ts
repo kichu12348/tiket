@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import {
   getAttendees,
   getAttendeeStats,
+  getEventInsights,
   getAttendeeById,
   getAttendeeFormResponses,
   toggleCheckIn,
@@ -12,6 +13,7 @@ import {
 import {
   getAttendeesSchema,
   getAttendeeStatsSchema,
+  getEventInsightsSchema,
   getAttendeeByIdSchema,
   getAttendeeFormResponsesSchema,
   toggleCheckInSchema,
@@ -23,6 +25,7 @@ import {
 export default async function attendeeRoutes(fastify: FastifyInstance) {
   fastify.get("/:eventId", getAttendeesSchema, getAttendees);
   fastify.get("/:eventId/stats", getAttendeeStatsSchema, getAttendeeStats);
+  fastify.get("/:eventId/insights", getEventInsightsSchema, getEventInsights);
   fastify.get("/:eventId/export", exportAttendeesSchema, exportAttendees);
   fastify.get("/:eventId/:ticketId", getAttendeeByIdSchema, getAttendeeById);
   fastify.get(

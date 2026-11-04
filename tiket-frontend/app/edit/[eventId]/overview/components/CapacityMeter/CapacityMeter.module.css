@@ -1,0 +1,389 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: none;
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 1.25rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.headerTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.headerIcon {
+  color: var(--text-primary);
+}
+
+.sectionTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.sectionSubtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badgeSuccess {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--status-success-bg, rgba(40, 167, 69, 0.15));
+  color: var(--status-success, #28a745);
+}
+
+.badgeWarning {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--status-warning-bg, rgba(255, 193, 7, 0.15));
+  color: var(--status-warning, #ffc107);
+}
+
+.badgeDanger {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--status-danger-bg, rgba(255, 80, 80, 0.15));
+  color: var(--status-danger, #ff5050);
+}
+
+.badgeInfo {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  color: var(--text-secondary);
+}
+
+/* Warning & Danger Banners */
+.bannerWarning {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--status-warning-bg, rgba(255, 193, 7, 0.15));
+  color: var(--text-primary);
+  border-radius: var(--radius-md, 10px);
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.bannerWarning svg {
+  color: var(--status-warning, #ffc107);
+  flex-shrink: 0;
+}
+
+.bannerDanger {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--status-danger-bg, rgba(255, 80, 80, 0.15));
+  color: var(--text-primary);
+  border-radius: var(--radius-md, 10px);
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.bannerDanger svg {
+  color: var(--status-danger, #ff5050);
+  flex-shrink: 0;
+}
+
+/* Meter Container */
+.meterContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.meterTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.statGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.statPrimary {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.statDivider {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+}
+
+.statSecondary {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.statLabel {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-left: 0.35rem;
+}
+
+.meterPercent {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.progressBarWrapper {
+  width: 100%;
+  height: 12px;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.06));
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fillSuccess {
+  background: var(--status-success, #28a745);
+}
+
+.fillWarning {
+  background: var(--status-warning, #ffc107);
+}
+
+.fillDanger {
+  background: var(--status-danger, #ff5050);
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  padding-top: 0.25rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legendIcon {
+  color: var(--text-muted);
+}
+
+/* Tier List */
+.tierList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tierItem {
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.02));
+  border-radius: var(--radius-md, 10px);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: background 0.2s ease;
+}
+
+.tierItem:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.tierTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tierMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tierName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tierBadgeDanger {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--status-danger-bg, rgba(255, 80, 80, 0.15));
+  color: var(--status-danger, #ff5050);
+}
+
+.tierBadgeActive {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--status-success-bg, rgba(40, 167, 69, 0.15));
+  color: var(--status-success, #28a745);
+}
+
+.tierBadgeInactive {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  color: var(--text-muted);
+}
+
+.tierCounts {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.tierSoldCount {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tierCapacityCount {
+  color: var(--text-muted);
+}
+
+.tierPercentText {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  margin-left: 0.2rem;
+}
+
+.tierProgressTrack {
+  width: 100%;
+  height: 6px;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.06));
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.tierProgressFill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.tierFillPrimary {
+  background: var(--text-primary);
+}
+
+.tierFillWarning {
+  background: var(--status-warning, #ffc107);
+}
+
+.tierFillDanger {
+  background: var(--status-danger, #ff5050);
+}
+
+.tierBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tierSubMetric {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tierSubMetric strong {
+  color: var(--text-primary);
+}
+
+.emptyTiers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.emptyIcon {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+

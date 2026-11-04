@@ -729,3 +729,313 @@ export const exportAttendees = async (
     return handleControllerError(request, reply, error);
   }
 };
+
+export const getEventInsights = async (
+  request: FastifyRequest<{ Params: { eventId: string } }>,
+  reply: FastifyReply,
+) => {
+  try {
+    await request.jwtVerify();
+    const user = request.user as { id: string };
+    const { eventId } = request.params;
+
+    const hasAccess = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_analytics",
+    );
+    if (!hasAccess) {
+      return reply
+        .status(403)
+        .send({ error: "You do not have permission to view event insights." });
+    }
+
+    const canViewFinance = await verifyEventPermission(
+      eventId,
+      user.id,
+      "view_payments",
+    );
+
+    // 1. Event capacity & metadata
+    const [event] = await db
+      .select({ capacity: events.capacity })
+      .from(events)
+      .where(eq(events.id, eventId));
+
+    const capacity = event?.capacity ?? null;
+
+    // 2. Summary stats
+    const [regSummary] = await db
+      .select({
+        totalRegistrations: sql<number>`count(*) filter (where ${tickets.status} in ('active', 'used', 'pending_approval'))::int`,
+        confirmedCount: sql<number>`count(*) filter (where ${tickets.status} in ('active', 'used'))::int`,
+        pendingApprovalCount: sql<number>`count(*) filter (where ${tickets.status} = 'pending_approval')::int`,
+        cancelledOrDeclinedCount: sql<number>`count(*) filter (where ${tickets.status} in ('cancelled', 'refunded'))::int`,
+      })
+      .from(tickets)
+      .where(eq(tickets.eventId, eventId));
+
+    // Checked-in count from checkIns table for this event
+    const [checkedInRes] = await db
+      .select({ count: count() })
+      .from(checkIns)
+      .innerJoin(tickets, eq(checkIns.ticketId, tickets.id))
+      .where(and(eq(checkIns.eventId, eventId), eq(tickets.status, "used")));
+
+    const checkedInCount = checkedInRes?.count || 0;
+    const confirmedCount = regSummary?.confirmedCount || 0;
+    const totalRegistrations = regSummary?.totalRegistrations || 0;
+    const pendingApprovalCount = regSummary?.pendingApprovalCount || 0;
+    const cancelledOrDeclinedCount = regSummary?.cancelledOrDeclinedCount || 0;
+
+    const checkInRatePercent =
+      confirmedCount > 0
+        ? Math.round((checkedInCount / confirmedCount) * 100)
+        : 0;
+
+    const remainingCapacity =
+      capacity !== null ? Math.max(0, capacity - confirmedCount) : null;
+
+    // Revenue calculations (if canViewFinance)
+    let netRevenuePaise = 0;
+    let totalRefundedPaise = 0;
+
+    if (canViewFinance) {
+      const [gross] = await db
+        .select({ value: sql<string>`coalesce(sum(${orders.totalPaise}), 0)` })
+        .from(orders)
+        .where(and(eq(orders.eventId, eventId), isNotNull(orders.paymentId)));
+
+      const [returned] = await db
+        .select({ value: sql<string>`coalesce(sum(${refunds.amountPaise}), 0)` })
+        .from(refunds)
+        .innerJoin(
+          orders,
+          and(
+            eq(refunds.orderId, orders.id),
+            eq(refunds.paymentId, orders.paymentId),
+          ),
+        )
+        .where(and(eq(orders.eventId, eventId), eq(refunds.status, "processed")));
+
+      const grossPaise = Number(gross?.value || 0);
+      const refundedPaise = Number(returned?.value || 0);
+      totalRefundedPaise = refundedPaise;
+      netRevenuePaise = Math.max(0, grossPaise - refundedPaise);
+    }
+
+    // Coupon orders count
+    const [couponRes] = await db
+      .select({ count: count() })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.eventId, eventId),
+          isNotNull(orders.couponId),
+          isNotNull(orders.paymentId),
+        ),
+      );
+
+    const couponOrdersCount = couponRes?.count || 0;
+
+    const summary = {
+      totalRegistrations,
+      confirmedCount,
+      checkedInCount,
+      pendingApprovalCount,
+      cancelledOrDeclinedCount,
+      checkInRatePercent,
+      capacity,
+      remainingCapacity,
+      netRevenuePaise,
+      totalRefundedPaise,
+      couponOrdersCount,
+    };
+
+    // 3. Daily series: registrations and revenue grouped by YYYY-MM-DD
+    const dailyRegistrations = await db
+      .select({
+        date: sql<string>`to_char(date_trunc('day', ${tickets.createdAt}), 'YYYY-MM-DD')`,
+        count: count(),
+      })
+      .from(tickets)
+      .where(
+        and(
+          eq(tickets.eventId, eventId),
+          inArray(tickets.status, ["active", "used", "pending_approval"]),
+        ),
+      )
+      .groupBy(sql`date_trunc('day', ${tickets.createdAt})`)
+      .orderBy(sql`date_trunc('day', ${tickets.createdAt})`);
+
+    const dailyRevenue = canViewFinance
+      ? await db
+          .select({
+            date: sql<string>`to_char(date_trunc('day', ${orders.createdAt}), 'YYYY-MM-DD')`,
+            revenuePaise: sql<number>`coalesce(sum(${orders.totalPaise}), 0)::int`,
+          })
+          .from(orders)
+          .where(and(eq(orders.eventId, eventId), isNotNull(orders.paymentId)))
+          .groupBy(sql`date_trunc('day', ${orders.createdAt})`)
+          .orderBy(sql`date_trunc('day', ${orders.createdAt})`)
+      : [];
+
+    const dateMap = new Map<
+      string,
+      { registrations: number; revenuePaise: number }
+    >();
+
+    for (const item of dailyRegistrations) {
+      if (item.date) {
+        dateMap.set(item.date, {
+          registrations: item.count || 0,
+          revenuePaise: 0,
+        });
+      }
+    }
+
+    for (const item of dailyRevenue) {
+      if (item.date) {
+        const existing = dateMap.get(item.date) || {
+          registrations: 0,
+          revenuePaise: 0,
+        };
+        existing.revenuePaise = item.revenuePaise || 0;
+        dateMap.set(item.date, existing);
+      }
+    }
+
+    const sortedDates = Array.from(dateMap.keys()).sort();
+    const dailySeries = sortedDates.map((date) => ({
+      date,
+      registrations: dateMap.get(date)!.registrations,
+      revenuePaise: dateMap.get(date)!.revenuePaise,
+    }));
+
+    // 4. Hourly check-in velocity (HH:00)
+    const hourlyCheckInsResult = await db
+      .select({
+        hour: sql<string>`to_char(date_trunc('hour', ${checkIns.checkedInAt}), 'HH24:00')`,
+        count: count(),
+      })
+      .from(checkIns)
+      .where(eq(checkIns.eventId, eventId))
+      .groupBy(
+        sql`date_trunc('hour', ${checkIns.checkedInAt}), to_char(date_trunc('hour', ${checkIns.checkedInAt}), 'HH24:00')`,
+      )
+      .orderBy(sql`date_trunc('hour', ${checkIns.checkedInAt})`);
+
+    const hourlyCheckIns = hourlyCheckInsResult.map((h) => ({
+      hour: h.hour,
+      count: h.count,
+    }));
+
+    // 5. Tier breakdown
+    const tiers = await db
+      .select({
+        id: ticketTypes.id,
+        name: ticketTypes.name,
+        quantityLimit: ticketTypes.quantityLimit,
+        price: ticketTypes.price,
+      })
+      .from(ticketTypes)
+      .where(eq(ticketTypes.eventId, eventId))
+      .orderBy(ticketTypes.sortOrder);
+
+    const tierBreakdown = await Promise.all(
+      tiers.map(async (t) => {
+        const [soldRes] = await db
+          .select({ count: count() })
+          .from(tickets)
+          .where(
+            and(
+              eq(tickets.eventId, eventId),
+              eq(tickets.ticketTypeId, t.id),
+              inArray(tickets.status, ["active", "used", "pending_approval"]),
+            ),
+          );
+
+        const [checkedInRes] = await db
+          .select({ count: count() })
+          .from(checkIns)
+          .innerJoin(tickets, eq(checkIns.ticketId, tickets.id))
+          .where(
+            and(
+              eq(tickets.eventId, eventId),
+              eq(tickets.ticketTypeId, t.id),
+              eq(tickets.status, "used"),
+            ),
+          );
+
+        const sold = soldRes?.count || 0;
+        const checkedIn = checkedInRes?.count || 0;
+
+        let revenuePaise = 0;
+        if (canViewFinance) {
+          const [tierRev] = await db
+            .select({
+              totalPaise: sql<number>`coalesce(sum(${orderItems.totalPaise}), 0)::int`,
+            })
+            .from(orderItems)
+            .innerJoin(tickets, eq(orderItems.ticketId, tickets.id))
+            .where(
+              and(
+                eq(tickets.eventId, eventId),
+                eq(tickets.ticketTypeId, t.id),
+                inArray(tickets.status, ["active", "used"]),
+              ),
+            );
+          revenuePaise = Number(tierRev?.totalPaise || 0);
+          if (revenuePaise === 0 && Number(t.price) > 0) {
+            revenuePaise = Math.round(Number(t.price) * 100) * sold;
+          }
+        }
+
+        return {
+          ticketTypeId: t.id,
+          name: t.name,
+          sold,
+          capacity: t.quantityLimit ?? null,
+          revenuePaise,
+          checkedIn,
+        };
+      }),
+    );
+
+    // 6. Recent activity (last 5 registrations / check-ins)
+    const recentRows = await db
+      .select({
+        id: tickets.id,
+        status: tickets.status,
+        createdAt: tickets.createdAt,
+        userName: users.name,
+        userEmail: users.email,
+        ticketTypeName: ticketTypes.name,
+      })
+      .from(tickets)
+      .innerJoin(users, eq(tickets.userId, users.id))
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .where(eq(tickets.eventId, eventId))
+      .orderBy(desc(tickets.createdAt))
+      .limit(5);
+
+    const recentActivity = recentRows.map((r) => ({
+      id: r.id,
+      attendeeName: r.userName,
+      attendeeEmail: r.userEmail,
+      ticketTypeName: r.ticketTypeName,
+      status: r.status,
+      timestamp: r.createdAt.toISOString(),
+    }));
+
+    return reply.status(200).send({
+      summary,
+      dailySeries,
+      hourlyCheckIns,
+      tierBreakdown,
+      recentActivity,
+    });
+  } catch (error) {
+    return handleControllerError(request, reply, error);
+  }
+};

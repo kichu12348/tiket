@@ -8,6 +8,7 @@ import type {
   AttendeeFiltersState,
   ManualRegisterPayload,
   AttendeeItem,
+  EventInsightsData,
 } from "@/types/attendee";
 
 export const getAttendees = async (
@@ -35,6 +36,13 @@ export const getAttendeeStats = async (
   eventId: string,
 ): Promise<AttendeeStatsData> => {
   const response = await api.get(API_ENDPOINTS.ATTENDEES.STATS(eventId));
+  return response.data;
+};
+
+export const getEventInsights = async (
+  eventId: string,
+): Promise<EventInsightsData> => {
+  const response = await api.get(API_ENDPOINTS.ATTENDEES.INSIGHTS(eventId));
   return response.data;
 };
 

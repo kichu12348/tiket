@@ -310,3 +310,126 @@ export const exportAttendeesSchema = {
     },
   },
 };
+
+export const getEventInsightsSchema = {
+  schema: {
+    params: {
+      type: "object",
+      required: ["eventId"],
+      properties: { eventId: { type: "string" } },
+    },
+    response: {
+      200: {
+        type: "object",
+        required: [
+          "summary",
+          "dailySeries",
+          "hourlyCheckIns",
+          "tierBreakdown",
+          "recentActivity",
+        ],
+        properties: {
+          summary: {
+            type: "object",
+            required: [
+              "totalRegistrations",
+              "confirmedCount",
+              "checkedInCount",
+              "pendingApprovalCount",
+              "cancelledOrDeclinedCount",
+              "checkInRatePercent",
+              "capacity",
+              "remainingCapacity",
+              "netRevenuePaise",
+              "totalRefundedPaise",
+              "couponOrdersCount",
+            ],
+            properties: {
+              totalRegistrations: { type: "number" },
+              confirmedCount: { type: "number" },
+              checkedInCount: { type: "number" },
+              pendingApprovalCount: { type: "number" },
+              cancelledOrDeclinedCount: { type: "number" },
+              checkInRatePercent: { type: "number" },
+              capacity: { type: ["number", "null"] },
+              remainingCapacity: { type: ["number", "null"] },
+              netRevenuePaise: { type: "number" },
+              totalRefundedPaise: { type: "number" },
+              couponOrdersCount: { type: "number" },
+            },
+          },
+          dailySeries: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["date", "registrations", "revenuePaise"],
+              properties: {
+                date: { type: "string" },
+                registrations: { type: "number" },
+                revenuePaise: { type: "number" },
+              },
+            },
+          },
+          hourlyCheckIns: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["hour", "count"],
+              properties: {
+                hour: { type: "string" },
+                count: { type: "number" },
+              },
+            },
+          },
+          tierBreakdown: {
+            type: "array",
+            items: {
+              type: "object",
+              required: [
+                "ticketTypeId",
+                "name",
+                "sold",
+                "capacity",
+                "revenuePaise",
+                "checkedIn",
+              ],
+              properties: {
+                ticketTypeId: { type: "string" },
+                name: { type: "string" },
+                sold: { type: "number" },
+                capacity: { type: ["number", "null"] },
+                revenuePaise: { type: "number" },
+                checkedIn: { type: "number" },
+              },
+            },
+          },
+          recentActivity: {
+            type: "array",
+            items: {
+              type: "object",
+              required: [
+                "id",
+                "attendeeName",
+                "attendeeEmail",
+                "ticketTypeName",
+                "status",
+                "timestamp",
+              ],
+              properties: {
+                id: { type: "string" },
+                attendeeName: { type: "string" },
+                attendeeEmail: { type: "string" },
+                ticketTypeName: { type: "string" },
+                status: { type: "string" },
+                timestamp: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      401: errorResponseSchema,
+      403: errorResponseSchema,
+      500: errorResponseSchema,
+    },
+  },
+};

@@ -2,18 +2,19 @@
   padding: 2.5rem;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 2rem;
   color: var(--text-primary);
-  max-width: 960px;
+  max-width: 1040px;
   margin: 0 auto;
   width: 100%;
 }
 
+/* Header */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 2rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
 }
 
@@ -29,7 +30,7 @@
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   flex-shrink: 0;
   flex-wrap: wrap;
 }
@@ -40,13 +41,14 @@
   line-height: 1.2;
   margin: 0;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .statusBadge {
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 0.3rem 0.5rem;
-  border-radius: var(--radius-md);
+  padding: 0.3rem 0.55rem;
+  border-radius: var(--radius-md, 10px);
   background: var(--surface-elevated);
   color: var(--text-secondary);
   display: inline-flex;
@@ -62,27 +64,28 @@
 }
 
 .statusBadge[data-status="published"] {
-  background: #2ecc7114;
-  color: #2ecc71;
+  background: var(--status-success-bg, rgba(40, 167, 69, 0.15));
+  color: var(--status-success, #28a745);
 }
 
 .statusBadge[data-status="published"] .statusDot {
-  background: #2ecc71;
+  background: var(--status-success, #28a745);
 }
 
 .statusBadge[data-status="draft"] {
-  background: #f1c40f14;
-  color: #f1c40f;
+  background: var(--status-warning-bg, rgba(255, 193, 7, 0.15));
+  color: var(--status-warning, #ffc107);
 }
 
 .statusBadge[data-status="draft"] .statusDot {
-  background: #f1c40f;
+  background: var(--status-warning, #ffc107);
 }
 
+/* Buttons */
 .btnSecondary,
 .btnPrimary {
-  padding: 0.3rem 0.5rem;
-  font-size: 0.9rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -91,7 +94,7 @@
   align-items: center;
   gap: 0.5rem;
   font-family: inherit;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm, 8px);
   border: none;
 }
 
@@ -101,29 +104,134 @@
 }
 
 .btnSecondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
   color: var(--text-primary);
 }
 
 .btnPrimary {
-  background: var(--text-primary);
-  color: var(--bg-base, #000);
+  background: var(--btn-primary-bg, #ffffff);
+  color: var(--btn-primary-text, #000000);
 }
 
 .btnPrimary:hover {
   opacity: 0.9;
 }
 
+/* Pending Approvals Alert */
+.approvalBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--status-warning-bg, rgba(255, 193, 7, 0.15));
+  border-radius: var(--radius-lg, 16px);
+  padding: 1rem 1.25rem;
+  color: var(--text-primary);
+  border: none;
+}
+
+.approvalLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.approvalIcon {
+  color: var(--status-warning, #ffc107);
+  flex-shrink: 0;
+}
+
+.approvalLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.approvalLink:hover {
+  background: var(--surface-elevated, rgba(255, 255, 255, 0.2));
+}
+
+/* KPI Stat Cards Grid */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.kpiCard {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: none;
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.kpiCard:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.kpiTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpiLabel {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.kpiIconWrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+}
+
+.kpiValue {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.kpiSubtext {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* General Borderless Card */
 .card {
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg, 16px);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .cardHeader {
@@ -132,7 +240,8 @@
   align-items: center;
   border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 1.25rem;
-  margin-bottom: 1.25rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .cardHeader > div {
@@ -149,7 +258,7 @@
 }
 
 .sectionSubtitle {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   font-weight: 400;
   margin: 0;
@@ -158,7 +267,7 @@
 /* Event Recap specific */
 .recapGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.5rem;
 }
 
@@ -179,52 +288,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  font-size: 0.95rem;
-}
-
-/* At a Glance specific */
-.glanceStats {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-}
-
-.statLarge {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--status-success);
-  line-height: 1;
-}
-
-.statTotal {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  line-height: 1.2;
-}
-
-.statLabel {
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-left: 0.25rem;
-}
-
-.progressBarContainer {
-  width: 100%;
-  height: 8px;
-  background: var(--surface-elevated);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-top: 0.5rem;
-}
-
-.progressBarFill {
-  height: 100%;
-  background: var(--status-success);
-  border-radius: 4px;
-  transition: width 0.5s ease;
+  font-size: 0.92rem;
 }
 
 /* Lists (Registrations / Hosts) */
@@ -237,8 +301,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 0;
+  padding: 0.9rem 0;
   border-bottom: 1px solid var(--border-subtle);
+  gap: 1rem;
 }
 
 .listItem:last-child {
@@ -249,7 +314,8 @@
 .userInfo {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
+  min-width: 0;
 }
 
 .avatar {
@@ -264,22 +330,30 @@
   font-weight: 600;
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
 .userDetails {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .userName {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .userEmail {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .userMeta {
@@ -287,13 +361,14 @@
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   padding: 0.2rem 0.55rem;
   border-radius: var(--radius-sm, 8px);
@@ -314,21 +389,21 @@
 }
 
 .badge.primary {
-  background: rgba(30, 114, 224, 0.15); /* Soft primary tint */
+  background: rgba(30, 114, 224, 0.15);
   color: var(--color-info, #1e72e0);
 }
 
 .ticketTypeBadge {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 0.2rem 0.6rem;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  padding: 0.2rem 0.55rem;
   border-radius: var(--radius-sm, 8px);
 }
 
 .timeAgo {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -344,5 +419,5 @@
 }
 
 .emptyStateText {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }

@@ -113,6 +113,7 @@ export const API_ENDPOINTS = {
   ATTENDEES: {
     GET_ALL: (eventId: string) => `/api/attendees/${eventId}`,
     STATS: (eventId: string) => `/api/attendees/${eventId}/stats`,
+    INSIGHTS: (eventId: string) => `/api/attendees/${eventId}/insights`,
     GET_BY_ID: (eventId: string, ticketId: string) =>
       `/api/attendees/${eventId}/${ticketId}`,
     FORM_RESPONSES: (eventId: string, ticketId: string) =>

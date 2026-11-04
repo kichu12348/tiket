@@ -100,3 +100,54 @@ export interface AttendeeFiltersState {
   page: number;
   limit: number;
 }
+
+export interface EventInsightsSummary {
+  totalRegistrations: number;
+  confirmedCount: number;
+  checkedInCount: number;
+  pendingApprovalCount: number;
+  cancelledOrDeclinedCount: number;
+  checkInRatePercent: number;
+  capacity: number | null;
+  remainingCapacity: number | null;
+  netRevenuePaise: number;
+  totalRefundedPaise: number;
+  couponOrdersCount: number;
+}
+
+export interface DailySeriesItem {
+  date: string;
+  registrations: number;
+  revenuePaise: number;
+}
+
+export interface HourlyCheckInItem {
+  hour: string;
+  count: number;
+}
+
+export interface TierBreakdownItem {
+  ticketTypeId: string;
+  name: string;
+  sold: number;
+  capacity: number | null;
+  revenuePaise: number;
+  checkedIn: number;
+}
+
+export interface RecentActivityItem {
+  id: string;
+  attendeeName: string;
+  attendeeEmail: string;
+  ticketTypeName: string;
+  status: string;
+  timestamp: string;
+}
+
+export interface EventInsightsData {
+  summary: EventInsightsSummary;
+  dailySeries: DailySeriesItem[];
+  hourlyCheckIns: HourlyCheckInItem[];
+  tierBreakdown: TierBreakdownItem[];
+  recentActivity: RecentActivityItem[];
+}
