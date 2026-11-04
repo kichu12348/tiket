@@ -1,0 +1,99 @@
+.canvasContainer {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+.canvasArtboard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  overflow: hidden;
+  background-color: var(--surface-base, #1c1c1e);
+}
+
+.canvasBackground {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.elementWrapper {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.textContent {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.qrContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.qrSvg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+.lockedQrBadge {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(var(--blur-sm, 8px));
+  -webkit-backdrop-filter: blur(var(--blur-sm, 8px));
+  color: var(--text-primary, #ffffff);
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.5rem;
+  box-sizing: border-box;
+  text-align: center;
+  border: 1px dashed var(--border-strong, rgba(255, 255, 255, 0.2));
+}
+
+.lockedQrIcon {
+  color: var(--status-warning, #ffc107);
+}
+
+.lockedQrText {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary, #ffffff);
+}
+
+.lockedQrSubtext {
+  font-size: 0.6rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+

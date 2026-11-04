@@ -57,11 +57,47 @@ export interface TicketFormResponseItem {
   value?: string | null;
 }
 
+export interface TicketElementStyle {
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string | number;
+  color?: string;
+  textAlign?: "left" | "center" | "right";
+  autoFitText?: boolean;
+  qrFgColor?: string;
+  qrBgColor?: string;
+  opacity?: number;
+  lineHeight?: number | string;
+  letterSpacing?: number | string;
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+}
+
+export type TicketElementType = "text" | "variable" | "qr" | "image";
+
+export interface TicketCanvasElement {
+  id: string;
+  type: TicketElementType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  variableKey?: string;
+  content?: string;
+  style?: TicketElementStyle;
+}
+
+export interface TicketCanvasConfig {
+  canvasWidth: number;
+  canvasHeight: number;
+  elements: TicketCanvasElement[];
+}
+
 export interface TicketPassTemplate {
   id: string;
   name: string;
   backgroundImageUrl?: string | null;
-  elementsJson?: unknown;
+  elementsJson?: TicketCanvasConfig | null | unknown;
 }
 
 export interface TicketPassData {
@@ -76,6 +112,8 @@ export interface TicketPassData {
   responses?: TicketFormResponseItem[];
   template?: TicketPassTemplate | null;
 }
+
+export type TicketPass = TicketPassData;
 
 export interface TransferTicketPayload {
   targetEmail: string;

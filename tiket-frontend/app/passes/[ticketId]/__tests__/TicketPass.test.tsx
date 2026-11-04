@@ -51,6 +51,7 @@ import { PassQRCode } from "../components/PassQRCode";
 import { PassDetails } from "../components/PassDetails";
 import { PassActions } from "../components/PassActions";
 import { PassError } from "../components/PassError";
+import { CustomTicketCanvas } from "../components/CustomTicketCanvas";
 import TicketPassPage from "../page";
 
 // Mock next/navigation
@@ -146,6 +147,76 @@ const mockPendingApprovalTicket: TicketPassData = {
     ...mockActiveTicket.ticketType,
     isTransferable: true,
   },
+};
+
+const mockCustomTemplate = {
+  id: "template-figma-1",
+  name: "Figma VIP Gold Badge",
+  backgroundImageUrl: "https://cdn.example.com/tickets/figma-badge-bg.png",
+  elementsJson: {
+    canvasWidth: 600,
+    canvasHeight: 300,
+    elements: [
+      {
+        id: "el-attendee-name",
+        type: "variable" as const,
+        x: 48,
+        y: 110,
+        width: 240,
+        height: 36,
+        rotation: 12,
+        variableKey: "attendee.name",
+        content: "{{attendee.name}}",
+        style: {
+          fontSize: 22,
+          fontWeight: 700,
+          color: "#ffffff",
+          autoFitText: true,
+        },
+      },
+      {
+        id: "el-ticket-type",
+        type: "text" as const,
+        x: 48,
+        y: 160,
+        width: 180,
+        height: 28,
+        rotation: 0,
+        variableKey: "ticket.type",
+        content: "TIER: {{ticket.type}}",
+        style: {
+          fontSize: 16,
+          fontWeight: 600,
+          color: "#28a745",
+        },
+      },
+      {
+        id: "el-qr-code",
+        type: "qr" as const,
+        x: 420,
+        y: 80,
+        width: 140,
+        height: 140,
+        rotation: 45,
+        style: {
+          qrFgColor: "#000000",
+          qrBgColor: "#ffffff",
+        },
+      },
+    ],
+  },
+};
+
+const mockCustomActiveTicket: TicketPassData = {
+  ...mockActiveTicket,
+  id: "ticket-custom-active-1",
+  template: mockCustomTemplate,
+};
+
+const mockCustomPendingTicket: TicketPassData = {
+  ...mockPendingApprovalTicket,
+  id: "ticket-custom-pending-1",
+  template: mockCustomTemplate,
 };
 
 describe("formatLocation utility", () => {
@@ -425,5 +496,142 @@ describe("TicketPassPage Integration", () => {
 
     // Transfer button must not be shown for pending pass
     expect(screen.queryByTestId("transfer-ticket-btn")).toBeNull();
+  });
+
+  test("renders custom ticket canvas when pass.template is present on the ticket payload", async () => {
+    mockParams = { ticketId: "ticket-custom-active-1" };
+    mockGetTicketPass.mockResolvedValueOnce(mockCustomActiveTicket);
+
+    render(<TicketPassPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("custom-ticket-artboard"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("custom-ticket-bg")).toHaveAttribute(
+        "src",
+        mockCustomTemplate.backgroundImageUrl,
+      );
+      expect(
+        screen.getByTestId("custom-element-el-attendee-name"),
+      ).toHaveTextContent("Alex Morgan");
+      expect(screen.getByText("TIER: VIP All-Access")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("qr-container")).toBeInTheDocument();
+    expect(screen.getByTestId("download-pass-btn")).toBeInTheDocument();
+  });
+
+  test("renders custom ticket canvas with locked QR badge when pending approval", async () => {
+    mockParams = { ticketId: "ticket-custom-pending-1" };
+    mockGetTicketPass.mockResolvedValueOnce(mockCustomPendingTicket);
+
+    render(<TicketPassPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("custom-ticket-artboard"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("locked-qr-badge")).toBeInTheDocument();
+      expect(screen.getByText("PENDING APPROVAL")).toBeInTheDocument();
+    });
+
+    // Scannable live QR code must be hidden
+    expect(screen.queryByTestId("qr-container")).toBeNull();
+    expect(screen.queryByText("TIKET_ENTRY_QR_PENDING")).toBeNull();
+  });
+});
+
+describe("CustomTicketCanvas component", () => {
+  test("renders background image, canonical artboard dimensions and container", () => {
+    render(
+      <CustomTicketCanvas
+        pass={mockCustomActiveTicket}
+        template={mockCustomTemplate}
+      />,
+    );
+
+    const bg = screen.getByTestId("custom-ticket-bg");
+    expect(bg).toBeInTheDocument();
+    expect(bg).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/tickets/figma-badge-bg.png",
+    );
+
+    const artboard = screen.getByTestId("custom-ticket-artboard");
+    expect(artboard).toBeInTheDocument();
+    expect(artboard.style.width).toBe("600px");
+    expect(artboard.style.height).toBe("300px");
+  });
+
+  test("interpolates {{attendee.name}} and {{ticket.type}} at exact canonical x, y, rotation coordinates", () => {
+    render(
+      <CustomTicketCanvas
+        pass={mockCustomActiveTicket}
+        template={mockCustomTemplate}
+      />,
+    );
+
+    const nameEl = screen.getByTestId("custom-element-el-attendee-name");
+    expect(nameEl).toBeInTheDocument();
+    expect(nameEl).toHaveTextContent("Alex Morgan");
+    expect(nameEl.style.left).toBe("48px");
+    expect(nameEl.style.top).toBe("110px");
+    expect(nameEl.style.width).toBe("240px");
+    expect(nameEl.style.height).toBe("36px");
+    expect(nameEl.style.transform).toBe("rotate(12deg)");
+
+    const typeEl = screen.getByTestId("custom-element-el-ticket-type");
+    expect(typeEl).toBeInTheDocument();
+    expect(typeEl).toHaveTextContent("TIER: VIP All-Access");
+    expect(typeEl.style.left).toBe("48px");
+    expect(typeEl.style.top).toBe("160px");
+    expect(typeEl.style.width).toBe("180px");
+    expect(typeEl.style.height).toBe("28px");
+    expect(typeEl.style.transform).toBe("rotate(0deg)");
+  });
+
+  test("renders live scannable QR code at exact canonical coordinates and rotation when status is active", () => {
+    render(
+      <CustomTicketCanvas
+        pass={mockCustomActiveTicket}
+        template={mockCustomTemplate}
+      />,
+    );
+
+    const qrContainer = screen.getByTestId("qr-container");
+    expect(qrContainer).toBeInTheDocument();
+    expect(qrContainer.style.left).toBe("420px");
+    expect(qrContainer.style.top).toBe("80px");
+    expect(qrContainer.style.width).toBe("140px");
+    expect(qrContainer.style.height).toBe("140px");
+    expect(qrContainer.style.transform).toBe("rotate(45deg)");
+
+    expect(screen.queryByTestId("locked-qr-badge")).toBeNull();
+  });
+
+  test("hides live QR code and renders locked placeholder badge when status is pending_approval", () => {
+    render(
+      <CustomTicketCanvas
+        pass={mockCustomPendingTicket}
+        template={mockCustomTemplate}
+      />,
+    );
+
+    // Live QR container must NOT exist
+    expect(screen.queryByTestId("qr-container")).toBeNull();
+
+    // Locked badge must exist
+    const lockedBadge = screen.getByTestId("locked-qr-badge");
+    expect(lockedBadge).toBeInTheDocument();
+    expect(lockedBadge).toHaveTextContent("PENDING APPROVAL");
+    expect(lockedBadge.style.left).toBe("420px");
+    expect(lockedBadge.style.top).toBe("80px");
+    expect(lockedBadge.style.width).toBe("140px");
+    expect(lockedBadge.style.height).toBe("140px");
+    expect(lockedBadge.style.transform).toBe("rotate(45deg)");
+
+    // Raw QR text must not be exposed
+    expect(screen.queryByText("TIKET_ENTRY_QR_PENDING")).toBeNull();
   });
 });
