@@ -3,6 +3,7 @@ import db from "@db";
 import {
   coupons,
   events,
+  eventBlacklist,
   eventRoles,
   eventTeamMembers,
   orders,
@@ -13,7 +14,7 @@ import {
   ticketTypes,
   users,
 } from "@db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
 import {
   verifyEventPermission,
@@ -183,7 +184,7 @@ export async function decideRegistration(
     "manage_guests",
   );
   return db.transaction(async (tx) => {
-    await lockEvent(tx, request.params.eventId);
+    const event = await lockEvent(tx, request.params.eventId);
     const [order] = await tx
       .select()
       .from(orders)
@@ -240,6 +241,37 @@ export async function decideRegistration(
     } else {
       if (!["success", "partially_refunded"].includes(order.paymentStatus))
         throw new HttpError(409, "Payment is not captured.");
+
+      if (event.capacity !== null) {
+        const maxCapacity = event.capacity + (event.overbookingLimit ?? 0);
+        const [currentApproved] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(tickets)
+          .where(
+            and(
+              eq(tickets.eventId, event.id),
+              inArray(tickets.status, ["active", "used"]),
+            ),
+          );
+        const [orderTickets] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(tickets)
+          .where(
+            and(
+              eq(tickets.orderId, order.id),
+              eq(tickets.status, "pending_approval"),
+            ),
+          );
+        const approvedCount = Number(currentApproved?.count || 0);
+        const toApproveCount = Number(orderTickets?.count || 0);
+        if (approvedCount + toApproveCount > maxCapacity) {
+          throw new HttpError(
+            409,
+            "Approving this registration would exceed event capacity.",
+          );
+        }
+      }
+
       await tx
         .update(tickets)
         .set({ status: "active", updatedAt: new Date() })
@@ -405,4 +437,180 @@ export async function getAvailability(
         })),
     };
   });
+}
+
+export async function getBlacklist(request: EventRequest) {
+  await authorize(request, request.params.eventId, "manage_guests");
+  const [event] = await db
+    .select({ organizationId: events.organizationId })
+    .from(events)
+    .where(eq(events.id, request.params.eventId));
+  if (!event) throw new HttpError(404, "Event not found.");
+
+  const rows = await db
+    .select({
+      id: eventBlacklist.id,
+      organizationId: eventBlacklist.organizationId,
+      eventId: eventBlacklist.eventId,
+      targetUserId: eventBlacklist.targetUserId,
+      pattern: eventBlacklist.pattern,
+      reason: eventBlacklist.reason,
+      createdBy: eventBlacklist.createdBy,
+      createdAt: eventBlacklist.createdAt,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+    })
+    .from(eventBlacklist)
+    .leftJoin(users, eq(users.id, eventBlacklist.targetUserId))
+    .where(
+      and(
+        eq(eventBlacklist.organizationId, event.organizationId),
+        or(
+          eq(eventBlacklist.eventId, request.params.eventId),
+          isNull(eventBlacklist.eventId),
+        ),
+      ),
+    )
+    .orderBy(desc(eventBlacklist.createdAt));
+
+  return rows.map((row) => ({
+    ...row,
+    user: row.targetUserId ? row.user : null,
+  }));
+}
+
+export interface CreateBlacklistInput {
+  targetUserId?: string;
+  pattern?: string;
+  scope?: "event" | "organization";
+  reason?: string;
+  cancelExistingTickets?: boolean;
+}
+
+export async function createBlacklistEntry(
+  request: FastifyRequest<{
+    Params: { eventId: string };
+    Body: CreateBlacklistInput;
+  }>,
+) {
+  const actor = await authorize(
+    request,
+    request.params.eventId,
+    "manage_guests",
+  );
+  const {
+    targetUserId,
+    pattern: rawPattern,
+    scope = "event",
+    reason,
+    cancelExistingTickets,
+  } = request.body;
+
+  if (!targetUserId && !rawPattern?.trim()) {
+    throw new HttpError(400, "Either targetUserId or pattern is required.");
+  }
+
+  return db.transaction(async (tx) => {
+    const event = await lockEvent(tx, request.params.eventId);
+
+    let pattern = rawPattern?.trim().toLowerCase() || null;
+
+    if (targetUserId) {
+      const [u] = await tx
+        .select({ id: users.id, email: users.email })
+        .from(users)
+        .where(eq(users.id, targetUserId));
+      if (!u) throw new HttpError(404, "Target user not found.");
+      if (!pattern) {
+        pattern = u.email.toLowerCase();
+      }
+    }
+
+    const eventId = scope === "organization" ? null : event.id;
+
+    const [created] = await tx
+      .insert(eventBlacklist)
+      .values({
+        organizationId: event.organizationId,
+        eventId,
+        targetUserId: targetUserId || null,
+        pattern,
+        reason: reason?.trim() || null,
+        createdBy: actor,
+      })
+      .returning();
+
+    if (cancelExistingTickets) {
+      const cancelConditions = [];
+      if (targetUserId) {
+        cancelConditions.push(eq(tickets.userId, targetUserId));
+      }
+      if (pattern) {
+        if (pattern.startsWith("@")) {
+          const domain = pattern.toLowerCase();
+          const matchingUsers = await tx
+            .select({ id: users.id })
+            .from(users)
+            .where(sql`lower(${users.email}) like ${"%" + domain}`);
+          const matchingIds = matchingUsers.map((m) => m.id);
+          if (matchingIds.length > 0) {
+            cancelConditions.push(inArray(tickets.userId, matchingIds));
+          }
+        } else {
+          const matchingUsers = await tx
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(sql`lower(${users.email})`, pattern));
+          const matchingIds = matchingUsers.map((m) => m.id);
+          if (matchingIds.length > 0) {
+            cancelConditions.push(inArray(tickets.userId, matchingIds));
+          }
+        }
+      }
+
+      if (cancelConditions.length > 0) {
+        await tx
+          .update(tickets)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(
+            and(
+              eq(tickets.eventId, event.id),
+              inArray(tickets.status, ["active", "pending_approval"]),
+              or(...cancelConditions),
+            ),
+          );
+      }
+    }
+
+    return created;
+  });
+}
+
+export async function deleteBlacklistEntry(
+  request: FastifyRequest<{
+    Params: { eventId: string; blacklistId: string };
+  }>,
+) {
+  await authorize(request, request.params.eventId, "manage_guests");
+  const [event] = await db
+    .select({ organizationId: events.organizationId })
+    .from(events)
+    .where(eq(events.id, request.params.eventId));
+  if (!event) throw new HttpError(404, "Event not found.");
+
+  const [deleted] = await db
+    .delete(eventBlacklist)
+    .where(
+      and(
+        eq(eventBlacklist.id, request.params.blacklistId),
+        eq(eventBlacklist.organizationId, event.organizationId),
+      ),
+    )
+    .returning();
+
+  if (!deleted) throw new HttpError(404, "Blacklist entry not found.");
+  return { success: true };
 }

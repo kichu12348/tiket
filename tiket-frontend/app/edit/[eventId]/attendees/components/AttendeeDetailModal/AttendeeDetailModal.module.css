@@ -406,3 +406,72 @@
 .btnDanger:hover {
   opacity: 0.85;
 }
+
+.blockCard {
+  background: var(--status-danger-bg, rgba(255, 80, 80, 0.12));
+  border-radius: var(--radius-md, 10px);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.blockTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--status-danger, #ff5050);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.blockDesc {
+  font-size: 0.82rem;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  line-height: 1.4;
+}
+
+.blockField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.blockLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+}
+
+.blockInput {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.45rem 0.65rem;
+  color: var(--text-primary, #ffffff);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.blockInput:focus {
+  border-color: var(--status-danger, #ff5050);
+}
+
+.blockCheckboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  cursor: pointer;
+}
+
+.blockActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+

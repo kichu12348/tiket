@@ -17,20 +17,39 @@ import type { Event } from "@/types/event";
 
 type EventStatus = Event["status"];
 
+interface SettingsEvent extends Event {
+  maxTicketsPerUser?: number | null;
+  overbookingLimit?: number;
+}
+
 function SettingsForm({ event }: { event: Event }) {
   const router = useRouter();
   const { updateEventLocally } = useEventStore();
+  const settingsEvent = event as SettingsEvent;
 
   const [slug, setSlug] = useState(event.slug);
   const [requireApproval, setRequireApproval] = useState(event.requireApproval);
   const [status, setStatus] = useState<EventStatus>(event.status);
+  const [maxTicketsPerUser, setMaxTicketsPerUser] = useState<number | "">(
+    settingsEvent.maxTicketsPerUser ?? "",
+  );
+  const [overbookingLimit, setOverbookingLimit] = useState<number>(
+    settingsEvent.overbookingLimit ?? 0,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingSlug, setIsSubmittingSlug] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const hasChanges = () => {
     if (!event) return false;
-    return status !== event.status || requireApproval !== event.requireApproval;
+    const initialMax = settingsEvent.maxTicketsPerUser ?? "";
+    const initialOverbooking = settingsEvent.overbookingLimit ?? 0;
+    return (
+      status !== event.status ||
+      requireApproval !== event.requireApproval ||
+      maxTicketsPerUser !== initialMax ||
+      overbookingLimit !== initialOverbooking
+    );
   };
 
   const handleSaveSlug = async () => {
@@ -83,6 +102,9 @@ function SettingsForm({ event }: { event: Event }) {
       const payload = {
         requireApproval,
         status,
+        maxTicketsPerUser:
+          maxTicketsPerUser === "" ? null : Number(maxTicketsPerUser),
+        overbookingLimit: Number(overbookingLimit) || 0,
       };
 
       const updated = await updateEvent(event.id, payload);
@@ -228,6 +250,65 @@ function SettingsForm({ event }: { event: Event }) {
             </p>
           </div>
           <Switch checked={requireApproval} onChange={setRequireApproval} />
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.cardHeader}>
+          <div>
+            <h2 className={styles.sectionTitle}>Ticket Limits & Overbooking</h2>
+            <span className={styles.sectionSubtitle}>
+              Configure maximum tickets per attendee and overbooking buffers.
+            </span>
+          </div>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.sectionLabel}>
+            Max Tickets Per Attendee
+          </label>
+          <div className={styles.slugInputWrapper}>
+            <input
+              type="number"
+              min={1}
+              className={styles.slugInput}
+              value={maxTicketsPerUser}
+              onChange={(e) =>
+                setMaxTicketsPerUser(
+                  e.target.value === ""
+                    ? ""
+                    : Math.max(1, parseInt(e.target.value, 10) || 1),
+                )
+              }
+              placeholder="Unlimited (leave blank)"
+            />
+          </div>
+          <span className={styles.helpText}>
+            Limit how many total tickets a single account can purchase or hold
+            for this event. Leave blank for no limit.
+          </span>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.sectionLabel}>Overbooking Limit</label>
+          <div className={styles.slugInputWrapper}>
+            <input
+              type="number"
+              min={0}
+              className={styles.slugInput}
+              value={overbookingLimit}
+              onChange={(e) =>
+                setOverbookingLimit(
+                  Math.max(0, parseInt(e.target.value, 10) || 0),
+                )
+              }
+              placeholder="0"
+            />
+          </div>
+          <span className={styles.helpText}>
+            Additional registrations allowed beyond the event capacity before
+            checkout is cut off. Default is 0.
+          </span>
         </div>
       </div>
 

@@ -16,7 +16,7 @@
     "dev": "bun run --watch src/index.ts",
     "build": "bun run build.ts",
     "typecheck": "tsc --noEmit",
-    "test": "bun test tests",
+    "test": "FORCE_COLOR=1 bun test tests",
     "db:reset:dev": "bun src/scripts/reset-development.ts --confirm-development-reset"
   },
   "devDependencies": {

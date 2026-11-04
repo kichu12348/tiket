@@ -2,7 +2,9 @@ import api, { frontendApi } from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/config";
 import type {
   Availability,
+  BlacklistEntry,
   Coupon,
+  CreateBlacklistPayload,
   Finance,
   MailConfig,
 } from "@/types/commerce";
@@ -99,3 +101,28 @@ export async function getPendingApprovals(
 export async function scanTicket(eventId: string, qrCode: string) {
   return (await api.post(API_ENDPOINTS.CHECK_IN, { eventId, qrCode })).data;
 }
+
+export async function getBlacklist(eventId: string): Promise<BlacklistEntry[]> {
+  return (await api.get(API_ENDPOINTS.COMMERCE.BLACKLIST(eventId))).data;
+}
+
+export async function createBlacklistEntry(
+  eventId: string,
+  payload: CreateBlacklistPayload,
+): Promise<BlacklistEntry> {
+  return (
+    await api.post(API_ENDPOINTS.COMMERCE.BLACKLIST(eventId), payload)
+  ).data;
+}
+
+export async function deleteBlacklistEntry(
+  eventId: string,
+  blacklistId: string,
+): Promise<{ success: boolean }> {
+  return (
+    await api.delete(
+      API_ENDPOINTS.COMMERCE.BLACKLIST_DELETE(eventId, blacklistId),
+    )
+  ).data;
+}
+

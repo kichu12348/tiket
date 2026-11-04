@@ -20,6 +20,9 @@ export const API_ENDPOINTS = {
       `/api/commerce/${id}/orders/${order}/refunds`,
     DECISION: (id: string, order: string) =>
       `/api/commerce/${id}/orders/${order}/decision`,
+    BLACKLIST: (id: string) => `/api/commerce/${id}/blacklist`,
+    BLACKLIST_DELETE: (id: string, blacklistId: string) =>
+      `/api/commerce/${id}/blacklist/${blacklistId}`,
   },
   REALTIME: {
     CONNECT: (id: string) => `/api/realtime/events/${id}/connect`,

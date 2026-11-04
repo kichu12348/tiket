@@ -8,9 +8,15 @@ import {
   getAvailability,
   getPermissions,
   getPendingApprovals,
+  getBlacklist,
+  createBlacklistEntry,
+  deleteBlacklistEntry,
 } from "../controllers/commerce.controller";
 import {
   availabilitySchema,
+  blacklistQuerySchema,
+  createBlacklistSchema,
+  deleteBlacklistSchema,
   couponSchema,
   decisionSchema,
   eventSchema,
@@ -29,4 +35,11 @@ export default async function commerceRoutes(app: FastifyInstance) {
   app.get("/:eventId/coupons", eventSchema, getCoupons);
   app.put("/:eventId/coupons", couponSchema, saveCoupon);
   app.get("/:eventId/availability", availabilitySchema, getAvailability);
+  app.get("/:eventId/blacklist", blacklistQuerySchema, getBlacklist);
+  app.post("/:eventId/blacklist", createBlacklistSchema, createBlacklistEntry);
+  app.delete(
+    "/:eventId/blacklist/:blacklistId",
+    deleteBlacklistSchema,
+    deleteBlacklistEntry,
+  );
 }

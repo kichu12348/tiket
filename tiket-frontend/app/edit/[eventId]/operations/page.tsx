@@ -8,6 +8,7 @@ import FinancePanel from "./components/FinancePanel";
 import CouponPanel from "./components/CouponPanel";
 import MailConnection from "./components/MailConnection";
 import DoorScanner from "./components/DoorScanner";
+import BlacklistPanel from "./components/BlacklistPanel";
 import {
   AlertCircle,
   Users,
@@ -229,6 +230,11 @@ export default function OperationsPage() {
               save={ops.saveMail}
               reset={ops.resetMail}
             />
+          )}
+
+          {/* Attendee Blacklist */}
+          {(ops.permissions.includes("manage_guests") || ops.owner) && (
+            <BlacklistPanel eventId={eventId} />
           )}
         </>
       )}

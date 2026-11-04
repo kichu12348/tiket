@@ -1,7 +1,8 @@
 import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
-import { tickets, ticketTypes, ticketTransfers, users } from "@db/schema";
+import { events, tickets, ticketTypes, ticketTransfers, users } from "@db/schema";
+import { assertNotBlacklisted } from "../services/inventory.service";
 import { eq, and } from "drizzle-orm";
 
 interface InitiateTransferBody {
@@ -34,6 +35,7 @@ export const initiateTransfer = async (
         status: tickets.status,
         transferCount: tickets.transferCount,
         ticketTypeId: tickets.ticketTypeId,
+        eventId: tickets.eventId,
       })
       .from(tickets)
       .where(eq(tickets.id, ticketId));
@@ -89,6 +91,18 @@ export const initiateTransfer = async (
             "Target Email not inherently mapped inside the platform registry. Ask them to sign up first!",
         });
     }
+
+    const [event] = await db
+      .select({ id: events.id, organizationId: events.organizationId })
+      .from(events)
+      .where(eq(events.id, ticket.eventId));
+    if (!event) return reply.status(404).send({ error: "Event not found." });
+
+    await assertNotBlacklisted(
+      db,
+      { id: event.id, organizationId: event.organizationId },
+      { id: targetUser.id, email: targetUser.email },
+    );
 
     // Isolate duplication blocking
     const existingTransfers = await db
@@ -163,6 +177,30 @@ export const acceptTransfer = async (
           .status(400)
           .send({ error: "Target ticket invalidated intrinsically." });
       }
+
+      const [event] = await tx
+        .select({ id: events.id, organizationId: events.organizationId })
+        .from(events)
+        .where(eq(events.id, ticket.eventId));
+      if (!event) {
+        tx.rollback();
+        return reply.status(404).send({ error: "Event not found." });
+      }
+
+      const [recipientUser] = await tx
+        .select({ id: users.id, email: users.email })
+        .from(users)
+        .where(eq(users.id, user.id));
+      if (!recipientUser) {
+        tx.rollback();
+        return reply.status(404).send({ error: "User not found." });
+      }
+
+      await assertNotBlacklisted(
+        tx,
+        { id: event.id, organizationId: event.organizationId },
+        { id: recipientUser.id, email: recipientUser.email },
+      );
 
       const updatedTransfers = await tx
         .update(ticketTransfers)

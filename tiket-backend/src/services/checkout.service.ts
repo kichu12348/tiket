@@ -9,8 +9,9 @@ import {
   tickets,
   ticketTypes,
   uploads,
+  users,
 } from "@db/schema";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { createHash, randomUUID } from "node:crypto";
 import type { Transaction } from "../db/types";
 import { HttpError } from "../utils/errors";
@@ -22,6 +23,7 @@ import {
 import {
   allocatedByTier,
   assertCapacity,
+  assertNotBlacklisted,
   emitEvent,
   expireHolds,
   lockEvent,
@@ -91,6 +93,49 @@ async function cart(
       );
   }
   registrationOpen(event);
+  const [buyer] = await tx
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!buyer) throw new HttpError(404, "User account not found.");
+
+  await assertNotBlacklisted(
+    tx,
+    { id: event.id, organizationId: event.organizationId },
+    { id: buyer.id, email: buyer.email },
+  );
+
+  if (
+    event.maxTicketsPerUser !== null &&
+    event.maxTicketsPerUser !== undefined
+  ) {
+    const [existingTickets] = await tx
+      .select({ count: sql<number>`count(*)::int` })
+      .from(tickets)
+      .innerJoin(orders, eq(tickets.orderId, orders.id))
+      .where(
+        and(
+          eq(tickets.eventId, event.id),
+          eq(tickets.userId, userId),
+          or(
+            and(
+              eq(orders.reservationState, "confirmed"),
+              inArray(tickets.status, ["active", "used", "pending_approval"]),
+            ),
+            and(
+              eq(orders.reservationState, "held"),
+              gt(orders.expiresAt, sql`now()`),
+              eq(tickets.status, "pending"),
+            ),
+          ),
+        ),
+      );
+    const existingCount = Number(existingTickets?.count || 0);
+    if (existingCount + body.purchases.length > event.maxTicketsPerUser) {
+      throw new HttpError(409, "Ticket limit per user exceeded.");
+    }
+  }
   await expireHolds(tx, event.id);
   if (!body.purchases.length || body.purchases.length > 20)
     throw new HttpError(400, "Choose between 1 and 20 tickets.");
@@ -160,6 +205,7 @@ async function cart(
     await allocatedByTier(tx, event.id),
     requested,
     tiers,
+    event.overbookingLimit ?? 0,
   );
   const policy = pricingPolicy();
   const pricing = priceCart(

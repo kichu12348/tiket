@@ -159,6 +159,8 @@ export const events = pgTable("events", {
   ),
   requireApproval: boolean("require_approval").notNull().default(false),
   capacity: integer("capacity"), // null means unlimited
+  maxTicketsPerUser: integer("max_tickets_per_user"),
+  overbookingLimit: integer("overbooking_limit").notNull().default(0),
   version: integer("version").notNull().default(0),
   status: eventStatusEnum("status").notNull().default("draft"),
   organizationId: uuid("organization_id")
@@ -898,3 +900,38 @@ export const admissionAudits = pgTable("admission_audits", {
     .notNull()
     .defaultNow(),
 });
+
+export const eventBlacklist = pgTable("event_blacklist", {
+  id: uuid("id").primaryKey().$defaultFn(uuidv7),
+  organizationId: uuid("organization_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
+  targetUserId: uuid("target_user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
+  pattern: varchar("pattern", { length: 255 }),
+  reason: text("reason"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const eventBlacklistRelations = relations(eventBlacklist, ({ one }) => ({
+  organization: one(users, {
+    fields: [eventBlacklist.organizationId],
+    references: [users.id],
+  }),
+  event: one(events, {
+    fields: [eventBlacklist.eventId],
+    references: [events.id],
+  }),
+  targetUser: one(users, {
+    fields: [eventBlacklist.targetUserId],
+    references: [users.id],
+  }),
+  creator: one(users, {
+    fields: [eventBlacklist.createdBy],
+    references: [users.id],
+  }),
+}));
+

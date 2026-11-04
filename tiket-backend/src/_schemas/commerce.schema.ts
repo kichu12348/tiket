@@ -77,3 +77,43 @@ export const availabilitySchema = {
     },
   },
 };
+
+export const blacklistQuerySchema = {
+  schema: {
+    params: eventParams,
+  },
+};
+
+export const createBlacklistSchema = {
+  schema: {
+    params: eventParams,
+    body: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        targetUserId: uuid,
+        pattern: { type: "string", minLength: 1, maxLength: 255 },
+        scope: { type: "string", enum: ["event", "organization"] },
+        reason: { type: "string", maxLength: 500 },
+        cancelExistingTickets: { type: "boolean" },
+      },
+      anyOf: [{ required: ["targetUserId"] }, { required: ["pattern"] }],
+    },
+  },
+};
+
+const blacklistParams = {
+  type: "object",
+  required: ["eventId", "blacklistId"],
+  properties: {
+    eventId: uuid,
+    blacklistId: uuid,
+  },
+};
+
+export const deleteBlacklistSchema = {
+  schema: {
+    params: blacklistParams,
+  },
+};
+

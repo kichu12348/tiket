@@ -1,7 +1,14 @@
 import db from "@db";
-import { coupons, domainEvents, events, orders, tickets } from "@db/schema";
-import type { Transaction } from "../db/types";
-import { and, eq, gt, inArray, lte, or, sql } from "drizzle-orm";
+import {
+  coupons,
+  domainEvents,
+  events,
+  eventBlacklist,
+  orders,
+  tickets,
+} from "@db/schema";
+import type { Database, Transaction } from "../db/types";
+import { and, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
 
 export async function lockEvent(tx: Transaction, eventId: string) {
@@ -84,15 +91,59 @@ export async function allocatedByTier(tx: Transaction, eventId: string) {
     .groupBy(tickets.ticketTypeId);
   return new Map(rows.map((row) => [row.tierId, Number(row.count)]));
 }
+export async function assertNotBlacklisted(
+  tx: Database,
+  event: { id: string; organizationId: string },
+  user: { id: string; email: string },
+) {
+  const emailLower = user.email.toLowerCase().trim();
+  const domain = emailLower.includes("@")
+    ? "@" + emailLower.split("@")[1]?.toLowerCase()
+    : "";
+
+  const matchConditions = [
+    eq(eventBlacklist.targetUserId, user.id),
+    eq(sql`lower(${eventBlacklist.pattern})`, emailLower),
+  ];
+  if (domain) {
+    matchConditions.push(eq(sql`lower(${eventBlacklist.pattern})`, domain));
+  }
+
+  const matches = await tx
+    .select({ id: eventBlacklist.id })
+    .from(eventBlacklist)
+    .where(
+      and(
+        eq(eventBlacklist.organizationId, event.organizationId),
+        or(
+          eq(eventBlacklist.eventId, event.id),
+          isNull(eventBlacklist.eventId),
+        ),
+        or(...matchConditions),
+      ),
+    )
+    .limit(1);
+
+  if (matches.length > 0) {
+    throw new HttpError(
+      403,
+      "You are restricted from registering for this event.",
+    );
+  }
+}
+
 export function assertCapacity(
   eventCapacity: number | null,
   allocated: Map<string, number>,
   requested: Map<string, number>,
   tiers: { id: string; quantityLimit: number | null }[],
+  overbookingLimit = 0,
 ) {
   const used = [...allocated.values()].reduce((a, b) => a + b, 0);
   const wanted = [...requested.values()].reduce((a, b) => a + b, 0);
-  if (eventCapacity !== null && used + wanted > eventCapacity)
+  const maxCapacity =
+    eventCapacity !== null ? eventCapacity + overbookingLimit : null;
+  if (maxCapacity !== null && used + wanted > maxCapacity)
     throw new HttpError(409, "Event is sold out.");
   for (const tier of tiers)
     if (

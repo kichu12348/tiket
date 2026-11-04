@@ -45,6 +45,8 @@ const eventResponseObj = {
     fontFamily: { type: "string" },
     requireApproval: { type: "boolean" },
     capacity: { type: ["integer", "null"] },
+    maxTicketsPerUser: { type: ["integer", "null"] },
+    overbookingLimit: { type: "integer" },
     status: {
       type: "string",
       enum: ["draft", "published", "completed", "cancelled"],
@@ -83,6 +85,8 @@ export const createEventSchema = {
         fontFamily: { type: "string" },
         requireApproval: { type: "boolean" },
         capacity: { type: ["integer", "null"] },
+        maxTicketsPerUser: { type: ["integer", "null"], minimum: 1 },
+        overbookingLimit: { type: "integer", minimum: 0 },
         status: { type: "string", enum: ["draft", "published"] },
       },
     },
@@ -120,6 +124,8 @@ export const updateEventSchema = {
         fontFamily: { type: "string" },
         requireApproval: { type: "boolean" },
         capacity: { type: ["integer", "null"] },
+        maxTicketsPerUser: { type: ["integer", "null"], minimum: 1 },
+        overbookingLimit: { type: "integer", minimum: 0 },
         status: {
           type: "string",
           enum: ["draft", "published", "completed", "cancelled"],

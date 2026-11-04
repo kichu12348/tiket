@@ -15,6 +15,7 @@ import {
   Check,
   X,
   Download,
+  Ban,
 } from "lucide-react";
 import Modal from "@/components/Modal";
 import type {
@@ -22,6 +23,8 @@ import type {
   FormResponseItem,
 } from "@/types/attendee";
 import { getAttendeeFormResponses } from "@/api/attendees";
+import { createBlacklistEntry } from "@/api/commerce";
+import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
 import styles from "./AttendeeDetailModal.module.css";
 
@@ -52,6 +55,36 @@ export default function AttendeeDetailModal({
     null,
   );
   const [isLoadingResponses, setIsLoadingResponses] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [blockScope, setBlockScope] = useState<"event" | "organization">(
+    "event",
+  );
+  const [cancelExisting, setCancelExisting] = useState(true);
+  const [blockReason, setBlockReason] = useState("");
+  const [isBlocking, setIsBlocking] = useState(false);
+
+  const handleBlockAttendee = async () => {
+    if (!detail) return;
+    try {
+      setIsBlocking(true);
+      await createBlacklistEntry(eventId, {
+        targetUserId: detail.attendee.user.id,
+        scope: blockScope,
+        reason: blockReason.trim() || undefined,
+        cancelExistingTickets: cancelExisting,
+      });
+      toast.success("Attendee blocked successfully.");
+      if (cancelExisting) {
+        onCancelTicket(detail.attendee.id);
+      }
+      setShowBlockConfirm(false);
+      onClose();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Failed to block attendee.");
+    } finally {
+      setIsBlocking(false);
+    }
+  };
 
   const handleToggleFormResponses = async () => {
     if (!detail) return;
@@ -72,10 +105,16 @@ export default function AttendeeDetailModal({
     }
   };
 
+  const handleModalClose = () => {
+    setShowBlockConfirm(false);
+    setBlockReason("");
+    onClose();
+  };
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleModalClose}
       title="Attendee Details"
       width={465}
       className={styles.modalContent}
@@ -264,77 +303,155 @@ export default function AttendeeDetailModal({
               </div>
             )}
 
-            {/* Footer Action Row */}
-            <div className={styles.footerActions}>
-              <Link
-                href={`/passes/${detail.attendee.id}`}
-                target="_blank"
-                className={styles.passLinkBtn}
-              >
-                <ExternalLink size={14} />
-                <span>Public Pass</span>
-              </Link>
-
-              <div className={styles.rightActionBtns}>
-                {detail.attendee.status === "pending_approval" && onDecide ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onDecide(detail.attendee.order.id, "decline")
-                      }
-                      className={styles.btnDanger}
-                    >
-                      <X size={14} />
-                      <span>Decline</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onDecide(detail.attendee.order.id, "approve")
-                      }
-                      className={styles.btnPrimary}
-                    >
-                      <Check size={14} />
-                      <span>Approve</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {detail.attendee.status !== "cancelled" &&
-                      detail.attendee.status !== "refunded" && (
-                        <button
-                          onClick={() => onCancelTicket(detail.attendee.id)}
-                          className={styles.btnDanger}
-                        >
-                          <XCircle size={14} />
-                          <span>Cancel Ticket</span>
-                        </button>
-                      )}
-
-                    <button
-                      onClick={() => onToggleCheckIn(detail.attendee.id)}
-                      disabled={
-                        detail.attendee.status === "cancelled" ||
-                        detail.attendee.status === "refunded"
-                      }
-                      className={
-                        detail.attendee.status === "used"
-                          ? styles.btnSecondary
-                          : styles.btnPrimary
-                      }
-                    >
-                      <CheckCircle2 size={14} />
-                      <span>
-                        {detail.attendee.status === "used"
-                          ? "Undo Check-In"
-                          : "Check In"}
-                      </span>
-                    </button>
-                  </>
-                )}
+            {showBlockConfirm ? (
+              <div className={styles.blockCard}>
+                <div className={styles.blockTitle}>
+                  <Ban size={16} />
+                  <span>Block Attendee</span>
+                </div>
+                <p className={styles.blockDesc}>
+                  Restricts <strong>{detail.attendee.user.name}</strong> (
+                  {detail.attendee.user.email}) from purchasing tickets or
+                  receiving transfers for this organizer.
+                </p>
+                <div className={styles.blockField}>
+                  <label className={styles.blockLabel}>Block Scope</label>
+                  <select
+                    className={styles.blockInput}
+                    value={blockScope}
+                    onChange={(e) =>
+                      setBlockScope(
+                        e.target.value as "event" | "organization",
+                      )
+                    }
+                  >
+                    <option value="event">This Event Only</option>
+                    <option value="organization">
+                      All Events (Organization-wide)
+                    </option>
+                  </select>
+                </div>
+                <div className={styles.blockField}>
+                  <label className={styles.blockLabel}>Reason (Optional)</label>
+                  <input
+                    type="text"
+                    className={styles.blockInput}
+                    value={blockReason}
+                    onChange={(e) => setBlockReason(e.target.value)}
+                    placeholder="e.g. Chargeback risk, violation"
+                  />
+                </div>
+                <label className={styles.blockCheckboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={cancelExisting}
+                    onChange={(e) => setCancelExisting(e.target.checked)}
+                  />
+                  <span>Cancel existing active & pending tickets</span>
+                </label>
+                <div className={styles.blockActions}>
+                  <button
+                    type="button"
+                    onClick={() => setShowBlockConfirm(false)}
+                    disabled={isBlocking}
+                    className={styles.btnSecondary}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBlockAttendee}
+                    disabled={isBlocking}
+                    className={styles.btnDanger}
+                  >
+                    <Ban size={14} />
+                    <span>{isBlocking ? "Blocking..." : "Confirm Block"}</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Footer Action Row */
+              <div className={styles.footerActions}>
+                <Link
+                  href={`/passes/${detail.attendee.id}`}
+                  target="_blank"
+                  className={styles.passLinkBtn}
+                >
+                  <ExternalLink size={14} />
+                  <span>Public Pass</span>
+                </Link>
+
+                <div className={styles.rightActionBtns}>
+                  <button
+                    type="button"
+                    onClick={() => setShowBlockConfirm(true)}
+                    className={styles.btnDanger}
+                    title="Block User"
+                  >
+                    <Ban size={14} />
+                    <span>Block User</span>
+                  </button>
+
+                  {detail.attendee.status === "pending_approval" && onDecide ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onDecide(detail.attendee.order.id, "decline")
+                        }
+                        className={styles.btnDanger}
+                      >
+                        <X size={14} />
+                        <span>Decline</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onDecide(detail.attendee.order.id, "approve")
+                        }
+                        className={styles.btnPrimary}
+                      >
+                        <Check size={14} />
+                        <span>Approve</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {detail.attendee.status !== "cancelled" &&
+                        detail.attendee.status !== "refunded" && (
+                          <button
+                            onClick={() => onCancelTicket(detail.attendee.id)}
+                            className={styles.btnDanger}
+                          >
+                            <XCircle size={14} />
+                            <span>Cancel Ticket</span>
+                          </button>
+                        )}
+
+                      <button
+                        onClick={() => onToggleCheckIn(detail.attendee.id)}
+                        disabled={
+                          detail.attendee.status === "cancelled" ||
+                          detail.attendee.status === "refunded"
+                        }
+                        className={
+                          detail.attendee.status === "used"
+                            ? styles.btnSecondary
+                            : styles.btnPrimary
+                        }
+                      >
+                        <CheckCircle2 size={14} />
+                        <span>
+                          {detail.attendee.status === "used"
+                            ? "Undo Check-In"
+                            : "Check In"}
+                        </span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

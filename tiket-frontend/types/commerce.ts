@@ -62,3 +62,28 @@ export type MailConfig =
       fromEmail: string;
       fromName?: string;
     };
+
+export interface BlacklistEntry {
+  id: string;
+  organizationId: string;
+  eventId: string | null;
+  targetUserId: string | null;
+  pattern: string | null;
+  reason: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+}
+
+export interface CreateBlacklistPayload {
+  targetUserId?: string;
+  pattern?: string;
+  scope?: "event" | "organization";
+  reason?: string;
+  cancelExistingTickets?: boolean;
+}
+
