@@ -3,7 +3,6 @@
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-sm, 8px);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
   user-select: none;
 }
 
@@ -96,4 +95,3 @@
   font-size: 0.6rem;
   color: var(--text-muted, rgba(255, 255, 255, 0.6));
 }
-

@@ -440,9 +440,8 @@ export function CustomTicketCanvas({
                       <div
                         className={styles.qrContainer}
                         style={{
-                          backgroundColor: "#ffffff",
                           borderRadius: 6,
-                          padding: 6,
+                          //padding: 6,
                         }}
                       >
                         <QRCode
