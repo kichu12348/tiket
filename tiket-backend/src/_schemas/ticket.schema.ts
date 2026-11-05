@@ -44,6 +44,11 @@ const ticketPassResponseSchema = {
         description: { type: ["string", "null"] },
         isTransferable: { type: "boolean" },
         isRefundable: { type: "boolean" },
+        templateImageUrl: { type: ["string", "null"] },
+        templateConfig: {
+          type: ["object", "null"],
+          additionalProperties: true,
+        },
       },
     },
     attendee: {

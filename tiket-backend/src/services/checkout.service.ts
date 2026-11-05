@@ -15,7 +15,11 @@ import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { createHash, randomUUID } from "node:crypto";
 import type { Transaction } from "../db/types";
 import { HttpError } from "../utils/errors";
-import { evaluateConditionGroup, getFieldAction } from "../utils/registration-validation";
+import {
+  evaluateConditionGroup,
+  evaluateVisibilityConditions,
+  getFieldAction,
+} from "../utils/registration-validation";
 import { toPaise, fromPaise } from "../utils/money";
 import {
   validateFormResponses,
@@ -171,9 +175,48 @@ async function cart(
     if (
       !complimentary &&
       ((tier.saleStart && tier.saleStart > now) ||
-        (tier.saleEnd && tier.saleEnd <= now))
+        (tier.saleEnd && tier.saleEnd <= now) ||
+        tier.isClosed)
     )
       throw new HttpError(409, "This ticket is not on sale.");
+    if (
+      !complimentary &&
+      tier.maxPerUser !== null &&
+      tier.maxPerUser !== undefined
+    ) {
+      const [existingTierTickets] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tickets)
+        .innerJoin(orders, eq(tickets.orderId, orders.id))
+        .where(
+          and(
+            eq(tickets.eventId, event.id),
+            eq(tickets.ticketTypeId, tier.id),
+            eq(tickets.userId, userId),
+            or(
+              and(
+                eq(orders.reservationState, "confirmed"),
+                inArray(tickets.status, ["active", "used", "pending_approval"]),
+              ),
+              and(
+                eq(orders.reservationState, "held"),
+                gt(orders.expiresAt, sql`now()`),
+                eq(tickets.status, "pending"),
+              ),
+            ),
+          ),
+        );
+      const existingTierCount = Number(existingTierTickets?.count || 0);
+      const purchaseTierCount = body.purchases.filter(
+        (p) => p.ticketTypeId === tier.id,
+      ).length;
+      if (existingTierCount + purchaseTierCount > tier.maxPerUser) {
+        throw new HttpError(
+          409,
+          `Ticket limit per user exceeded for "${tier.name}".`,
+        );
+      }
+    }
     if (
       tier.isHidden &&
       !complimentary &&
@@ -202,6 +245,23 @@ async function cart(
       }
     }
     if (
+      !complimentary &&
+      tier.conditions &&
+      Array.isArray(tier.conditions) &&
+      tier.conditions.length > 0
+    ) {
+      const answers = new Map<string, string>();
+      for (const resp of purchase.formResponses || []) {
+        answers.set(resp.fieldId, resp.responseValue.trim());
+      }
+      const isEligible = evaluateVisibilityConditions(tier.conditions, answers);
+      if (!isEligible) {
+        throw new HttpError(
+          403,
+          `You are not eligible to purchase the ticket tier "${tier.name}".`,
+        );
+      }
+    } else if (
       !complimentary &&
       tier.eligibilityRules &&
       tier.eligibilityRules.rules &&

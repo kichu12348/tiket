@@ -1,3 +1,5 @@
+export type { TicketLayoutLayer, TicketLayoutConfig } from "@/types/ticketType";
+
 export type TicketElementType =
   | "qr"
   | "variable"

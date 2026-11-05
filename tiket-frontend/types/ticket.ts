@@ -1,3 +1,5 @@
+import type { TicketLayoutConfig } from "./ticketType";
+
 export type TicketStatus =
   | "pending"
   | "pending_approval"
@@ -37,6 +39,8 @@ export interface TicketPassType {
   description?: string | null;
   isTransferable: boolean;
   isRefundable: boolean;
+  templateImageUrl?: string | null;
+  templateConfig?: TicketLayoutConfig | null;
 }
 
 export interface TicketPassAttendee {

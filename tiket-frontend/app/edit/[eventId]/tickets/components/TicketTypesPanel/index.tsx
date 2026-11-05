@@ -13,6 +13,7 @@ import styles from "./TicketTypesPanel.module.css";
 import { confirm } from "@/components/ConfirmModal";
 import { useEventStore } from "@/store/useEventStore";
 import TicketEditModal from "../TicketEditModal";
+import TicketDesignStudio from "../TicketDesignStudio";
 import SortableTicketCard from "./SortableTicketCard";
 
 import type { DragEndEvent } from "@dnd-kit/core";
@@ -45,6 +46,7 @@ export default function TicketTypesPanel({ eventId }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
+  const [designingTicket, setDesigningTicket] = useState<TicketType | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -171,6 +173,7 @@ export default function TicketTypesPanel({ eventId }: Props) {
                   ticket={ticket}
                   onEdit={() => openModal(ticket)}
                   onDelete={() => handleDelete(ticket.id)}
+                  onDesign={() => setDesigningTicket(ticket)}
                 />
               ))}
             </SortableContext>
@@ -184,11 +187,26 @@ export default function TicketTypesPanel({ eventId }: Props) {
         eventId={eventId}
         ticket={editingTicket}
         onSave={fetchTicketTypes}
+        onOpenDesign={(t) => setDesigningTicket(t)}
         timezone={timezone}
         eventRegistrationStart={event?.registrationStart}
         eventRegistrationEnd={event?.registrationEnd}
         eventEndDate={event?.endDate}
       />
+
+      {designingTicket && (
+        <div className={styles.designerOverlay}>
+          <TicketDesignStudio
+            eventId={eventId}
+            ticket={designingTicket}
+            onClose={() => setDesigningTicket(null)}
+            onSaved={() => {
+              setDesigningTicket(null);
+              void fetchTicketTypes();
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

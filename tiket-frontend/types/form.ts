@@ -45,6 +45,11 @@ export type FormFieldOptions =
   | { choices: string[]; min?: number | null; max?: number | null }
   | null;
 
+export interface VisibilityConditionRule {
+  fieldId: string; // Selected via Radix UI Select dropdown (single form question)
+  allowedValues: string[]; // Checked via Radix UI Checkbox list (one or multiple values can be checked)
+}
+
 export interface ConditionRule {
   sourceType: "field" | "ticketType";
   sourceId: string; // fieldId or "ticketTypeId"
@@ -72,7 +77,7 @@ export interface FormField {
   fieldType: FieldType;
   isRequired: boolean;
   options: FormFieldOptions;
-  conditions?: FieldConditionConfig | null;
+  conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
   sortOrder: number;
   page: number;
   createdAt: string;
@@ -84,7 +89,7 @@ export interface CreateFormFieldPayload {
   fieldType: FieldType;
   isRequired?: boolean;
   options?: FormFieldOptions;
-  conditions?: FieldConditionConfig | null;
+  conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
   sortOrder?: number;
   page?: number;
 }

@@ -47,6 +47,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 
 interface Props {
   field: LocalField;
+  availableFields?: LocalField[];
   onEdit: () => void;
   onToggleInlineEdit?: () => void;
   onSaveInline?: (updated: Omit<LocalField, "isEditing">) => Promise<void>;
@@ -55,6 +56,7 @@ interface Props {
 
 export default function SortableFieldCard({
   field,
+  availableFields,
   onEdit,
   onToggleInlineEdit,
   onSaveInline,
@@ -81,6 +83,7 @@ export default function SortableFieldCard({
       <div ref={setNodeRef} style={style}>
         <InlineEditForm
           field={field}
+          availableFields={availableFields}
           onSave={onSaveInline}
           onDelete={onDeleteInline}
           onCancel={onToggleInlineEdit}

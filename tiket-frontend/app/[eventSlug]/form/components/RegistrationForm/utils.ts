@@ -5,7 +5,47 @@ import type {
   ConditionRule,
   ConditionGroup,
   FieldConditionConfig,
+  VisibilityConditionRule,
 } from "@/types/form";
+
+export function evaluateVisibilityConditions(
+  conditions: VisibilityConditionRule[] | null | undefined,
+  answers: Map<string, string>,
+): boolean {
+  if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
+    return true;
+  }
+  return conditions.every((rule) => {
+    if (!rule.fieldId || !rule.allowedValues || rule.allowedValues.length === 0) {
+      return true;
+    }
+    const rawAnswer = answers.get(rule.fieldId) ?? "";
+    if (!rawAnswer) return false;
+
+    let userAnswers: string[] = [];
+    if (rawAnswer.startsWith("[") && rawAnswer.endsWith("]")) {
+      try {
+        const parsed: unknown = JSON.parse(rawAnswer);
+        if (Array.isArray(parsed)) {
+          userAnswers = parsed.map(String);
+        } else {
+          userAnswers = [rawAnswer];
+        }
+      } catch {
+        userAnswers = [rawAnswer];
+      }
+    } else {
+      userAnswers = [rawAnswer];
+    }
+
+    const compareEq = (a: string, b: string) =>
+      a.trim().toLowerCase() === b.trim().toLowerCase();
+
+    return userAnswers.some((ua) =>
+      rule.allowedValues.some((av) => compareEq(ua, av)),
+    );
+  });
+}
 
 export function evaluateConditionRule(
   rule: ConditionRule,
@@ -126,21 +166,46 @@ export function getFieldAction(
     field.options &&
     typeof field.options === "object" &&
     !Array.isArray(field.options)
-      ? (field.options as { conditions?: FieldConditionConfig })
+      ? (field.options as {
+          conditions?: VisibilityConditionRule[] | FieldConditionConfig;
+        })
       : null;
 
-  const config = field.conditions || optionsObj?.conditions;
+  const rawConditions = field.conditions || optionsObj?.conditions;
 
-  if (!config || !config.rules || config.rules.length === 0) {
+  if (!rawConditions) {
     return field.isRequired ? "require" : "optional";
   }
 
-  const isMatch = evaluateConditionGroup(config, answers, ticketTypeId);
-  return isMatch ? config.thenAction : config.elseAction;
+  // Pure VisibilityConditionRule[] array
+  if (Array.isArray(rawConditions)) {
+    if (rawConditions.length === 0) {
+      return field.isRequired ? "require" : "optional";
+    }
+    const isVisible = evaluateVisibilityConditions(rawConditions, answers);
+    if (!isVisible) return "hide";
+    return field.isRequired ? "require" : "show";
+  }
+
+  // Legacy FieldConditionConfig
+  if ("rules" in rawConditions && Array.isArray(rawConditions.rules)) {
+    if (rawConditions.rules.length === 0) {
+      return field.isRequired ? "require" : "optional";
+    }
+    const isMatch = evaluateConditionGroup(
+      rawConditions,
+      answers,
+      ticketTypeId,
+    );
+    return isMatch ? rawConditions.thenAction : rawConditions.elseAction;
+  }
+
+  return field.isRequired ? "require" : "optional";
 }
 
 /** Returns true when a ticket type is currently on sale. */
 export function isTicketActive(tt: TicketType): boolean {
+  if (tt.isClosed) return false;
   const now = new Date();
   if (tt.saleStart && new Date(tt.saleStart) > now) return false;
   if (tt.saleEnd && new Date(tt.saleEnd) < now) return false;

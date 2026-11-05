@@ -9,9 +9,17 @@ import {
 import { verifyEventPermission } from "../utils/permissions";
 import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
-import type { ConditionGroup } from "../utils/registration-validation";
+import type {
+  ConditionGroup,
+  VisibilityConditionRule,
+} from "../utils/registration-validation";
 import db from "@db";
-import { ticketTypes, events, tickets } from "@db/schema";
+import {
+  ticketTypes,
+  events,
+  tickets,
+  type TicketLayoutConfig,
+} from "@db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
 
 interface CreateTicketTypeBody {
@@ -19,10 +27,21 @@ interface CreateTicketTypeBody {
   name: string;
   description?: string;
   price?: number;
+  templateImageUrl?: string | null;
+  templateConfig?: TicketLayoutConfig | null;
   passFeeToCustomer?: boolean;
   quantityLimit?: number | null;
   poolName?: string | null;
   poolCapacity?: number | null;
+  category?: string | null;
+  tags?: string[];
+  enableWaitlist?: boolean;
+  multiDayCheckIn?: boolean;
+  maxPerUser?: number | null;
+  isFixedDefault?: boolean;
+  collectGst?: boolean;
+  isClosed?: boolean;
+  conditions?: VisibilityConditionRule[] | null;
   eligibilityRules?: ConditionGroup | null;
   saleStart?: string | null;
   saleEnd?: string | null;
@@ -87,10 +106,21 @@ export const createTicketType = async (
           isHidden: body.isHidden ?? false,
           description: body.description,
           price: normalizedPrice,
+          templateImageUrl: body.templateImageUrl ?? null,
+          templateConfig: body.templateConfig ?? null,
           passFeeToCustomer: body.passFeeToCustomer ?? true,
           quantityLimit: body.quantityLimit,
           poolName: body.poolName ?? null,
           poolCapacity: body.poolCapacity ?? null,
+          category: body.category ?? null,
+          tags: body.tags ?? [],
+          enableWaitlist: body.enableWaitlist ?? false,
+          multiDayCheckIn: body.multiDayCheckIn ?? false,
+          maxPerUser: body.maxPerUser ?? null,
+          isFixedDefault: body.isFixedDefault ?? false,
+          collectGst: body.collectGst ?? false,
+          isClosed: body.isClosed ?? false,
+          conditions: body.conditions ?? null,
           eligibilityRules: body.eligibilityRules ?? null,
           saleStart: body.saleStart ? new Date(body.saleStart) : null,
           saleEnd: body.saleEnd ? new Date(body.saleEnd) : null,
@@ -191,6 +221,10 @@ export const updateTicketType = async (
     if (body.description !== undefined) payload.description = body.description;
     if (body.price !== undefined)
       payload.price = fromPaise(toPaise(String(body.price)));
+    if (body.templateImageUrl !== undefined)
+      payload.templateImageUrl = body.templateImageUrl;
+    if (body.templateConfig !== undefined)
+      payload.templateConfig = body.templateConfig;
     if (body.passFeeToCustomer !== undefined)
       payload.passFeeToCustomer = body.passFeeToCustomer;
     if (body.quantityLimit !== undefined)
@@ -198,6 +232,18 @@ export const updateTicketType = async (
     if (body.poolName !== undefined) payload.poolName = body.poolName;
     if (body.poolCapacity !== undefined)
       payload.poolCapacity = body.poolCapacity;
+    if (body.category !== undefined) payload.category = body.category;
+    if (body.tags !== undefined) payload.tags = body.tags;
+    if (body.enableWaitlist !== undefined)
+      payload.enableWaitlist = body.enableWaitlist;
+    if (body.multiDayCheckIn !== undefined)
+      payload.multiDayCheckIn = body.multiDayCheckIn;
+    if (body.maxPerUser !== undefined) payload.maxPerUser = body.maxPerUser;
+    if (body.isFixedDefault !== undefined)
+      payload.isFixedDefault = body.isFixedDefault;
+    if (body.collectGst !== undefined) payload.collectGst = body.collectGst;
+    if (body.isClosed !== undefined) payload.isClosed = body.isClosed;
+    if (body.conditions !== undefined) payload.conditions = body.conditions;
     if (body.eligibilityRules !== undefined)
       payload.eligibilityRules = body.eligibilityRules;
     if (body.isRefundable !== undefined)

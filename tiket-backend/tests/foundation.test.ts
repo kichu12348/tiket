@@ -29,6 +29,7 @@ describe("trusted input boundaries", () => {
       fieldType: "text",
       isRequired: true,
       options: null,
+      conditions: null,
       sortOrder: 0,
       page: 1,
       createdAt: new Date(),

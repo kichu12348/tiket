@@ -16,9 +16,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import type { ConditionGroup } from "../utils/registration-validation";
+import type {
+  ConditionGroup,
+  VisibilityConditionRule,
+} from "../utils/registration-validation";
 
 export type {
+  VisibilityConditionRule,
   ConditionRule,
   ConditionGroup,
   FieldConditionConfig,
@@ -222,6 +226,28 @@ export const eventTeamMembers = pgTable("event_team_members", {
 // 🎟️ TICKET SYSTEM & POLICY
 // ==========================================
 
+export interface TicketLayoutLayer {
+  id: string;
+  type: "qr" | "text";
+  name: string; // e.g. "QR Code", "Name", "{{ticket_code}}"
+  tokenOrText: string; // e.g. "{{name}}", "{{ticket_code}}", "{{form.College}}"
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  fontSize: number; // e.g. 43
+  maxLines: number; // e.g. 2
+  lineSpacing: number; // e.g. 0
+  fontColor: string; // e.g. "#000000"
+}
+
+export interface TicketLayoutConfig {
+  canvasWidth: number;
+  canvasHeight: number;
+  layers: TicketLayoutLayer[];
+}
+
 export const ticketTypes = pgTable("ticket_types", {
   id: uuid("id").primaryKey().$defaultFn(uuidv7),
   eventId: uuid("event_id")
@@ -231,10 +257,21 @@ export const ticketTypes = pgTable("ticket_types", {
   description: text("description"),
   isHidden: boolean("is_hidden").notNull().default(false),
   price: numeric("price", { precision: 10, scale: 2 }).notNull().default("0"), // 0 for free
+  templateImageUrl: text("template_image_url"),
+  templateConfig: jsonb("template_config").$type<TicketLayoutConfig | null>(),
   quantityLimit: integer("quantity_limit"), // null means unlimited
   poolName: varchar("pool_name", { length: 100 }),
   poolCapacity: integer("pool_capacity"),
+  category: varchar("category", { length: 100 }),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  enableWaitlist: boolean("enable_waitlist").notNull().default(false),
+  multiDayCheckIn: boolean("multi_day_check_in").notNull().default(false),
+  maxPerUser: integer("max_per_user"),
+  isFixedDefault: boolean("is_fixed_default").notNull().default(false),
+  collectGst: boolean("collect_gst").notNull().default(false),
+  isClosed: boolean("is_closed").notNull().default(false),
   passFeeToCustomer: boolean("pass_fee_to_customer").notNull().default(true),
+  conditions: jsonb("conditions").$type<VisibilityConditionRule[] | null>(),
   eligibilityRules: jsonb("eligibility_rules").$type<ConditionGroup | null>(),
   saleStart: timestamp("sale_start"),
   saleEnd: timestamp("sale_end"),
@@ -429,6 +466,7 @@ export const formFields = pgTable("form_fields", {
   fieldType: fieldTypeEnum("field_type").notNull(),
   isRequired: boolean("is_required").notNull().default(true),
   options: jsonb("options"), // Array of choices for select/radio, or { choices, min, max, conditions }
+  conditions: jsonb("conditions").$type<VisibilityConditionRule[] | null>(),
   sortOrder: integer("sort_order").notNull().default(0),
   page: integer("page").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),

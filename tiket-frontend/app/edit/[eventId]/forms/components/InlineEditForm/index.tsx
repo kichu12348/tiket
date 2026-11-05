@@ -8,13 +8,17 @@ import type { LocalField, FieldType } from "../../types";
 import { FIELD_TYPES } from "../../types";
 import { isChoiceField, isMultiChoiceField } from "../../functions/formHelpers";
 import styles from "./InlineEditForm.module.css";
-import type { ConditionRule, FieldConditionConfig } from "@/types/form";
+import type { FormField, VisibilityConditionRule, FieldConditionConfig } from "@/types/form";
+import ConditionBuilder from "@/components/ConditionBuilder";
 
 interface Props {
-  field: LocalField & { conditions?: FieldConditionConfig | null };
+  field: LocalField & {
+    conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+  };
+  availableFields?: (LocalField | FormField)[];
   onSave: (
     updated: Omit<LocalField, "isEditing"> & {
-      conditions?: FieldConditionConfig | null;
+      conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
     },
   ) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -23,6 +27,7 @@ interface Props {
 
 export default function InlineEditForm({
   field,
+  availableFields = [],
   onSave,
   onDelete,
   onCancel,
@@ -39,36 +44,48 @@ export default function InlineEditForm({
   );
 
   const initialConditions =
-    (field as unknown as { conditions?: FieldConditionConfig | null })
-      ?.conditions ?? null;
+    (field as unknown as {
+      conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+    })?.conditions ?? null;
 
-  const [hasConditions, setHasConditions] = useState(
-    Boolean(
-      initialConditions &&
-        initialConditions.rules &&
-        initialConditions.rules.length > 0,
-    ),
-  );
-  const [condMatch, setCondMatch] = useState<"all" | "any">(
-    initialConditions?.match ?? "all",
-  );
-  const [condRules, setCondRules] = useState<ConditionRule[]>(
-    initialConditions?.rules?.length
-      ? initialConditions.rules
-      : [
-          {
-            sourceType: "field",
-            sourceId: "",
-            operator: "equals",
-            value: "",
-          },
-        ],
-  );
-  const [thenAction, setThenAction] = useState<"show" | "require" | "hide">(
-    initialConditions?.thenAction ?? "require",
-  );
-  const [elseAction, setElseAction] = useState<"hide" | "optional" | "show">(
-    initialConditions?.elseAction ?? "hide",
+  const [hasConditions, setHasConditions] = useState(() => {
+    if (!initialConditions) return false;
+    if (Array.isArray(initialConditions)) return initialConditions.length > 0;
+    return Boolean(initialConditions.rules && initialConditions.rules.length > 0);
+  });
+
+  const [conditions, setConditions] = useState<VisibilityConditionRule[]>(() => {
+    if (!initialConditions) return [];
+    if (Array.isArray(initialConditions)) return initialConditions;
+    if ("rules" in initialConditions && Array.isArray(initialConditions.rules)) {
+      return initialConditions.rules.map((r) => ({
+        fieldId: r.sourceId,
+        allowedValues: Array.isArray(r.value)
+          ? r.value
+          : r.value
+            ? [String(r.value)]
+            : [],
+      }));
+    }
+    return [];
+  });
+
+  const normalizedAvailableFields: FormField[] = (availableFields || []).map(
+    (f) => {
+      const isFormField = "options" in f && !Array.isArray(f.options);
+      return {
+        id: (f as LocalField).serverId || (f as LocalField).localId || (f as FormField).id,
+        eventId: (f as FormField).eventId || "",
+        name: f.name,
+        label: f.label,
+        fieldType: f.fieldType,
+        isRequired: f.isRequired,
+        options: isFormField ? (f as FormField).options : f.options,
+        sortOrder: f.sortOrder || 0,
+        page: f.page || 1,
+        createdAt: (f as FormField).createdAt || "",
+      };
+    },
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -128,22 +145,13 @@ export default function InlineEditForm({
 
     setIsSaving(true);
     try {
-      let conditionsConfig: FieldConditionConfig | null = null;
+      let conditionsConfig: VisibilityConditionRule[] | null = null;
       if (hasConditions) {
-        const validRules = condRules.filter(
-          (r) =>
-            r.sourceId.trim() &&
-            (Array.isArray(r.value)
-              ? r.value.length > 0
-              : String(r.value).trim()),
+        const validRules = conditions.filter(
+          (r) => r.fieldId.trim() && r.allowedValues.length > 0,
         );
         if (validRules.length > 0) {
-          conditionsConfig = {
-            match: condMatch,
-            rules: validRules,
-            thenAction,
-            elseAction,
-          };
+          conditionsConfig = validRules;
         }
       }
 
@@ -260,7 +268,7 @@ export default function InlineEditForm({
       <div className={styles.editFormRow}>
         <div className={styles.switchRow}>
           <Switch checked={hasConditions} onChange={setHasConditions} />
-          <label>Conditional Logic (If / Then / Else)</label>
+          <label>Visibility Rules</label>
         </div>
       </div>
 
@@ -277,301 +285,15 @@ export default function InlineEditForm({
             marginBottom: "1rem",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                color: "var(--text-secondary)",
-              }}
-            >
-              Condition Rules
-            </span>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  color: "var(--text-muted)",
-                }}
-              >
-                Match:
-              </span>
-              <select
-                className={styles.input}
-                value={condMatch}
-                onChange={(e) =>
-                  setCondMatch(e.target.value as "all" | "any")
-                }
-                style={{
-                  background: "#1c1c1e",
-                  color: "#fff",
-                  padding: "0.25rem 0.5rem",
-                  fontSize: "0.75rem",
-                  width: "auto",
-                }}
-              >
-                <option value="all">All rules (AND)</option>
-                <option value="any">Any rule (OR)</option>
-              </select>
-            </div>
-          </div>
-
-          {condRules.map((rule, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.5rem",
-                padding: "0.6rem",
-                background: "rgba(0, 0, 0, 0.2)",
-                borderRadius: "6px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  gap: "0.5rem",
-                  alignItems: "center",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "var(--text-muted)",
-                    width: "20px",
-                  }}
-                >
-                  IF
-                </span>
-                <select
-                  className={styles.input}
-                  value={rule.sourceType}
-                  onChange={(e) => {
-                    const updated = [...condRules];
-                    updated[idx] = {
-                      ...rule,
-                      sourceType: e.target.value as "field" | "ticketType",
-                      sourceId:
-                        e.target.value === "ticketType"
-                          ? "ticketTypeId"
-                          : rule.sourceId,
-                    };
-                    setCondRules(updated);
-                  }}
-                  style={{
-                    background: "#1c1c1e",
-                    color: "#fff",
-                    flex: 1,
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  <option value="field">Form Question</option>
-                  <option value="ticketType">Ticket Type</option>
-                </select>
-                {rule.sourceType === "field" && (
-                  <input
-                    type="text"
-                    className={styles.input}
-                    placeholder="Field ID or Name (e.g. role)"
-                    value={rule.sourceId}
-                    onChange={(e) => {
-                      const updated = [...condRules];
-                      updated[idx] = { ...rule, sourceId: e.target.value };
-                      setCondRules(updated);
-                    }}
-                    style={{ flex: 1, fontSize: "0.8rem" }}
-                  />
-                )}
-                {condRules.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCondRules(condRules.filter((_, i) => i !== idx))
-                    }
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--status-danger)",
-                      cursor: "pointer",
-                      padding: "0.25rem",
-                    }}
-                    title="Remove rule"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: "0.5rem",
-                  alignItems: "center",
-                }}
-              >
-                <select
-                  className={styles.input}
-                  value={rule.operator}
-                  onChange={(e) => {
-                    const updated = [...condRules];
-                    updated[idx] = {
-                      ...rule,
-                      operator: e.target.value as
-                        | "equals"
-                        | "not_equals"
-                        | "contains"
-                        | "in",
-                    };
-                    setCondRules(updated);
-                  }}
-                  style={{
-                    background: "#1c1c1e",
-                    color: "#fff",
-                    flex: 1,
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  <option value="equals">Equals</option>
-                  <option value="not_equals">Does not equal</option>
-                  <option value="contains">Contains</option>
-                  <option value="in">In list</option>
-                </select>
-                <input
-                  type="text"
-                  className={styles.input}
-                  placeholder="Expected value (e.g. Student)"
-                  value={
-                    Array.isArray(rule.value)
-                      ? rule.value.join(", ")
-                      : rule.value
-                  }
-                  onChange={(e) => {
-                    const updated = [...condRules];
-                    updated[idx] = {
-                      ...rule,
-                      value:
-                        rule.operator === "in"
-                          ? e.target.value
-                              .split(",")
-                              .map((s) => s.trim())
-                              .filter(Boolean)
-                          : e.target.value,
-                    };
-                    setCondRules(updated);
-                  }}
-                  style={{ flex: 1, fontSize: "0.8rem" }}
-                />
-              </div>
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={() =>
-              setCondRules([
-                ...condRules,
-                {
-                  sourceType: "field",
-                  sourceId: "",
-                  operator: "equals",
-                  value: "",
-                },
-              ])
-            }
-            style={{
-              alignSelf: "flex-start",
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "none",
-              borderRadius: "6px",
-              padding: "0.3rem 0.6rem",
-              color: "var(--color-text-soft)",
-              cursor: "pointer",
-              fontSize: "0.78rem",
-            }}
-          >
-            + Add Rule
-          </button>
-
-          <div
-            style={{
-              display: "flex",
-              gap: "0.75rem",
-              marginTop: "0.5rem",
-              borderTop: "1px solid var(--border-subtle)",
-              paddingTop: "0.75rem",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label
-                style={{
-                  fontSize: "0.75rem",
-                  display: "block",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                THEN Action
-              </label>
-              <select
-                className={styles.input}
-                value={thenAction}
-                onChange={(e) =>
-                  setThenAction(
-                    e.target.value as "show" | "require" | "hide",
-                  )
-                }
-                style={{
-                  background: "#1c1c1e",
-                  color: "#fff",
-                  fontSize: "0.8rem",
-                }}
-              >
-                <option value="require">Show & Require</option>
-                <option value="show">Show</option>
-                <option value="hide">Hide</option>
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                style={{
-                  fontSize: "0.75rem",
-                  display: "block",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                ELSE Action
-              </label>
-              <select
-                className={styles.input}
-                value={elseAction}
-                onChange={(e) =>
-                  setElseAction(
-                    e.target.value as "hide" | "optional" | "show",
-                  )
-                }
-                style={{
-                  background: "#1c1c1e",
-                  color: "#fff",
-                  fontSize: "0.8rem",
-                }}
-              >
-                <option value="hide">Hide</option>
-                <option value="optional">Show & Optional</option>
-                <option value="show">Show</option>
-              </select>
-            </div>
-          </div>
+          <ConditionBuilder
+            conditions={conditions}
+            onChange={setConditions}
+            availableFields={normalizedAvailableFields.filter(
+              (f) =>
+                f.id !==
+                (field.serverId || field.localId),
+            )}
+          />
         </div>
       )}
 

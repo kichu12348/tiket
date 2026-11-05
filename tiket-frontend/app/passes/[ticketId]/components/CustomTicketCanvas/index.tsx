@@ -17,7 +17,7 @@ import styles from "./CustomTicketCanvas.module.css";
 
 export interface CustomTicketCanvasProps {
   pass: TicketPassData;
-  template: TicketPassTemplate;
+  template?: TicketPassTemplate | null;
   containerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -77,6 +77,10 @@ export function resolveVariable(key: string, pass: Partial<TicketPassData>): str
     case "ticketid":
     case "id":
       return pass.id || "";
+    case "ticket_code":
+    case "ticket.code":
+    case "code":
+      return pass.qrCode || pass.id || "";
     case "order.id":
     case "orderid":
     case "order_id":
@@ -296,8 +300,20 @@ export function CustomTicketCanvas({
   const localContainerRef = React.useRef<HTMLDivElement>(null);
   const containerRef = externalContainerRef || localContainerRef;
 
-  const elementsJson = template.elementsJson;
+  const perTicketConfig = pass.ticketType?.templateConfig;
+  const isPerTicket = Boolean(
+    perTicketConfig && Array.isArray(perTicketConfig.layers),
+  );
+
+  const elementsJson = template?.elementsJson;
   const parsedConfig: TicketCanvasConfig = React.useMemo(() => {
+    if (isPerTicket && perTicketConfig) {
+      return {
+        canvasWidth: perTicketConfig.canvasWidth || 800,
+        canvasHeight: perTicketConfig.canvasHeight || 400,
+        elements: [],
+      };
+    }
     if (!elementsJson) {
       return { canvasWidth: 600, canvasHeight: 300, elements: [] };
     }
@@ -309,11 +325,19 @@ export function CustomTicketCanvas({
       }
     }
     return elementsJson as TicketCanvasConfig;
-  }, [elementsJson]);
+  }, [isPerTicket, perTicketConfig, elementsJson]);
 
-  const canvasWidth = parsedConfig.canvasWidth || 600;
-  const canvasHeight = parsedConfig.canvasHeight || 300;
+  const canvasWidth = isPerTicket
+    ? perTicketConfig?.canvasWidth || 800
+    : parsedConfig.canvasWidth || 600;
+  const canvasHeight = isPerTicket
+    ? perTicketConfig?.canvasHeight || 400
+    : parsedConfig.canvasHeight || 300;
+  const backgroundImageUrl = isPerTicket
+    ? pass.ticketType?.templateImageUrl || template?.backgroundImageUrl
+    : template?.backgroundImageUrl;
   const elements = parsedConfig.elements || [];
+  const perTicketLayers = perTicketConfig?.layers || [];
 
   const [containerWidth, setContainerWidth] = React.useState<number>(canvasWidth);
 
@@ -368,17 +392,132 @@ export function CustomTicketCanvas({
         data-testid="custom-ticket-artboard"
       >
         {/* Background Image filling canonical artboard */}
-        {template.backgroundImageUrl && (
+        {backgroundImageUrl && (
           <img
-            src={template.backgroundImageUrl}
+            src={backgroundImageUrl}
             alt="Ticket Background"
             className={styles.canvasBackground}
             data-testid="custom-ticket-bg"
           />
         )}
 
-        {/* Elements mapped over canvas */}
-        {elements.map((el) => {
+        {/* Per-Ticket Layout Layers */}
+        {isPerTicket
+          ? perTicketLayers.map((layer) => {
+              const isQr = layer.type === "qr";
+              const rotation = layer.rotation ?? 0;
+
+              if (isQr) {
+                const isScannable =
+                  pass.status === "active" || pass.status === "used";
+
+                const elementStyle: React.CSSProperties = {
+                  position: "absolute",
+                  left: `${layer.x}px`,
+                  top: `${layer.y}px`,
+                  width: `${layer.width}px`,
+                  height: `${layer.height}px`,
+                  transform: `rotate(${rotation}deg)`,
+                  transformOrigin: "center center",
+                };
+
+                if (isScannable) {
+                  return (
+                    <div
+                      key={layer.id}
+                      className={styles.elementWrapper}
+                      style={elementStyle}
+                      data-testid="qr-container"
+                    >
+                      <div
+                        className={styles.qrContainer}
+                        style={{
+                          backgroundColor: "#ffffff",
+                          borderRadius: 6,
+                          padding: 6,
+                        }}
+                      >
+                        <QRCode
+                          value={pass.qrCode}
+                          size={Math.max(
+                            20,
+                            Math.min(layer.width, layer.height) - 12,
+                          )}
+                          fgColor="#000000"
+                          bgColor="#ffffff"
+                          className={styles.qrSvg}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={layer.id}
+                    className={styles.elementWrapper}
+                    style={elementStyle}
+                    data-testid="locked-qr-badge"
+                  >
+                    <div className={styles.lockedQrBadge}>
+                      <Lock size={16} className={styles.lockedQrIcon} />
+                      <span className={styles.lockedQrText}>
+                        {pass.status === "pending_approval"
+                          ? "PENDING APPROVAL"
+                          : "LOCKED"}
+                      </span>
+                      <span className={styles.lockedQrSubtext}>
+                        QR Unscannable
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Text Layer
+              const rawText = interpolateText(layer.tokenOrText, pass);
+
+              return (
+                <div
+                  key={layer.id}
+                  className={styles.elementWrapper}
+                  style={{
+                    position: "absolute",
+                    left: `${layer.x}px`,
+                    top: `${layer.y}px`,
+                    width: `${layer.width}px`,
+                    height: `${layer.height}px`,
+                    transform: `rotate(${rotation}deg)`,
+                    transformOrigin: "center center",
+                    color: layer.fontColor || "inherit",
+                    fontSize: `${layer.fontSize}px`,
+                    letterSpacing: `${layer.lineSpacing}px`,
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    overflow: "hidden",
+                    wordBreak: "break-word",
+                    lineHeight: 1.2,
+                    boxSizing: "border-box",
+                  }}
+                  data-testid={`custom-element-${layer.id}`}
+                >
+                  <div
+                    style={{
+                      display: "-webkit-box",
+                      WebkitBoxOrient: "vertical",
+                      WebkitLineClamp: layer.maxLines || 1,
+                      overflow: "hidden",
+                      width: "100%",
+                      textAlign: "left",
+                    }}
+                  >
+                    {rawText}
+                  </div>
+                </div>
+              );
+            })
+          : elements.map((el) => {
           const resolved = resolveTicketLayer(el, pass);
           if (!resolved.visible) {
             return null;

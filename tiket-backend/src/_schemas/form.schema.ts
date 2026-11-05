@@ -17,6 +17,18 @@ const fieldTypes = [
   "select",
 ] as const;
 
+const visibilityConditionRuleSchema = {
+  type: "object",
+  required: ["fieldId", "allowedValues"],
+  properties: {
+    fieldId: { type: "string" },
+    allowedValues: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+};
+
 const conditionRuleSchema = {
   type: "object",
   required: ["sourceType", "sourceId", "operator", "value"],
@@ -71,14 +83,24 @@ const formFieldObj = {
             choices: { type: "array", items: { type: "string" } },
             min: { type: ["integer", "null"] },
             max: { type: ["integer", "null"] },
-            conditions: { anyOf: [fieldConditionConfigSchema, { type: "null" }] },
+            conditions: {
+              anyOf: [
+                { type: "array", items: visibilityConditionRuleSchema },
+                fieldConditionConfigSchema,
+                { type: "null" },
+              ],
+            },
           },
         },
         { type: "null" },
       ],
     },
     conditions: {
-      anyOf: [fieldConditionConfigSchema, { type: "null" }],
+      anyOf: [
+        { type: "array", items: visibilityConditionRuleSchema },
+        fieldConditionConfigSchema,
+        { type: "null" },
+      ],
     },
     sortOrder: { type: "integer" },
     page: { type: "integer" },
@@ -119,7 +141,11 @@ export const createFieldSchema = {
                 min: { type: ["integer", "null"] },
                 max: { type: ["integer", "null"] },
                 conditions: {
-                  anyOf: [fieldConditionConfigSchema, { type: "null" }],
+                  anyOf: [
+                    { type: "array", items: visibilityConditionRuleSchema },
+                    fieldConditionConfigSchema,
+                    { type: "null" },
+                  ],
                 },
               },
             },
@@ -127,7 +153,11 @@ export const createFieldSchema = {
           ],
         },
         conditions: {
-          anyOf: [fieldConditionConfigSchema, { type: "null" }],
+          anyOf: [
+            { type: "array", items: visibilityConditionRuleSchema },
+            fieldConditionConfigSchema,
+            { type: "null" },
+          ],
         },
         sortOrder: { type: "integer" },
         page: { type: "integer" },
@@ -189,7 +219,11 @@ export const updateFieldSchema = {
                 min: { type: ["integer", "null"] },
                 max: { type: ["integer", "null"] },
                 conditions: {
-                  anyOf: [fieldConditionConfigSchema, { type: "null" }],
+                  anyOf: [
+                    { type: "array", items: visibilityConditionRuleSchema },
+                    fieldConditionConfigSchema,
+                    { type: "null" },
+                  ],
                 },
               },
             },
@@ -197,7 +231,11 @@ export const updateFieldSchema = {
           ],
         },
         conditions: {
-          anyOf: [fieldConditionConfigSchema, { type: "null" }],
+          anyOf: [
+            { type: "array", items: visibilityConditionRuleSchema },
+            fieldConditionConfigSchema,
+            { type: "null" },
+          ],
         },
         sortOrder: { type: "integer" },
         page: { type: "integer" },

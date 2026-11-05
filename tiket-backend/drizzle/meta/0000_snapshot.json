@@ -1,5 +1,5 @@
 {
-  "id": "995c8fea-eeef-4264-9bd0-dd515da65411",
+  "id": "055cd5a4-febc-4398-8a4f-526751aa5297",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -736,6 +736,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "template_type": {
+          "name": "template_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'custom'"
+        },
         "recipient_email": {
           "name": "recipient_email",
           "type": "varchar(255)",
@@ -754,6 +761,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "rendered_body": {
+          "name": "rendered_body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "email_delivery_status",
@@ -765,6 +778,32 @@
         "error_message": {
           "name": "error_message",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "opened_at": {
+          "name": "opened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "open_count": {
+          "name": "open_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "resent_count": {
+          "name": "resent_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_resent_at": {
+          "name": "last_resent_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -888,6 +927,121 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.event_blacklist": {
+      "name": "event_blacklist",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_user_id": {
+          "name": "target_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pattern": {
+          "name": "pattern",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "event_blacklist_organization_id_users_id_fk": {
+          "name": "event_blacklist_organization_id_users_id_fk",
+          "tableFrom": "event_blacklist",
+          "tableTo": "users",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "event_blacklist_event_id_events_id_fk": {
+          "name": "event_blacklist_event_id_events_id_fk",
+          "tableFrom": "event_blacklist",
+          "tableTo": "events",
+          "columnsFrom": [
+            "event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "event_blacklist_target_user_id_users_id_fk": {
+          "name": "event_blacklist_target_user_id_users_id_fk",
+          "tableFrom": "event_blacklist",
+          "tableTo": "users",
+          "columnsFrom": [
+            "target_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "event_blacklist_created_by_users_id_fk": {
+          "name": "event_blacklist_created_by_users_id_fk",
+          "tableFrom": "event_blacklist",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -1095,6 +1249,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "social_links": {
+          "name": "social_links",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "start_date": {
           "name": "start_date",
           "type": "timestamp",
@@ -1146,6 +1306,26 @@
           "primaryKey": false,
           "notNull": false
         },
+        "max_tickets_per_user": {
+          "name": "max_tickets_per_user",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "overbooking_limit": {
+          "name": "overbooking_limit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "platform_fee_bps": {
+          "name": "platform_fee_bps",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 400
+        },
         "version": {
           "name": "version",
           "type": "integer",
@@ -1160,6 +1340,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'draft'"
+        },
+        "custom_insights_config": {
+          "name": "custom_insights_config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
         },
         "organization_id": {
           "name": "organization_id",
@@ -1256,6 +1443,12 @@
         },
         "options": {
           "name": "options",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conditions": {
+          "name": "conditions",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -1378,6 +1571,20 @@
           "primaryKey": false,
           "notNull": true
         },
+        "pass_fee_to_customer": {
+          "name": "pass_fee_to_customer",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "organizer_net_paise": {
+          "name": "organizer_net_paise",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "policy": {
           "name": "policy",
           "type": "jsonb",
@@ -1441,7 +1648,7 @@
       "checkConstraints": {
         "order_item_amounts": {
           "name": "order_item_amounts",
-          "value": "\"order_items\".\"unit_price_paise\" >= 0 and \"order_items\".\"discount_paise\" >= 0 and \"order_items\".\"discount_paise\" <= \"order_items\".\"unit_price_paise\" and \"order_items\".\"ticket_tax_paise\" >= 0 and \"order_items\".\"platform_fee_paise\" >= 0 and \"order_items\".\"fee_tax_paise\" >= 0 and \"order_items\".\"total_paise\" = \"order_items\".\"unit_price_paise\" - \"order_items\".\"discount_paise\" + \"order_items\".\"ticket_tax_paise\" + \"order_items\".\"platform_fee_paise\" + \"order_items\".\"fee_tax_paise\""
+          "value": "\"order_items\".\"unit_price_paise\" >= 0 and \"order_items\".\"discount_paise\" >= 0 and \"order_items\".\"discount_paise\" <= \"order_items\".\"unit_price_paise\" and \"order_items\".\"ticket_tax_paise\" >= 0 and \"order_items\".\"platform_fee_paise\" >= 0 and \"order_items\".\"fee_tax_paise\" >= 0 and (\n        (\"order_items\".\"pass_fee_to_customer\" = true and \"order_items\".\"total_paise\" = \"order_items\".\"unit_price_paise\" - \"order_items\".\"discount_paise\" + \"order_items\".\"ticket_tax_paise\" + \"order_items\".\"platform_fee_paise\" + \"order_items\".\"fee_tax_paise\")\n        or\n        (\"order_items\".\"pass_fee_to_customer\" = false and \"order_items\".\"total_paise\" = \"order_items\".\"unit_price_paise\" - \"order_items\".\"discount_paise\" + \"order_items\".\"ticket_tax_paise\")\n      )"
         }
       },
       "isRLSEnabled": false
@@ -1732,6 +1939,76 @@
       },
       "isRLSEnabled": false
     },
+    "public.organizer_bank_accounts": {
+      "name": "organizer_bank_accounts",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_holder_name": {
+          "name": "account_holder_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_number": {
+          "name": "account_number",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ifsc_code": {
+          "name": "ifsc_code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bank_name": {
+          "name": "bank_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "upi_id": {
+          "name": "upi_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "organizer_bank_accounts_user_id_users_id_fk": {
+          "name": "organizer_bank_accounts_user_id_users_id_fk",
+          "tableFrom": "organizer_bank_accounts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.payment_attempts": {
       "name": "payment_attempts",
       "schema": "",
@@ -1776,6 +2053,109 @@
           "tableTo": "orders",
           "columnsFrom": [
             "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.payout_requests": {
+      "name": "payout_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_paise": {
+          "name": "amount_paise",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'requested'"
+        },
+        "bank_snapshot": {
+          "name": "bank_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reference_number": {
+          "name": "reference_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "payout_requests_event_id_events_id_fk": {
+          "name": "payout_requests_event_id_events_id_fk",
+          "tableFrom": "payout_requests",
+          "tableTo": "events",
+          "columnsFrom": [
+            "event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "payout_requests_requested_by_users_id_fk": {
+          "name": "payout_requests_requested_by_users_id_fk",
+          "tableFrom": "payout_requests",
+          "tableTo": "users",
+          "columnsFrom": [
+            "requested_by"
           ],
           "columnsTo": [
             "id"
@@ -2272,6 +2652,91 @@
         "quantity_limit": {
           "name": "quantity_limit",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pool_name": {
+          "name": "pool_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pool_capacity": {
+          "name": "pool_capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "enable_waitlist": {
+          "name": "enable_waitlist",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "multi_day_check_in": {
+          "name": "multi_day_check_in",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "max_per_user": {
+          "name": "max_per_user",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_fixed_default": {
+          "name": "is_fixed_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "collect_gst": {
+          "name": "collect_gst",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_closed": {
+          "name": "is_closed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pass_fee_to_customer": {
+          "name": "pass_fee_to_customer",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "conditions": {
+          "name": "conditions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eligibility_rules": {
+          "name": "eligibility_rules",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

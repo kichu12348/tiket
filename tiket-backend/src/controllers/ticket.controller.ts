@@ -133,6 +133,8 @@ export const getTicketPass = async (
         isTransferable:
           item?.policy.isTransferable ?? row.ticketType.isTransferable,
         isRefundable: item?.policy.isRefundable ?? row.ticketType.isRefundable,
+        templateImageUrl: row.ticketType.templateImageUrl ?? null,
+        templateConfig: row.ticketType.templateConfig ?? null,
       },
       attendee: {
         id: row.attendee.id,

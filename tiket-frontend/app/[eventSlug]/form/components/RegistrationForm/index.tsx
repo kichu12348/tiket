@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FiAlertCircle, FiLoader } from "react-icons/fi";
@@ -17,6 +18,7 @@ import {
   buildFormResponses,
   getFieldAction,
   evaluateConditionGroup,
+  evaluateVisibilityConditions,
 } from "./utils";
 
 import ApprovalBanner from "./ApprovalBanner";
@@ -40,6 +42,8 @@ export default function RegistrationForm({
   const checkout = useCheckout(event.id, user);
   const [code, setCode] = useState("");
   const availability = useAvailability(event.id, code);
+  const searchParams = useSearchParams();
+  const ticketIdParam = searchParams.get("ticket_id");
   const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<
     string | null
   >(null);
@@ -48,14 +52,28 @@ export default function RegistrationForm({
   const [errorMessage, setErrorMessage] = useState("");
 
   // ── Ticket filtering ───────────────────────────────────────────────────────
-  const activeTicketTypes = useMemo(
-    () => (availability?.tiers ?? ticketTypes).filter(isTicketActive),
-    [ticketTypes, availability],
-  );
+  const activeTicketTypes = useMemo(() => {
+    const active = (availability?.tiers ?? ticketTypes).filter(isTicketActive);
+    if (ticketIdParam) {
+      const filtered = active.filter((t) => t.id === ticketIdParam);
+      if (filtered.length > 0) return filtered;
+    }
+    return active;
+  }, [ticketTypes, availability, ticketIdParam]);
+
+  const defaultSelectedId = useMemo(() => {
+    if (ticketIdParam && activeTicketTypes.some((t) => t.id === ticketIdParam)) {
+      return ticketIdParam;
+    }
+    const fixedDefault = activeTicketTypes.find((t) => t.isFixedDefault);
+    if (fixedDefault) return fixedDefault.id;
+    return activeTicketTypes[0]?.id ?? null;
+  }, [activeTicketTypes, ticketIdParam]);
+
   const needsTicketSelection = activeTicketTypes.length > 1;
 
   // ── Effective ticket selection ──────────────────────────────────────────
-  const effectiveTypeId = selectedTicketTypeId ?? activeTicketTypes[0]?.id;
+  const effectiveTypeId = selectedTicketTypeId ?? defaultSelectedId;
 
   // ── Normalize 0-indexed page numbers & sort fields ─────────────────────────
   const normalizedFormFields = useMemo(() => {
@@ -165,6 +183,22 @@ export default function RegistrationForm({
 
     const tier = activeTicketTypes.find((t) => t.id === effectiveTypeId);
     if (
+      tier?.conditions &&
+      Array.isArray(tier.conditions) &&
+      tier.conditions.length > 0
+    ) {
+      const isEligible = evaluateVisibilityConditions(
+        tier.conditions,
+        answers,
+      );
+      if (!isEligible) {
+        setErrorMessage(
+          `You do not meet the eligibility requirements for the selected "${tier.name}" ticket.`,
+        );
+        setSubmitStep("error");
+        return;
+      }
+    } else if (
       tier?.eligibilityRules &&
       tier.eligibilityRules.rules &&
       tier.eligibilityRules.rules.length > 0

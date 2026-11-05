@@ -1,2026 +1,1301 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import {
   QrCode,
-  User,
   Type,
-  Calendar,
-  MapPin,
-  Tag,
-  FileText,
-  Upload,
-  Save,
-  RotateCcw,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
   Trash2,
-  Copy,
-  Info,
-  Layers,
-  Sparkles,
+  Upload,
+  Palette,
+  ExternalLink,
   Plus,
+  Braces,
+  Sparkles,
+  Ticket,
 } from "lucide-react";
 import { getSignedUrl, uploadToCDN } from "@/api/events";
 import { getImageUrl } from "@/constants/config";
-import {
-  getTemplates,
-  createTemplate,
-  updateTemplate,
-  getTicketTypes,
-} from "@/api/tickets";
+import { getTicketTypes, updateTicketType } from "@/api/tickets";
 import { getFormFields } from "@/api/forms";
-import type {
-  TicketCanvasConfig,
-  TicketCanvasElement,
-  TicketElementType,
-  DocumentTemplate,
-  TicketLayerConditionBranch,
-  TicketLayerElseBehavior,
-} from "./types";
+import { useEventStore } from "@/store/useEventStore";
+import { getErrorMessage } from "@/lib/errors";
 import type { FormField } from "@/types/form";
-import type { TicketType } from "@/types/ticketType";
-import type { TicketPassData } from "@/types/ticket";
-import { resolveTicketLayer } from "@/app/passes/[ticketId]/components/CustomTicketCanvas";
+import type {
+  TicketType,
+  TicketLayoutConfig,
+  TicketLayoutLayer,
+} from "@/types/ticketType";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import styles from "./TicketDesignStudio.module.css";
 
-interface TicketDesignStudioProps {
+export interface TicketDesignStudioProps {
   eventId: string;
+  ticket?: TicketType | null;
+  onClose?: () => void;
+  onSaved?: (updatedTicket: TicketType) => void;
 }
 
-type ResizeHandleType = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
-
-const PRESETS = [
-  { label: "Landscape (1200x600)", width: 1200, height: 600 },
-  { label: "Vertical (750x1200)", width: 750, height: 1200 },
-  { label: "Badge (800x1000)", width: 800, height: 1000 },
-];
-
-const FONT_FAMILIES = [
-  "Inter, sans-serif",
-  "Playfair Display, serif",
-  "Space Grotesk, sans-serif",
-  "JetBrains Mono, monospace",
-  "Cinzel, serif",
-  "Plus Jakarta Sans, sans-serif",
-];
-
-let elementCounter = 0;
-function createUniqueId(prefix = "elem"): string {
-  elementCounter += 1;
-  return `${prefix}_${elementCounter}`;
+let layerCounter = 0;
+function generateLayerId(prefix = "layer"): string {
+  layerCounter += 1;
+  return `${prefix}_${Date.now()}_${layerCounter}`;
 }
 
-export default function TicketDesignStudio({ eventId }: TicketDesignStudioProps) {
-  const [templateId, setTemplateId] = useState<string | null>(null);
-  const [templateName, setTemplateName] = useState("Ticket Template");
-  const [canvasWidth, setCanvasWidth] = useState(1200);
-  const [canvasHeight, setCanvasHeight] = useState(600);
-  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
-  const [elements, setElements] = useState<TicketCanvasElement[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export function interpolateSamplePreview(
+  text: string,
+  ticketName: string,
+  eventTitle: string,
+): string {
+  return text.replace(/\{\{([^}]+)\}\}/g, (_, rawKey: string) => {
+    const key = rawKey.trim().toLowerCase();
+    switch (key) {
+      case "name":
+      case "attendee.name":
+      case "attendee_name":
+        return "Alex Morgan";
+      case "email":
+      case "attendee.email":
+      case "attendee_email":
+        return "alex.morgan@example.com";
+      case "ticket_code":
+      case "code":
+      case "ticket.code":
+        return "TIK-9842-X7";
+      case "ticket_type":
+      case "ticket.type":
+      case "tickettype":
+        return ticketName || "General Admission";
+      case "event_title":
+      case "event.title":
+      case "title":
+        return eventTitle || "Tech Summit 2026";
+      default:
+        if (key.startsWith("form.")) {
+          const field = key.replace("form.", "").toLowerCase();
+          if (field.includes("college") || field.includes("university")) {
+            return "Stanford University";
+          }
+          if (field.includes("t-shirt") || field.includes("tshirt")) {
+            return "Size L";
+          }
+          if (field.includes("designation") || field.includes("role")) {
+            return "Staff Engineer";
+          }
+          return "VIP Delegate";
+        }
+        return "Sample Value";
+    }
+  });
+}
 
-  // Form Fields & Ticket Types
+export default function TicketDesignStudio({
+  eventId,
+  ticket: initialTicket,
+  onClose,
+  onSaved,
+}: TicketDesignStudioProps) {
+  const storeEvent = useEventStore((state) => state.event);
+
+  // Tickets state
+  const [ticketTypesList, setTicketTypesList] = useState<TicketType[]>([]);
+  const [activeTicket, setActiveTicket] = useState<TicketType | null>(
+    initialTicket ?? null,
+  );
+
+  // Editor mode & Zoom
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [zoom, setZoom] = useState<string>("Fit");
+  const [viewportSize, setViewportSize] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 0, height: 0 });
+
+  // Canvas dimensions & template
+  const [templateImageUrl, setTemplateImageUrl] = useState<string | null>(
+    initialTicket?.templateImageUrl ?? null,
+  );
+  const [canvasWidth, setCanvasWidth] = useState<number>(
+    initialTicket?.templateConfig?.canvasWidth ?? 800,
+  );
+  const [canvasHeight, setCanvasHeight] = useState<number>(
+    initialTicket?.templateConfig?.canvasHeight ?? 400,
+  );
+
+  // Layers
+  const [layers, setLayers] = useState<TicketLayoutLayer[]>(
+    initialTicket?.templateConfig?.layers ?? [],
+  );
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(
+    initialTicket?.templateConfig?.layers?.[0]?.id ?? null,
+  );
+
+  // Form fields for token picker
   const [formFields, setFormFields] = useState<FormField[]>([]);
-  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
 
-  // Simulator State
-  const [simulatorActive, setSimulatorActive] = useState(false);
-  const [simulatedTicketTypeId, setSimulatedTicketTypeId] = useState<string>("");
-  const [simulatedAnswers, setSimulatedAnswers] = useState<Record<string, string>>({});
-
-  // Viewport zoom & scale
-  const [zoomScale, setZoomScale] = useState(1);
-  const [isAutoFit, setIsAutoFit] = useState(true);
-  const [showGuide, setShowGuide] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  // Async state
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [tokenPopoverOpen, setTokenPopoverOpen] = useState(false);
 
-  // Snap guides
-  const [snapX, setSnapX] = useState<number | null>(null);
-  const [snapY, setSnapY] = useState<number | null>(null);
-
-  const viewportRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // ResizeObserver for viewport scaling
+  // Measure viewport size for auto-fit zoom
   useEffect(() => {
-    const el = viewportRef.current;
+    const el = scrollAreaRef.current;
     if (!el) return;
 
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      if (isAutoFit) {
-        const padding = 60;
-        const width = entry.contentRect.width - padding;
-        const height = entry.contentRect.height - padding;
-        if (width > 0 && height > 0) {
-          const scaleX = width / canvasWidth;
-          const scaleY = height / canvasHeight;
-          setZoomScale(Math.min(scaleX, scaleY, 1));
-        }
-      }
-    });
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [canvasWidth, canvasHeight, isAutoFit]);
-
-  // Load template, form fields & ticket types on mount
-  useEffect(() => {
-    let mounted = true;
-
-    const loadData = async () => {
-      // 1. Load active template
-      try {
-        const templates = await getTemplates(eventId);
-        if (!mounted) return;
-        const active = templates.find((t: DocumentTemplate) => t.type === "ticket");
-        if (active) {
-          setTemplateId(active.id);
-          setTemplateName(active.name || "Ticket Template");
-          setBackgroundImageUrl(active.backgroundImageUrl || null);
-
-          if (active.elementsJson && typeof active.elementsJson === "object") {
-            const config = active.elementsJson as Partial<TicketCanvasConfig>;
-            if (config.canvasWidth) setCanvasWidth(config.canvasWidth);
-            if (config.canvasHeight) setCanvasHeight(config.canvasHeight);
-            if (Array.isArray(config.elements)) {
-              setElements(config.elements);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load ticket templates:", err);
-      }
-
-      // 2. Load Form Fields (graceful fallback)
-      try {
-        const fields = await getFormFields(eventId);
-        if (mounted && Array.isArray(fields)) {
-          setFormFields(fields);
-        }
-      } catch {
-        // Fallback or unmocked in test
-      }
-
-      // 3. Load Ticket Types (graceful fallback)
-      try {
-        const types = await getTicketTypes(eventId);
-        if (mounted && Array.isArray(types)) {
-          setTicketTypes(types);
-          if (types.length > 0) {
-            setSimulatedTicketTypeId(types[0].id);
-          }
-        }
-      } catch {
-        // Fallback or unmocked in test
-      }
+    const updateSize = () => {
+      setViewportSize({
+        width: el.clientWidth,
+        height: el.clientHeight,
+      });
     };
 
-    void loadData();
+    updateSize();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) {
+          setViewportSize({
+            width: entry.contentRect.width,
+            height: entry.contentRect.height,
+          });
+        }
+      });
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+  }, []);
+
+  // Fetch ticket types if not provided
+  useEffect(() => {
+    let isMounted = true;
+    if (!initialTicket) {
+      getTicketTypes(eventId)
+        .then((data) => {
+          if (!isMounted) return;
+          setTicketTypesList(data || []);
+          if (data && data.length > 0 && !activeTicket) {
+            const first = data[0];
+            setActiveTicket(first);
+            setTemplateImageUrl(first.templateImageUrl ?? null);
+            setCanvasWidth(first.templateConfig?.canvasWidth ?? 800);
+            setCanvasHeight(first.templateConfig?.canvasHeight ?? 400);
+            setLayers(first.templateConfig?.layers ?? []);
+            setSelectedLayerId(first.templateConfig?.layers?.[0]?.id ?? null);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load tickets", err);
+        });
+    }
     return () => {
-      mounted = false;
+      isMounted = false;
+    };
+  }, [eventId, initialTicket, activeTicket]);
+
+  // Fetch form fields for token autocomplete
+  useEffect(() => {
+    let isMounted = true;
+    getFormFields(eventId)
+      .then((fields) => {
+        if (isMounted) setFormFields(fields || []);
+      })
+      .catch((err) => {
+        console.error("Failed to load form fields", err);
+      });
+    return () => {
+      isMounted = false;
     };
   }, [eventId]);
 
-  const selectedElement = elements.find((el) => el.id === selectedId) || null;
+  // Sync state if active ticket changes
+  const switchTicket = useCallback((t: TicketType) => {
+    setActiveTicket(t);
+    setTemplateImageUrl(t.templateImageUrl ?? null);
+    setCanvasWidth(t.templateConfig?.canvasWidth ?? 800);
+    setCanvasHeight(t.templateConfig?.canvasHeight ?? 400);
+    setLayers(t.templateConfig?.layers ?? []);
+    setSelectedLayerId(t.templateConfig?.layers?.[0]?.id ?? null);
+  }, []);
 
-  // Add Element
-  const addElement = (
-    type: TicketElementType,
-    label: string,
-    variableKey?: string,
-    customText?: string,
-    extraWidth = 280,
-    extraHeight = 44,
-    fieldId?: string,
-    fieldLabel?: string,
-    fallbackText?: string,
-  ) => {
-    const newId = createUniqueId("elem");
-    const newElement: TicketCanvasElement = {
-      id: newId,
-      type,
-      label,
-      variableKey,
-      customText,
-      fieldId,
-      fieldLabel,
-      fallbackText,
-      x: Math.round(canvasWidth / 2 - extraWidth / 2),
-      y: Math.round(canvasHeight / 2 - extraHeight / 2),
-      width: extraWidth,
-      height: extraHeight,
-      rotation: 0,
-      zIndex: elements.length + 1,
-      style: {
-        fontFamily: "Inter, sans-serif",
-        fontSize: type === "qr" ? 140 : type === "badge" ? 14 : 20,
-        fontWeight: type === "qr" ? 400 : 600,
-        color: "#ffffff",
-        textAlign: type === "badge" ? "center" : "left",
-        autoFitText: false,
-        qrFgColor: "#000000",
-        qrBgColor: "#ffffff",
-        backgroundColor:
-          type === "badge" ? "rgba(40, 167, 69, 0.25)" : undefined,
-        borderRadius: type === "badge" ? 6 : undefined,
-      },
-    };
-    setElements((prev) => [...prev, newElement]);
-    setSelectedId(newId);
-  };
+  const selectedLayer = useMemo(() => {
+    return layers.find((l) => l.id === selectedLayerId) || null;
+  }, [layers, selectedLayerId]);
 
-  const addFormFieldElement = (field: FormField) => {
-    addElement(
-      "form_field",
-      field.label,
-      `{{form.${field.label}}}`,
-      `[${field.label}]`,
-      260,
-      40,
-      field.id,
-      field.label,
-      "",
-    );
-  };
+  // Zoom calculation
+  const zoomScale = useMemo(() => {
+    if (zoom === "Fit") {
+      if (!viewportSize.width || !viewportSize.height) return 1;
+      const paddingX = 80;
+      const paddingY = 80;
+      const availW = Math.max(100, viewportSize.width - paddingX);
+      const availH = Math.max(100, viewportSize.height - paddingY);
+      const scale = Math.min(1, availW / canvasWidth, availH / canvasHeight);
+      return Math.max(0.1, Number(scale.toFixed(2)));
+    }
+    switch (zoom) {
+      case "50%":
+        return 0.5;
+      case "75%":
+        return 0.75;
+      case "125%":
+        return 1.25;
+      default:
+        return 1;
+    }
+  }, [zoom, viewportSize, canvasWidth, canvasHeight]);
 
-  const addBadgeElement = () => {
-    addElement(
-      "badge",
-      "Badge",
-      undefined,
-      "VIP PASS",
-      140,
-      36,
-    );
-  };
-
-  // Update selected element property
-  const updateSelected = (updates: Partial<TicketCanvasElement>) => {
-    if (!selectedId) return;
-    setElements((prev) =>
-      prev.map((el) => (el.id === selectedId ? { ...el, ...updates } : el)),
-    );
-  };
-
-  const updateSelectedStyle = (styleUpdates: Partial<TicketCanvasElement["style"]>) => {
-    if (!selectedId) return;
-    setElements((prev) =>
-      prev.map((el) =>
-        el.id === selectedId
-          ? { ...el, style: { ...el.style, ...styleUpdates } }
-          : el,
-      ),
-    );
-  };
-
-  // Remove element
-  const deleteElement = (id: string) => {
-    setElements((prev) => prev.filter((el) => el.id !== id));
-    if (selectedId === id) setSelectedId(null);
-  };
-
-  // Duplicate element
-  const duplicateElement = (id: string) => {
-    const target = elements.find((el) => el.id === id);
-    if (!target) return;
-    const copyId = createUniqueId("elem");
-    const copy: TicketCanvasElement = {
-      ...target,
-      id: copyId,
-      x: target.x + 20,
-      y: target.y + 20,
-      zIndex: elements.length + 1,
-    };
-    setElements((prev) => [...prev, copy]);
-    setSelectedId(copyId);
-  };
-
-  // Condition Rules Management
-  const addConditionRule = () => {
-    if (!selectedElement) return;
-    const defaultSourceKey = ticketTypes[0]?.name || "VIP";
-    const defaultBranch: TicketLayerConditionBranch = {
-      id: createUniqueId("rule"),
-      sourceType: "ticketType",
-      sourceKey: defaultSourceKey,
-      operator: "equals",
-      value: defaultSourceKey,
-      thenEffect: {
-        visible: true,
-        textOverride: "",
-        colorOverride: "",
-        bgColorOverride: "",
-      },
-    };
-    const currentRules = selectedElement.conditionalRules || [];
-    updateSelected({
-      conditionalRules: [...currentRules, defaultBranch],
-      elseBehavior: selectedElement.elseBehavior || {
-        visible: true,
-        textOverride: "",
-        colorOverride: "",
-        bgColorOverride: "",
-      },
-    });
-  };
-
-  const updateConditionRule = (
-    ruleId: string,
-    updates: Partial<TicketLayerConditionBranch>,
-  ) => {
-    if (!selectedElement || !selectedElement.conditionalRules) return;
-    const updated = selectedElement.conditionalRules.map((rule) => {
-      if (rule.id !== ruleId) return rule;
-      return {
-        ...rule,
-        ...updates,
-        thenEffect: {
-          ...rule.thenEffect,
-          ...(updates.thenEffect || {}),
-        },
-      };
-    });
-    updateSelected({ conditionalRules: updated });
-  };
-
-  const deleteConditionRule = (ruleId: string) => {
-    if (!selectedElement || !selectedElement.conditionalRules) return;
-    const updated = selectedElement.conditionalRules.filter((r) => r.id !== ruleId);
-    updateSelected({ conditionalRules: updated });
-  };
-
-  const updateElseBehavior = (updates: Partial<TicketLayerElseBehavior>) => {
-    if (!selectedElement) return;
-    updateSelected({
-      elseBehavior: {
-        visible: selectedElement.elseBehavior?.visible ?? true,
-        textOverride: selectedElement.elseBehavior?.textOverride,
-        colorOverride: selectedElement.elseBehavior?.colorOverride,
-        bgColorOverride: selectedElement.elseBehavior?.bgColorOverride,
-        ...updates,
-      },
-    });
-  };
-
-  // Background Image Upload
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Template Image
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    toast.info("Uploading ticket background...");
     try {
-      const contentType = file.type || "image/png";
-      const { url: signedUrl, max_size } = await getSignedUrl(file.name, contentType);
+      setIsUploading(true);
+      const { url } = await getSignedUrl(file.name, file.type);
+      const { filename } = await uploadToCDN(url, file);
+      const fullUrl = getImageUrl(filename || "");
 
-      if (file.size / 1024 / 1024 > max_size) {
-        toast.error(`Image exceeds ${max_size}MB limit`);
-        setIsUploading(false);
-        return;
-      }
-
-      const { filename } = await uploadToCDN(signedUrl, file);
-      const fullUrl = getImageUrl(filename);
-      setBackgroundImageUrl(fullUrl);
-
-      // Auto-read natural dimensions
+      // Read natural width and height, fitting proportionally if too large
       const img = new Image();
       img.onload = () => {
-        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          setCanvasWidth(img.naturalWidth);
-          setCanvasHeight(img.naturalHeight);
-          toast.success(
-            `Background updated: Canvas adjusted to ${img.naturalWidth}x${img.naturalHeight}px`,
+        let naturalW = img.naturalWidth || img.width || 800;
+        let naturalH = img.naturalHeight || img.height || 400;
+
+        const MAX_CANVAS_WIDTH = 1200;
+        const MAX_CANVAS_HEIGHT = 800;
+        if (naturalW > MAX_CANVAS_WIDTH || naturalH > MAX_CANVAS_HEIGHT) {
+          const ratio = Math.min(
+            MAX_CANVAS_WIDTH / naturalW,
+            MAX_CANVAS_HEIGHT / naturalH,
           );
+          naturalW = Math.round(naturalW * ratio);
+          naturalH = Math.round(naturalH * ratio);
         }
+
+        setCanvasWidth(naturalW);
+        setCanvasHeight(naturalH);
+        setTemplateImageUrl(fullUrl);
+        setZoom("Fit");
+        toast.success("Template image uploaded.");
+        setIsUploading(false);
+      };
+      img.onerror = () => {
+        setTemplateImageUrl(fullUrl);
+        setZoom("Fit");
+        toast.success("Template image uploaded.");
+        setIsUploading(false);
       };
       img.src = fullUrl;
-    } catch (err) {
-      console.error("Failed to upload background image:", err);
-      toast.error("Failed to upload image. Please try again.");
-    } finally {
+    } catch (error) {
+      console.error("Upload failed", error);
+      toast.error("Failed to upload image template.");
       setIsUploading(false);
+    } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // Preset Selection
-  const applyPreset = (w: number, h: number) => {
-    setCanvasWidth(w);
-    setCanvasHeight(h);
-    setIsAutoFit(true);
+  const handleRemoveTemplate = () => {
+    setTemplateImageUrl(null);
+    toast.info("Template image removed.");
   };
 
-  // Drag Pointer Handling
-  const handleElementPointerDown = (
-    e: React.PointerEvent<HTMLDivElement>,
-    elementId: string,
+  // Add Layers
+  const handleAddTextLayer = () => {
+    const newLayer: TicketLayoutLayer = {
+      id: generateLayerId("text"),
+      type: "text",
+      name: "Delegate Name",
+      tokenOrText: "{{name}}",
+      x: Math.round(canvasWidth / 2 - 120),
+      y: Math.round(canvasHeight / 2 - 25),
+      width: 240,
+      height: 50,
+      fontSize: 32,
+      maxLines: 1,
+      lineSpacing: 0,
+      fontColor: "#000000",
+    };
+    setLayers((prev) => [...prev, newLayer]);
+    setSelectedLayerId(newLayer.id);
+  };
+
+  const handleAddQrLayer = () => {
+    const newLayer: TicketLayoutLayer = {
+      id: generateLayerId("qr"),
+      type: "qr",
+      name: "QR Code",
+      tokenOrText: "{{ticket_code}}",
+      x: Math.round(canvasWidth - 170),
+      y: Math.round(canvasHeight / 2 - 60),
+      width: 120,
+      height: 120,
+      fontSize: 14,
+      maxLines: 1,
+      lineSpacing: 0,
+      fontColor: "#000000",
+    };
+    setLayers((prev) => [...prev, newLayer]);
+    setSelectedLayerId(newLayer.id);
+  };
+
+  const handleDeleteLayer = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setLayers((prev) => prev.filter((l) => l.id !== id));
+    if (selectedLayerId === id) {
+      setSelectedLayerId(null);
+    }
+  };
+
+  const updateSelectedLayer = (fields: Partial<TicketLayoutLayer>) => {
+    if (!selectedLayerId) return;
+    setLayers((prev) =>
+      prev.map((l) => (l.id === selectedLayerId ? { ...l, ...fields } : l)),
+    );
+  };
+
+  // Layer Dragging
+  const handleLayerMouseDown = (
+    e: React.MouseEvent,
+    layerId: string,
+    initialX: number,
+    initialY: number,
   ) => {
+    if (mode === "preview") return;
     e.stopPropagation();
-    setSelectedId(elementId);
+    setSelectedLayerId(layerId);
 
-    const elem = elements.find((el) => el.id === elementId);
-    if (!elem) return;
+    const startMouseX = e.clientX;
+    const startMouseY = e.clientY;
 
-    const startPointerX = e.clientX;
-    const startPointerY = e.clientY;
-    const startX = elem.x;
-    const startY = elem.y;
-
-    const onPointerMove = (moveEvt: PointerEvent) => {
-      const deltaX = (moveEvt.clientX - startPointerX) / zoomScale;
-      const deltaY = (moveEvt.clientY - startPointerY) / zoomScale;
-
-      let nextX = Math.round(startX + deltaX);
-      let nextY = Math.round(startY + deltaY);
-
-      // Alignment Snap Guides (horizontal & vertical center)
-      const elementCenterX = nextX + elem.width / 2;
-      const elementCenterY = nextY + elem.height / 2;
-      const artboardCenterX = canvasWidth / 2;
-      const artboardCenterY = canvasHeight / 2;
-
-      if (Math.abs(elementCenterX - artboardCenterX) < 7) {
-        nextX = Math.round(artboardCenterX - elem.width / 2);
-        setSnapX(artboardCenterX);
-      } else {
-        setSnapX(null);
-      }
-
-      if (Math.abs(elementCenterY - artboardCenterY) < 7) {
-        nextY = Math.round(artboardCenterY - elem.height / 2);
-        setSnapY(artboardCenterY);
-      } else {
-        setSnapY(null);
-      }
-
-      setElements((prev) =>
-        prev.map((el) => (el.id === elementId ? { ...el, x: nextX, y: nextY } : el)),
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const dx = (moveEvent.clientX - startMouseX) / zoomScale;
+      const dy = (moveEvent.clientY - startMouseY) / zoomScale;
+      setLayers((prev) =>
+        prev.map((l) =>
+          l.id === layerId
+            ? {
+                ...l,
+                x: Math.max(0, Math.round(initialX + dx)),
+                y: Math.max(0, Math.round(initialY + dy)),
+              }
+            : l,
+        ),
       );
     };
 
-    const onPointerUp = () => {
-      setSnapX(null);
-      setSnapY(null);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
 
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   };
 
-  // 8-Handle Resize Pointer Handling
-  const handleResizePointerDown = (
-    e: React.PointerEvent<HTMLDivElement>,
-    handle: ResizeHandleType,
+  // Corner Resize
+  const handleResizeMouseDown = (
+    e: React.MouseEvent,
+    layer: TicketLayoutLayer,
+    handle: "nw" | "ne" | "se" | "sw",
   ) => {
+    if (mode === "preview") return;
     e.stopPropagation();
-    if (!selectedElement) return;
 
-    const startPointerX = e.clientX;
-    const startPointerY = e.clientY;
-    const startX = selectedElement.x;
-    const startY = selectedElement.y;
-    const startW = selectedElement.width;
-    const startH = selectedElement.height;
-    const isQr = selectedElement.type === "qr";
+    const startMouseX = e.clientX;
+    const startMouseY = e.clientY;
+    const { x: startX, y: startY, width: startW, height: startH } = layer;
 
-    const onPointerMove = (moveEvt: PointerEvent) => {
-      const deltaX = (moveEvt.clientX - startPointerX) / zoomScale;
-      const deltaY = (moveEvt.clientY - startPointerY) / zoomScale;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const dx = (moveEvent.clientX - startMouseX) / zoomScale;
+      const dy = (moveEvent.clientY - startMouseY) / zoomScale;
 
       let newX = startX;
       let newY = startY;
       let newW = startW;
       let newH = startH;
 
-      if (handle.includes("e")) newW = Math.max(30, Math.round(startW + deltaX));
-      if (handle.includes("s")) newH = Math.max(20, Math.round(startH + deltaY));
-      if (handle.includes("w")) {
-        const potentialW = Math.max(30, Math.round(startW - deltaX));
-        newX = startX + (startW - potentialW);
-        newW = potentialW;
-      }
-      if (handle.includes("n")) {
-        const potentialH = Math.max(20, Math.round(startH - deltaY));
-        newY = startY + (startH - potentialH);
-        newH = potentialH;
-      }
-
-      // Preserve aspect ratio for QR Code
-      if (isQr) {
-        const side = Math.max(newW, newH);
-        newW = side;
-        newH = side;
+      if (handle === "se") {
+        newW = Math.max(20, Math.round(startW + dx));
+        newH = Math.max(20, Math.round(startH + dy));
+      } else if (handle === "sw") {
+        newW = Math.max(20, Math.round(startW - dx));
+        newH = Math.max(20, Math.round(startH + dy));
+        newX = startX + (startW - newW);
+      } else if (handle === "ne") {
+        newW = Math.max(20, Math.round(startW + dx));
+        newH = Math.max(20, Math.round(startH - dy));
+        newY = startY + (startH - newH);
+      } else if (handle === "nw") {
+        newW = Math.max(20, Math.round(startW - dx));
+        newH = Math.max(20, Math.round(startH - dy));
+        newX = startX + (startW - newW);
+        newY = startY + (startH - newH);
       }
 
-      updateSelected({ x: newX, y: newY, width: newW, height: newH });
+      setLayers((prev) =>
+        prev.map((l) =>
+          l.id === layer.id
+            ? { ...l, x: newX, y: newY, width: newW, height: newH }
+            : l,
+        ),
+      );
     };
 
-    const onPointerUp = () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
     };
 
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   };
 
-  // Rotation Handle Pointer Handling (with 15° shift snap)
-  const handleRotatePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (!selectedElement) return;
-
-    const elemDom = document.getElementById(`ticket-element-${selectedElement.id}`);
-    if (!elemDom) return;
-
-    const rect = elemDom.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    const onPointerMove = (moveEvt: PointerEvent) => {
-      const rad = Math.atan2(moveEvt.clientY - centerY, moveEvt.clientX - centerX);
-      let deg = Math.round((rad * 180) / Math.PI + 90);
-
-      if (moveEvt.shiftKey) {
-        deg = Math.round(deg / 15) * 15;
-      }
-
-      if (deg > 180) deg -= 360;
-      if (deg < -180) deg += 360;
-
-      updateSelected({ rotation: deg });
-    };
-
-    const onPointerUp = () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-  };
-
-  // Save Canvas Config
-  const handleSave = async () => {
-    setIsSaving(true);
-    const canvasConfig: TicketCanvasConfig = {
-      canvasWidth,
-      canvasHeight,
-      elements,
-    };
+  // Save / Update to Backend
+  const handleUpdate = async () => {
+    if (!activeTicket) {
+      toast.error("No ticket tier selected.");
+      return;
+    }
 
     try {
-      if (templateId) {
-        await updateTemplate(templateId, {
-          name: templateName,
-          backgroundImageUrl,
-          elementsJson: canvasConfig,
-        });
-        toast.success("Ticket template saved successfully");
-      } else {
-        const created = await createTemplate(eventId, {
-          name: templateName,
-          type: "ticket",
-          backgroundImageUrl,
-          elementsJson: canvasConfig,
-        });
-        setTemplateId(created.id);
-        toast.success("Ticket template created successfully");
+      setIsSaving(true);
+      const config: TicketLayoutConfig = {
+        canvasWidth,
+        canvasHeight,
+        layers,
+      };
+
+      const updated = await updateTicketType(eventId, activeTicket.id, {
+        templateImageUrl,
+        templateConfig: config,
+      });
+
+      toast.success("Ticket layout updated.");
+      if (onSaved) {
+        onSaved(updated);
       }
-    } catch (err) {
-      console.error("Failed to save ticket template:", err);
-      toast.error("Failed to save template. Please try again.");
+    } catch (error: unknown) {
+      console.error("Failed to update ticket layout", error);
+      toast.error(getErrorMessage(error) || "Failed to save ticket layout.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Reset Canvas
-  const handleReset = () => {
-    if (confirm("Reset ticket design back to empty canvas?")) {
-      setElements([]);
-      setSelectedId(null);
-      setBackgroundImageUrl(null);
-      setCanvasWidth(1200);
-      setCanvasHeight(600);
-      toast.info("Ticket design reset.");
-    }
-  };
-
-  // Simulated pass data for "Preview As..." mode
-  const simulatedPass: Partial<TicketPassData> = useMemo(() => {
-    const selectedTier =
-      ticketTypes.find((tt) => tt.id === simulatedTicketTypeId) ||
-      (ticketTypes.length > 0
-        ? ticketTypes[0]
-        : {
-            id: "tt-sim",
-            name: "VIP Pass",
-            price: "1000",
-            isTransferable: true,
-            isRefundable: true,
-          });
-
-    const responses = Object.entries(simulatedAnswers).map(([label, value]) => ({
-      label,
-      value,
-    }));
-
-    return {
-      id: "sim-ticket-1",
-      qrCode: "https://tiket.app/passes/preview",
-      status: "active" as const,
-      createdAt: new Date().toISOString(),
-      ticketType: selectedTier,
-      attendee: {
-        id: "sim-user-1",
-        name: "Alex Johnson",
-        email: "alex@example.com",
-      },
-      responses,
-    };
-  }, [ticketTypes, simulatedTicketTypeId, simulatedAnswers]);
+  const eventTitle = storeEvent?.title || "Tech Summit 2026";
+  const activeTicketName = activeTicket?.name || "General Admission";
 
   return (
     <div className={styles.studioContainer} data-testid="ticket-design-studio">
-      {/* Top Bar */}
-      <div className={styles.topBar}>
-        <div className={styles.topBarLeft}>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageUpload}
-            accept="image/*"
-            style={{ display: "none" }}
-          />
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            <Upload size={16} />
-            <span>{isUploading ? "Uploading..." : "Upload Background"}</span>
-          </button>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleUploadImage}
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        style={{ display: "none" }}
+        data-testid="template-image-input"
+      />
 
-          {/* Dimension Presets */}
-          <div className={styles.presetGroup}>
-            {PRESETS.map((p) => {
-              const isActive = canvasWidth === p.width && canvasHeight === p.height;
-              return (
-                <button
-                  key={p.label}
-                  type="button"
-                  className={`${styles.presetBtn} ${isActive ? styles.presetBtnActive : ""}`}
-                  onClick={() => applyPreset(p.width, p.height)}
-                >
-                  {p.label}
-                </button>
-              );
-            })}
+      {/* TOP HEADER & MODE SWITCHER */}
+      <div className={styles.topHeader}>
+        <div className={styles.topLeftControls}>
+          {/* Segmented Mode Switcher */}
+          <div className={styles.modeSwitcher} role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "edit"}
+              className={`${styles.modeBtn} ${mode === "edit" ? styles.modeBtnActive : ""}`}
+              onClick={() => setMode("edit")}
+              data-testid="mode-edit-btn"
+            >
+              Edit Layout
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "preview"}
+              className={`${styles.modeBtn} ${mode === "preview" ? styles.modeBtnActive : ""}`}
+              onClick={() => {
+                setMode("preview");
+                setSelectedLayerId(null);
+              }}
+              data-testid="mode-preview-btn"
+            >
+              <Sparkles
+                size={13}
+                style={{ display: "inline", marginRight: "4px" }}
+              />
+              Sample Preview
+            </button>
           </div>
 
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={() => setShowGuide((prev) => !prev)}
-            title="Figma Dimension Guide"
-          >
-            <Info size={16} />
-          </button>
-        </div>
-
-        <div className={styles.topBarRight}>
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={handleReset}
-            title="Reset Canvas"
-          >
-            <RotateCcw size={16} />
-            <span>Reset</span>
-          </button>
-
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            <Save size={16} />
-            <span>{isSaving ? "Saving..." : "Save Template"}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* "Preview As..." Simulator Bar */}
-      <div className={styles.simulatorBar} data-testid="simulator-bar">
-        <div className={styles.simulatorControls}>
-          <button
-            type="button"
-            className={`${styles.btnSecondary} ${simulatorActive ? styles.simBadgeActive : ""}`}
-            onClick={() => setSimulatorActive((prev) => !prev)}
-            data-testid="toggle-simulator-btn"
-          >
-            <Sparkles size={14} />
-            <span>
-              {simulatorActive ? "Preview Active" : "Preview As (Simulator)"}
-            </span>
-          </button>
-
-          {simulatorActive && (
-            <>
-              {/* Ticket Tier Simulation */}
-              <div className={styles.simFieldRow}>
-                <span>Tier:</span>
-                <select
-                  className={styles.selectField}
-                  style={{ width: "auto", minWidth: 140 }}
-                  value={simulatedTicketTypeId}
-                  onChange={(e) => setSimulatedTicketTypeId(e.target.value)}
-                  data-testid="sim-tier-select"
-                >
-                  {ticketTypes.map((tt) => (
-                    <option key={tt.id} value={tt.id}>
-                      {tt.name}
-                    </option>
+          {/* Ticket Tier Info or Selector */}
+          {initialTicket ? (
+            <div className={styles.ticketBadge}>
+              <Ticket size={14} />
+              <span>{initialTicket.name}</span>
+            </div>
+          ) : ticketTypesList.length > 0 ? (
+            <div className={styles.tierSelectTrigger}>
+              <Select
+                value={activeTicket?.id || ""}
+                onValueChange={(val) => {
+                  const found = ticketTypesList.find((t) => t.id === val);
+                  if (found) switchTicket(found);
+                }}
+              >
+                <SelectTrigger className="h-[34px] text-xs">
+                  <SelectValue placeholder="Select ticket tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ticketTypesList.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
                   ))}
-                  {ticketTypes.length === 0 && (
-                    <option value="sim_vip">VIP Pass</option>
-                  )}
-                </select>
-              </div>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+        </div>
 
-              {/* Form Fields Simulation */}
-              {formFields.map((field) => (
-                <div key={field.id} className={styles.simFieldRow}>
-                  <span>{field.label}:</span>
-                  <input
-                    type="text"
-                    className={styles.simFieldInput}
-                    value={simulatedAnswers[field.label] || ""}
-                    placeholder="Simulate answer"
-                    data-testid={`sim-input-${field.label.toLowerCase().replace(/\s+/g, "-")}`}
-                    onChange={(e) =>
-                      setSimulatedAnswers((prev) => ({
-                        ...prev,
-                        [field.label]: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              ))}
-
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                onClick={() => {
-                  setSimulatedAnswers({});
-                  if (ticketTypes.length > 0) {
-                    setSimulatedTicketTypeId(ticketTypes[0].id);
-                  }
-                }}
-              >
-                Clear Answers
-              </button>
-            </>
-          )}
+        {/* Status / Zoom hint */}
+        <div style={{ fontSize: "0.8rem", color: "#a1a1aa" }}>
+          {canvasWidth} × {canvasHeight} px Artboard
         </div>
       </div>
 
-      {/* Figma Guide Banner */}
-      {showGuide && (
-        <div className={styles.guideCard}>
-          <strong>📐 Figma Ticket Dimension & Export Guide:</strong>
-          <div>
-            • <strong>Landscape Pass:</strong> Design at <code>1200 x 600 px</code> (2:1 aspect ratio). Best for PDF passes and wallet landscape views.
-          </div>
-          <div>
-            • <strong>Vertical Pass:</strong> Design at <code>750 x 1200 px</code> (9:16 approx). Best for Apple Wallet / Google Wallet mobile styles.
-          </div>
-          <div>
-            • <strong>Export format:</strong> Export your frame from Figma as <code>PNG</code> or <code>JPEG</code> at 1x or 2x, then upload as the background image. All dynamic placeholders will render sharply on top.
-          </div>
-        </div>
-      )}
-
-      {/* Main Layout */}
-      <div className={styles.mainLayout}>
-        {/* Workspace Card */}
-        <div className={styles.viewportCard}>
+      {/* MAIN BODY: VIEWPORT + SIDEBAR */}
+      <div className={styles.mainBody}>
+        {/* LEFT VIEWPORT */}
+        <div className={styles.viewportContainer}>
+          {/* Viewport Top Toolbar */}
           <div className={styles.viewportToolbar}>
-            <div className={styles.viewportInfo}>
-              <span>Canvas: {canvasWidth} x {canvasHeight} px</span>
-              <span>•</span>
-              <span>{elements.length} Element{elements.length === 1 ? "" : "s"}</span>
+            <div className={styles.viewportToolbarLeft}>
+              <div className={styles.zoomBox}>
+                <span className={styles.zoomLabel}>ZOOM</span>
+                <Select value={zoom} onValueChange={(val) => setZoom(val)}>
+                  <SelectTrigger
+                    className="w-[85px] h-[30px] text-xs bg-transparent border-0 text-white"
+                    data-testid="zoom-select-trigger"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Fit">Fit</SelectItem>
+                    <SelectItem value="50%">50%</SelectItem>
+                    <SelectItem value="75%">75%</SelectItem>
+                    <SelectItem value="100%">100%</SelectItem>
+                    <SelectItem value="125%">125%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className={styles.zoomGroup}>
+            <div className={styles.viewportToolbarRight}>
               <button
                 type="button"
-                className={styles.iconBtn}
-                onClick={() => {
-                  setIsAutoFit(false);
-                  setZoomScale((z) => Math.max(0.15, z - 0.1));
-                }}
-                title="Zoom Out"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-white text-black hover:bg-white/90 shadow-sm transition-all"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                data-testid="upload-template-btn"
               >
-                <ZoomOut size={14} />
+                <Upload size={14} />
+                <span>{isUploading ? "Uploading..." : "Upload Template"}</span>
               </button>
-              <span className={styles.zoomLevel}>{Math.round(zoomScale * 100)}%</span>
-              <button
-                type="button"
-                className={styles.iconBtn}
-                onClick={() => {
-                  setIsAutoFit(false);
-                  setZoomScale((z) => Math.min(2.5, z + 0.1));
-                }}
-                title="Zoom In"
-              >
-                <ZoomIn size={14} />
-              </button>
-              <button
-                type="button"
-                className={styles.iconBtn}
-                onClick={() => {
-                  setIsAutoFit(true);
-                  if (viewportRef.current) {
-                    const width = viewportRef.current.clientWidth - 60;
-                    const height = viewportRef.current.clientHeight - 60;
-                    if (width > 0 && height > 0) {
-                      setZoomScale(Math.min(width / canvasWidth, height / canvasHeight, 1));
-                    }
-                  }
-                }}
-                title="Fit to Screen"
-              >
-                <Maximize2 size={14} />
-              </button>
+
+              {templateImageUrl && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/15 text-white/90 border border-white/10 shadow-sm transition-all"
+                  onClick={handleRemoveTemplate}
+                  data-testid="remove-template-btn"
+                >
+                  <span>Remove Template</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Interactive Artboard Viewport */}
+          {/* Dark Checkerboard Canvas Area */}
           <div
-            ref={viewportRef}
-            className={styles.canvasViewport}
-            onClick={() => setSelectedId(null)}
+            ref={scrollAreaRef}
+            className={styles.canvasScrollArea}
+            onClick={(e) => {
+              if (e.target === e.currentTarget && mode === "edit") {
+                setSelectedLayerId(null);
+              }
+            }}
           >
             <div
-              className={styles.artboardContainer}
+              className={styles.artboardWrapper}
               style={{
-                width: canvasWidth,
-                height: canvasHeight,
-                transform: `scale(${zoomScale})`,
+                width: `${canvasWidth * zoomScale}px`,
+                height: `${canvasHeight * zoomScale}px`,
               }}
             >
               <div
                 className={styles.artboard}
                 style={{
-                  width: canvasWidth,
-                  height: canvasHeight,
-                  backgroundImage: backgroundImageUrl ? `url("${backgroundImageUrl}")` : undefined,
+                  width: `${canvasWidth}px`,
+                  height: `${canvasHeight}px`,
+                  transform: `scale(${zoomScale})`,
+                }}
+                data-testid="ticket-artboard"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget && mode === "edit") {
+                    setSelectedLayerId(null);
+                  }
                 }}
               >
-                {/* Visual Placeholder if background is missing */}
-                {!backgroundImageUrl && elements.length === 0 && (
-                  <div className={styles.artboardEmpty}>
-                    <Upload size={32} />
-                    <span>Upload a Figma background image or add dynamic placeholders</span>
+                {/* Background Ticket Image */}
+                {templateImageUrl ? (
+                  <img
+                    src={templateImageUrl}
+                    alt="Ticket Template Background"
+                    className={styles.artboardBgImage}
+                    data-testid="template-bg-image"
+                  />
+                ) : (
+                  <div className={styles.emptyArtboardState}>
+                    <Upload size={28} style={{ opacity: 0.5 }} />
+                    <p className={styles.emptyArtboardTitle}>
+                      No Template Image
+                    </p>
+                    <p className={styles.emptyArtboardSubtitle}>
+                      Upload a ticket background image (PNG, JPG) to start placing
+                      your ticket elements.
+                    </p>
                   </div>
                 )}
 
-                {/* Alignment Snap Guides */}
-                {snapX !== null && (
-                  <div className={styles.snapGuideLineX} style={{ left: snapX }} />
-                )}
-                {snapY !== null && (
-                  <div className={styles.snapGuideLineY} style={{ top: snapY }} />
-                )}
-
-                {/* Render Canvas Elements */}
-                {elements.map((el) => {
-                  const isSelected = el.id === selectedId;
-
-                  // Conditional resolution when simulating
-                  const resolved = simulatorActive
-                    ? resolveTicketLayer(el, simulatedPass)
-                    : {
-                        visible: true,
-                        text: el.customText || el.variableKey || el.label,
-                        color: el.style.color || "#ffffff",
-                        bgColor: el.style.backgroundColor || el.style.bgColor,
-                      };
-
-                  const isHiddenInSim = simulatorActive && !resolved.visible;
+                {/* Render Draggable Layers */}
+                {layers.map((layer) => {
+                  const isSelected =
+                    mode === "edit" && selectedLayerId === layer.id;
+                  const isQr = layer.type === "qr";
 
                   return (
                     <div
-                      key={el.id}
-                      id={`ticket-element-${el.id}`}
-                      data-testid={`canvas-element-${el.id}`}
-                      className={`${styles.canvasElement} ${
-                        isSelected ? styles.canvasElementSelected : ""
-                      }`}
+                      key={layer.id}
+                      className={`${styles.layerItem} ${isSelected ? styles.layerSelected : ""}`}
                       style={{
-                        left: el.x,
-                        top: el.y,
-                        width: el.width,
-                        height: el.height,
-                        zIndex: el.zIndex,
-                        transform: `rotate(${el.rotation || 0}deg)`,
-                        opacity: isHiddenInSim ? (isSelected ? 0.45 : 0.2) : 1,
+                        left: `${layer.x}px`,
+                        top: `${layer.y}px`,
+                        width: `${layer.width}px`,
+                        height: `${layer.height}px`,
+                        zIndex: isSelected ? 40 : 10,
                       }}
-                      onPointerDown={(e) => handleElementPointerDown(e, el.id)}
+                      onMouseDown={(e) =>
+                        handleLayerMouseDown(e, layer.id, layer.x, layer.y)
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (mode === "edit") {
+                          setSelectedLayerId(layer.id);
+                        }
+                      }}
+                      data-testid={`layer-box-${layer.id}`}
                     >
-                      {/* Element Content */}
-                      {el.type === "qr" ? (
+                    {/* Floating Coordinate Badge */}
+                    {isSelected && (
+                      <div
+                        className={styles.coordBadge}
+                        data-testid="coord-badge"
+                      >
+                        X:{layer.x} Y:{layer.y}
+                      </div>
+                    )}
+
+                    {/* Resize Handles */}
+                    {isSelected && (
+                      <>
                         <div
-                          className={styles.qrContainer}
-                          style={{
-                            backgroundColor:
-                              resolved.bgColor || el.style.qrBgColor || "#ffffff",
-                            padding: 6,
-                            borderRadius: el.style.borderRadius || 6,
-                          }}
-                        >
+                          className={`${styles.resizeHandle} ${styles.handleNw}`}
+                          onMouseDown={(e) =>
+                            handleResizeMouseDown(e, layer, "nw")
+                          }
+                        />
+                        <div
+                          className={`${styles.resizeHandle} ${styles.handleNe}`}
+                          onMouseDown={(e) =>
+                            handleResizeMouseDown(e, layer, "ne")
+                          }
+                        />
+                        <div
+                          className={`${styles.resizeHandle} ${styles.handleSe}`}
+                          onMouseDown={(e) =>
+                            handleResizeMouseDown(e, layer, "se")
+                          }
+                        />
+                        <div
+                          className={`${styles.resizeHandle} ${styles.handleSw}`}
+                          onMouseDown={(e) =>
+                            handleResizeMouseDown(e, layer, "sw")
+                          }
+                        />
+                      </>
+                    )}
+
+                    {/* Layer Content */}
+                    {isQr ? (
+                      mode === "preview" ? (
+                        <div className={styles.qrLayerBox}>
                           <QRCode
-                            value="https://tiket.app/passes/sample-ticket"
-                            size={Math.max(20, Math.min(el.width, el.height) - 12)}
-                            fgColor={
-                              resolved.color || el.style.qrFgColor || "#000000"
-                            }
-                            bgColor={
-                              resolved.bgColor || el.style.qrBgColor || "#ffffff"
-                            }
+                            value="TIK-9842-X7"
+                            size={Math.max(
+                              16,
+                              Math.min(layer.width, layer.height) - 12,
+                            )}
+                            fgColor="#000000"
+                            bgColor="#ffffff"
                           />
                         </div>
                       ) : (
                         <div
-                          className={styles.elementContent}
+                          className={styles.qrLayerBox}
+                          data-testid="qr-placeholder"
+                        >
+                          <QrCode
+                            size={Math.max(
+                              18,
+                              Math.min(36, layer.width / 2.5),
+                            )}
+                          />
+                          <span className={styles.qrPlaceholderText}>QR</span>
+                        </div>
+                      )
+                    ) : (
+                      <div className={styles.textLayerBox}>
+                        <div
+                          className={styles.textClamped}
                           style={{
-                            fontFamily: el.style.fontFamily || "Inter, sans-serif",
-                            fontSize: `${el.style.fontSize || 20}px`,
-                            fontWeight: el.style.fontWeight || 600,
-                            color: resolved.color || el.style.color || "#ffffff",
-                            backgroundColor:
-                              resolved.bgColor ||
-                              el.style.backgroundColor ||
-                              el.style.bgColor ||
-                              (el.type === "badge"
-                                ? "rgba(40, 167, 69, 0.25)"
-                                : undefined),
-                            borderRadius:
-                              el.style.borderRadius ||
-                              (el.type === "badge" ? 6 : undefined),
-                            padding:
-                              el.style.padding ||
-                              (el.type === "badge" ? "4px 8px" : undefined),
-                            justifyContent:
-                              el.style.textAlign === "center"
-                                ? "center"
-                                : el.style.textAlign === "right"
-                                  ? "flex-end"
-                                  : "flex-start",
+                            fontSize: `${layer.fontSize}px`,
+                            color: layer.fontColor,
+                            letterSpacing: `${layer.lineSpacing}px`,
+                            WebkitLineClamp: layer.maxLines,
+                            lineHeight: 1.2,
+                            fontFamily: "inherit",
+                            fontWeight: 600,
                           }}
                         >
-                          {resolved.text || el.customText || el.variableKey || el.label}
+                          {mode === "preview"
+                            ? interpolateSamplePreview(
+                                layer.tokenOrText,
+                                activeTicketName,
+                                eventTitle,
+                              )
+                            : layer.tokenOrText}
                         </div>
-                      )}
-
-                      {/* Hidden Overlay Indicator during simulation */}
-                      {isHiddenInSim && (
-                        <div className={styles.hiddenOverlay}>
-                          Hidden by Condition
-                        </div>
-                      )}
-
-                      {/* 8 Resize Handles & Rotation Handle if Selected */}
-                      {isSelected && (
-                        <>
-                          <div
-                            className={`${styles.resizeHandle} ${styles.handleNW}`}
-                            onPointerDown={(e) => handleResizePointerDown(e, "nw")}
-                          />
-                          <div
-                            className={`${styles.resizeHandle} ${styles.handleN}`}
-                            onPointerDown={(e) => handleResizePointerDown(e, "n")}
-                          />
-                          <div
-                            className={`${styles.resizeHandle} ${styles.handleNE}`}
-                            onPointerDown={(e) => handleResizePointerDown(e, "ne")}
-                          />
-                          <div
-                            className={`${styles.resizeHandle} ${styles.handleE}`}
-                            onPointerDown={(e) => handleResizePointerDown(e, "e")}
-                          />
-                          <div
-                            className={`${styles.resizeHandle} ${styles.handleSE}`}
-                            onPointerDown={(e) => handleResizePointerDown(e, "se")}
-                          />
-                          <div
-                            className={`${styles.resizeHandle} ${styles.handleS}`}
-                            onPointerDown={(e) => handleResizePointerDown(e, "s")}
-                          />
-                          <div
-                            className={`${styles.resizeHandle} ${styles.handleSW}`}
-                            onPointerDown={(e) => handleResizePointerDown(e, "sw")}
-                          />
-                          <div
-                            className={`${styles.resizeHandle} ${styles.handleW}`}
-                            onPointerDown={(e) => handleResizePointerDown(e, "w")}
-                          />
-
-                          <div className={styles.rotateStalk} />
-                          <div
-                            className={styles.rotateHandle}
-                            title="Drag to rotate (Hold Shift for 15° snap)"
-                            onPointerDown={handleRotatePointerDown}
-                          />
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Sidebar: Toolbar & Inspector */}
-        <div className={styles.sidebarCard}>
-          {/* Add Elements Section */}
-          <div className={styles.sidebarSection}>
-            <div className={styles.sectionHeader}>
-              <h3 className={styles.sectionTitle}>Add Placeholder</h3>
-            </div>
-            <div className={styles.toolsGrid}>
-              <button
-                type="button"
-                className={styles.toolBtn}
-                onClick={() => addElement("qr", "Ticket QR Code", undefined, undefined, 140, 140)}
-              >
-                <QrCode size={15} />
-                <span>QR Code</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.toolBtn}
-                onClick={() =>
-                  addElement(
-                    "variable",
-                    "Attendee Name",
-                    "{{attendee.name}}",
-                    "Alex Johnson",
-                    320,
-                    46,
-                  )
-                }
-              >
-                <User size={15} />
-                <span>Name</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.toolBtn}
-                onClick={() =>
-                  addElement(
-                    "variable",
-                    "Event Title",
-                    "{{event.title}}",
-                    "Tech Summit 2026",
-                    360,
-                    52,
-                  )
-                }
-              >
-                <Type size={15} />
-                <span>Event Title</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.toolBtn}
-                onClick={() =>
-                  addElement(
-                    "variable",
-                    "Ticket Tier",
-                    "{{ticket.type}}",
-                    "VIP Pass",
-                    220,
-                    40,
-                  )
-                }
-              >
-                <Tag size={15} />
-                <span>Ticket Tier</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.toolBtn}
-                onClick={() =>
-                  addElement(
-                    "variable",
-                    "Event Date",
-                    "{{event.date}}",
-                    "Oct 24, 2026 • 10:00 AM",
-                    280,
-                    38,
-                  )
-                }
-              >
-                <Calendar size={15} />
-                <span>Event Date</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.toolBtn}
-                onClick={() =>
-                  addElement(
-                    "variable",
-                    "Location",
-                    "{{event.location}}",
-                    "Moscone Center, SF",
-                    280,
-                    38,
-                  )
-                }
-              >
-                <MapPin size={15} />
-                <span>Location</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.toolBtn}
-                onClick={() =>
-                  addElement(
-                    "text",
-                    "Static Text",
-                    undefined,
-                    "Admit One",
-                    200,
-                    38,
-                  )
-                }
-              >
-                <Type size={15} />
-                <span>Static Text</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.toolBtn}
-                onClick={addBadgeElement}
-              >
-                <Tag size={15} />
-                <span>Badge</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Form Elements Section */}
-          <div className={styles.sidebarSection}>
-            <div className={styles.sectionHeader}>
-              <h3 className={styles.sectionTitle}>Form Elements</h3>
-            </div>
-            {formFields.length > 0 ? (
-              <div className={styles.toolsGrid}>
-                {formFields.map((field) => (
-                  <button
-                    key={field.id}
-                    type="button"
-                    className={styles.toolBtn}
-                    onClick={() => addFormFieldElement(field)}
-                    title={`Add ${field.label} layer`}
-                  >
-                    <FileText size={15} />
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {field.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.toolsGrid}>
+        {/* RIGHT SIDEBAR (2 STACKED CARDS) */}
+        <div className={styles.sidebar}>
+          {/* CARD 1 — LAYERS */}
+          <div className={styles.card} data-testid="layers-card">
+            <div className={styles.cardHeader}>
+              <span className={styles.cardTitle}>LAYERS</span>
+              <div className={styles.cardActions}>
                 <button
                   type="button"
-                  className={styles.toolBtn}
-                  onClick={() =>
-                    addElement(
-                      "form_field",
-                      "Dietary Preference",
-                      "{{form.Dietary Preference}}",
-                      "Vegetarian",
-                      260,
-                      38,
-                      "f-diet",
-                      "Dietary Preference",
-                      "",
-                    )
-                  }
+                  className={styles.cardActionBtn}
+                  onClick={handleAddTextLayer}
+                  data-testid="add-text-layer-btn"
                 >
-                  <FileText size={15} />
-                  <span>Dietary Preference</span>
+                  <Plus size={13} />
+                  <span>Text Layer</span>
                 </button>
                 <button
                   type="button"
-                  className={styles.toolBtn}
-                  onClick={() =>
-                    addElement(
-                      "form_field",
-                      "T-Shirt Size",
-                      "{{form.T-Shirt Size}}",
-                      "Large",
-                      220,
-                      38,
-                      "f-shirt",
-                      "T-Shirt Size",
-                      "",
-                    )
-                  }
+                  className={styles.cardActionBtn}
+                  onClick={handleAddQrLayer}
+                  data-testid="add-qr-layer-btn"
                 >
-                  <FileText size={15} />
-                  <span>T-Shirt Size</span>
+                  <Plus size={13} />
+                  <span>QR Layer</span>
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Inspector Section */}
-          {selectedElement ? (
-            <div className={styles.sidebarSection}>
-              <div className={styles.sectionHeader}>
-                <h3 className={styles.sectionTitle}>
-                  Inspector: {selectedElement.label}
-                </h3>
-                <div className={styles.layerActions}>
-                  <button
-                    type="button"
-                    className={styles.iconBtn}
-                    onClick={() => duplicateElement(selectedElement.id)}
-                    title="Duplicate"
-                  >
-                    <Copy size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.iconBtn}
-                    onClick={() => deleteElement(selectedElement.id)}
-                    title="Delete"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Transform Inputs */}
-              <div className={styles.inspectorGrid}>
-                <div className={styles.inputGroup}>
-                  <label htmlFor="inspector-x" className={styles.inputLabel}>X (px)</label>
-                  <input
-                    id="inspector-x"
-                    type="number"
-                    className={styles.inputField}
-                    value={selectedElement.x}
-                    onChange={(e) =>
-                      updateSelected({ x: parseInt(e.target.value, 10) || 0 })
-                    }
-                  />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label htmlFor="inspector-y" className={styles.inputLabel}>Y (px)</label>
-                  <input
-                    id="inspector-y"
-                    type="number"
-                    className={styles.inputField}
-                    value={selectedElement.y}
-                    onChange={(e) =>
-                      updateSelected({ y: parseInt(e.target.value, 10) || 0 })
-                    }
-                  />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label htmlFor="inspector-w" className={styles.inputLabel}>Width (px)</label>
-                  <input
-                    id="inspector-w"
-                    type="number"
-                    className={styles.inputField}
-                    value={selectedElement.width}
-                    onChange={(e) =>
-                      updateSelected({
-                        width: Math.max(20, parseInt(e.target.value, 10) || 20),
-                      })
-                    }
-                  />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label htmlFor="inspector-h" className={styles.inputLabel}>Height (px)</label>
-                  <input
-                    id="inspector-h"
-                    type="number"
-                    className={styles.inputField}
-                    value={selectedElement.height}
-                    onChange={(e) =>
-                      updateSelected({
-                        height: Math.max(20, parseInt(e.target.value, 10) || 20),
-                      })
-                    }
-                  />
-                </div>
-                <div className={styles.inputGroup}>
-                  <label htmlFor="inspector-rot" className={styles.inputLabel}>Rotation (°)</label>
-                  <input
-                    id="inspector-rot"
-                    type="number"
-                    className={styles.inputField}
-                    value={selectedElement.rotation || 0}
-                    onChange={(e) =>
-                      updateSelected({
-                        rotation: parseInt(e.target.value, 10) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className={styles.inputGroup} style={{ justifyContent: "flex-end" }}>
-                  <button
-                    type="button"
-                    className={styles.btnSecondary}
-                    style={{ padding: "0.38rem" }}
-                    onClick={() => updateSelected({ rotation: 0 })}
-                  >
-                    Reset 0°
-                  </button>
-                </div>
-              </div>
-
-              {/* Form Field Specific Settings */}
-              {selectedElement.type === "form_field" && (
-                <div className={styles.inputGroup} style={{ marginTop: "0.4rem" }}>
-                  <label className={styles.inputLabel}>Fallback Text (if blank)</label>
-                  <input
-                    type="text"
-                    className={styles.inputField}
-                    value={selectedElement.fallbackText || ""}
-                    placeholder="e.g. Not Specified"
-                    onChange={(e) => updateSelected({ fallbackText: e.target.value })}
-                  />
-                </div>
-              )}
-
-              {/* Text / Variable Inspector */}
-              {selectedElement.type !== "qr" && (
-                <>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Font Family</label>
-                    <select
-                      className={styles.selectField}
-                      value={selectedElement.style.fontFamily || FONT_FAMILIES[0]}
-                      onChange={(e) =>
-                        updateSelectedStyle({ fontFamily: e.target.value })
-                      }
-                    >
-                      {FONT_FAMILIES.map((f) => (
-                        <option key={f} value={f}>
-                          {f.split(",")[0]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className={styles.inspectorGrid}>
-                    <div className={styles.inputGroup}>
-                      <label className={styles.inputLabel}>Font Size (px)</label>
-                      <input
-                        type="number"
-                        className={styles.inputField}
-                        value={selectedElement.style.fontSize || 20}
-                        onChange={(e) =>
-                          updateSelectedStyle({
-                            fontSize: Math.max(8, parseInt(e.target.value, 10) || 8),
-                          })
-                        }
-                      />
-                    </div>
-                    <div className={styles.inputGroup}>
-                      <label className={styles.inputLabel}>Weight</label>
-                      <select
-                        className={styles.selectField}
-                        value={selectedElement.style.fontWeight || 600}
-                        onChange={(e) =>
-                          updateSelectedStyle({ fontWeight: e.target.value })
-                        }
-                      >
-                        <option value="400">Regular (400)</option>
-                        <option value="500">Medium (500)</option>
-                        <option value="600">Semibold (600)</option>
-                        <option value="700">Bold (700)</option>
-                        <option value="800">Extra Bold (800)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Text Color</label>
-                    <div className={styles.colorRow}>
-                      <input
-                        type="color"
-                        className={styles.colorPicker}
-                        value={selectedElement.style.color || "#ffffff"}
-                        onChange={(e) =>
-                          updateSelectedStyle({ color: e.target.value })
-                        }
-                      />
-                      <input
-                        type="text"
-                        className={styles.inputField}
-                        value={selectedElement.style.color || "#ffffff"}
-                        onChange={(e) =>
-                          updateSelectedStyle({ color: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  {/* Background Color & Radius for Badge or custom background */}
-                  <div className={styles.inspectorGrid}>
-                    <div className={styles.inputGroup}>
-                      <label className={styles.inputLabel}>Bg Color</label>
-                      <div className={styles.colorRow}>
-                        <input
-                          type="color"
-                          className={styles.colorPicker}
-                          value={
-                            selectedElement.style.backgroundColor ||
-                            selectedElement.style.bgColor ||
-                            "#28a745"
-                          }
-                          onChange={(e) =>
-                            updateSelectedStyle({
-                              backgroundColor: e.target.value,
-                              bgColor: e.target.value,
-                            })
-                          }
-                        />
-                        <input
-                          type="text"
-                          className={styles.inputField}
-                          placeholder="#hex"
-                          value={
-                            selectedElement.style.backgroundColor ||
-                            selectedElement.style.bgColor ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            updateSelectedStyle({
-                              backgroundColor: e.target.value,
-                              bgColor: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className={styles.inputGroup}>
-                      <label className={styles.inputLabel}>Radius (px)</label>
-                      <input
-                        type="number"
-                        className={styles.inputField}
-                        value={selectedElement.style.borderRadius ?? 0}
-                        onChange={(e) =>
-                          updateSelectedStyle({
-                            borderRadius: parseInt(e.target.value, 10) || 0,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Alignment</label>
-                    <div className={styles.presetGroup}>
-                      {(["left", "center", "right"] as const).map((align) => (
-                        <button
-                          key={align}
-                          type="button"
-                          className={`${styles.presetBtn} ${
-                            selectedElement.style.textAlign === align
-                              ? styles.presetBtnActive
-                              : ""
-                          }`}
-                          onClick={() => updateSelectedStyle({ textAlign: align })}
-                        >
-                          {align.charAt(0).toUpperCase() + align.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={styles.toggleRow}>
-                    <span className={styles.toggleLabel}>Auto-Fit Long Text</span>
-                    <input
-                      type="checkbox"
-                      checked={!!selectedElement.style.autoFitText}
-                      onChange={(e) =>
-                        updateSelectedStyle({ autoFitText: e.target.checked })
-                      }
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* QR Code Colors */}
-              {selectedElement.type === "qr" && (
-                <>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>QR Foreground</label>
-                    <div className={styles.colorRow}>
-                      <input
-                        type="color"
-                        className={styles.colorPicker}
-                        value={selectedElement.style.qrFgColor || "#000000"}
-                        onChange={(e) =>
-                          updateSelectedStyle({ qrFgColor: e.target.value })
-                        }
-                      />
-                      <input
-                        type="text"
-                        className={styles.inputField}
-                        value={selectedElement.style.qrFgColor || "#000000"}
-                        onChange={(e) =>
-                          updateSelectedStyle({ qrFgColor: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>QR Background</label>
-                    <div className={styles.colorRow}>
-                      <input
-                        type="color"
-                        className={styles.colorPicker}
-                        value={selectedElement.style.qrBgColor || "#ffffff"}
-                        onChange={(e) =>
-                          updateSelectedStyle({ qrBgColor: e.target.value })
-                        }
-                      />
-                      <input
-                        type="text"
-                        className={styles.inputField}
-                        value={selectedElement.style.qrBgColor || "#ffffff"}
-                        onChange={(e) =>
-                          updateSelectedStyle({ qrBgColor: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Conditions (If / Else) Panel */}
-              <div className={styles.sidebarSection} style={{ marginTop: "0.75rem" }}>
-                <div className={styles.sectionHeader}>
-                  <h3 className={styles.sectionTitle}>Conditions (If / Else)</h3>
-                  <button
-                    type="button"
-                    className={styles.btnSecondary}
-                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                    onClick={addConditionRule}
-                    data-testid="add-condition-rule-btn"
-                  >
-                    <Plus size={12} />
-                    <span>Add Rule</span>
-                  </button>
-                </div>
-
-                <div className={styles.conditionsContainer}>
-                  {(!selectedElement.conditionalRules ||
-                    selectedElement.conditionalRules.length === 0) ? (
-                    <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                      No conditional rules. This layer displays by default.
-                    </div>
-                  ) : (
-                    selectedElement.conditionalRules.map((rule, idx) => (
-                      <div
-                        key={rule.id}
-                        className={styles.conditionCard}
-                        data-testid={`condition-card-${rule.id}`}
-                      >
-                        <div className={styles.conditionCardHeader}>
-                          <span>IF Branch #{idx + 1}</span>
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            style={{ width: 22, height: 22 }}
-                            onClick={() => deleteConditionRule(rule.id)}
-                            title="Delete Rule"
-                            data-testid={`delete-rule-${rule.id}`}
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
-
-                        <div className={styles.inspectorGrid}>
-                          <div className={styles.inputGroup}>
-                            <label className={styles.inputLabel}>Source</label>
-                            <select
-                              className={styles.selectField}
-                              value={rule.sourceType}
-                              data-testid={`rule-source-${rule.id}`}
-                              onChange={(e) =>
-                                updateConditionRule(rule.id, {
-                                  sourceType: e.target.value as
-                                    | "ticketType"
-                                    | "formField",
-                                  sourceKey:
-                                    e.target.value === "ticketType"
-                                      ? ticketTypes[0]?.name || "VIP"
-                                      : formFields[0]?.label || "Field",
-                                })
-                              }
-                            >
-                              <option value="ticketType">Ticket Tier</option>
-                              <option value="formField">Form Field</option>
-                            </select>
-                          </div>
-
-                          <div className={styles.inputGroup}>
-                            <label className={styles.inputLabel}>
-                              {rule.sourceType === "ticketType" ? "Tier Name" : "Field Name"}
-                            </label>
-                            {rule.sourceType === "ticketType" ? (
-                              ticketTypes.length > 0 ? (
-                                <select
-                                  className={styles.selectField}
-                                  value={rule.sourceKey}
-                                  data-testid={`rule-sourcekey-${rule.id}`}
-                                  onChange={(e) =>
-                                    updateConditionRule(rule.id, {
-                                      sourceKey: e.target.value,
-                                    })
-                                  }
-                                >
-                                  {ticketTypes.map((t) => (
-                                    <option key={t.id} value={t.name}>
-                                      {t.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <input
-                                  type="text"
-                                  className={styles.inputField}
-                                  value={rule.sourceKey}
-                                  data-testid={`rule-sourcekey-${rule.id}`}
-                                  placeholder="e.g. Early Bird VIP"
-                                  onChange={(e) =>
-                                    updateConditionRule(rule.id, {
-                                      sourceKey: e.target.value,
-                                    })
-                                  }
-                                />
-                              )
-                            ) : formFields.length > 0 ? (
-                              <select
-                                className={styles.selectField}
-                                value={rule.sourceKey}
-                                data-testid={`rule-sourcekey-${rule.id}`}
-                                onChange={(e) =>
-                                  updateConditionRule(rule.id, {
-                                    sourceKey: e.target.value,
-                                  })
-                                }
-                              >
-                                {formFields.map((f) => (
-                                  <option key={f.id} value={f.label}>
-                                    {f.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                type="text"
-                                className={styles.inputField}
-                                value={rule.sourceKey}
-                                data-testid={`rule-sourcekey-${rule.id}`}
-                                placeholder="e.g. Food"
-                                onChange={(e) =>
-                                  updateConditionRule(rule.id, {
-                                    sourceKey: e.target.value,
-                                  })
-                                }
-                              />
-                            )}
-                          </div>
-                        </div>
-
-                        <div className={styles.inspectorGrid}>
-                          <div className={styles.inputGroup}>
-                            <label className={styles.inputLabel}>Operator</label>
-                            <select
-                              className={styles.selectField}
-                              value={rule.operator}
-                              data-testid={`rule-operator-${rule.id}`}
-                              onChange={(e) =>
-                                updateConditionRule(rule.id, {
-                                  operator: e.target.value as
-                                    | "equals"
-                                    | "not_equals"
-                                    | "contains",
-                                })
-                              }
-                            >
-                              <option value="equals">equals</option>
-                              <option value="contains">contains</option>
-                              <option value="not_equals">not equals</option>
-                            </select>
-                          </div>
-
-                          <div className={styles.inputGroup}>
-                            <label className={styles.inputLabel}>Value</label>
-                            <input
-                              type="text"
-                              className={styles.inputField}
-                              value={rule.value}
-                              data-testid={`rule-value-${rule.id}`}
-                              placeholder="Value to match"
-                              onChange={(e) =>
-                                updateConditionRule(rule.id, {
-                                  value: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        {/* Then Action */}
-                        <div className={styles.inputGroup}>
-                          <label className={styles.inputLabel}>THEN Effect</label>
-                          <div className={styles.presetGroup}>
-                            <button
-                              type="button"
-                              className={`${styles.presetBtn} ${
-                                rule.thenEffect.visible
-                                  ? styles.presetBtnActive
-                                  : ""
-                              }`}
-                              data-testid={`rule-show-${rule.id}`}
-                              onClick={() =>
-                                updateConditionRule(rule.id, {
-                                  thenEffect: {
-                                    ...rule.thenEffect,
-                                    visible: true,
-                                  },
-                                })
-                              }
-                            >
-                              Show
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.presetBtn} ${
-                                !rule.thenEffect.visible
-                                  ? styles.presetBtnActive
-                                  : ""
-                              }`}
-                              data-testid={`rule-hide-${rule.id}`}
-                              onClick={() =>
-                                updateConditionRule(rule.id, {
-                                  thenEffect: {
-                                    ...rule.thenEffect,
-                                    visible: false,
-                                  },
-                                })
-                              }
-                            >
-                              Hide
-                            </button>
-                          </div>
-                        </div>
-
-                        {rule.thenEffect.visible && (
-                          <>
-                            <div className={styles.inputGroup}>
-                              <label className={styles.inputLabel}>Text Override</label>
-                              <input
-                                type="text"
-                                className={styles.inputField}
-                                value={rule.thenEffect.textOverride || ""}
-                                data-testid={`rule-text-override-${rule.id}`}
-                                placeholder="e.g. EARLY BIRD VIP"
-                                onChange={(e) =>
-                                  updateConditionRule(rule.id, {
-                                    thenEffect: {
-                                      ...rule.thenEffect,
-                                      textOverride: e.target.value,
-                                    },
-                                  })
-                                }
-                              />
-                            </div>
-
-                            <div className={styles.inspectorGrid}>
-                              <div className={styles.inputGroup}>
-                                <label className={styles.inputLabel}>Text Color</label>
-                                <input
-                                  type="text"
-                                  className={styles.inputField}
-                                  value={rule.thenEffect.colorOverride || ""}
-                                  data-testid={`rule-color-override-${rule.id}`}
-                                  placeholder="#FFD700"
-                                  onChange={(e) =>
-                                    updateConditionRule(rule.id, {
-                                      thenEffect: {
-                                        ...rule.thenEffect,
-                                        colorOverride: e.target.value,
-                                      },
-                                    })
-                                  }
-                                />
-                              </div>
-
-                              <div className={styles.inputGroup}>
-                                <label className={styles.inputLabel}>Bg Color</label>
-                                <input
-                                  type="text"
-                                  className={styles.inputField}
-                                  value={rule.thenEffect.bgColorOverride || ""}
-                                  data-testid={`rule-bgcolor-override-${rule.id}`}
-                                  placeholder="#28a745"
-                                  onChange={(e) =>
-                                    updateConditionRule(rule.id, {
-                                      thenEffect: {
-                                        ...rule.thenEffect,
-                                        bgColorOverride: e.target.value,
-                                      },
-                                    })
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))
-                  )}
-
-                  {/* ELSE Fallback Behavior */}
-                  {selectedElement.conditionalRules &&
-                    selectedElement.conditionalRules.length > 0 && (
-                      <div className={styles.elseCard} data-testid="else-card">
-                        <div className={styles.conditionCardHeader}>
-                          <span style={{ color: "var(--color-text-soft)" }}>
-                            ELSE (Fallback Behavior)
-                          </span>
-                        </div>
-
-                        <div className={styles.presetGroup}>
-                          <button
-                            type="button"
-                            className={`${styles.presetBtn} ${
-                              selectedElement.elseBehavior?.visible ?? true
-                                ? styles.presetBtnActive
-                                : ""
-                            }`}
-                            data-testid="else-show-btn"
-                            onClick={() => updateElseBehavior({ visible: true })}
-                          >
-                            Show
-                          </button>
-                          <button
-                            type="button"
-                            className={`${styles.presetBtn} ${
-                              selectedElement.elseBehavior?.visible === false
-                                ? styles.presetBtnActive
-                                : ""
-                            }`}
-                            data-testid="else-hide-btn"
-                            onClick={() => updateElseBehavior({ visible: false })}
-                          >
-                            Hide
-                          </button>
-                        </div>
-
-                        {selectedElement.elseBehavior?.visible !== false && (
-                          <>
-                            <div className={styles.inputGroup}>
-                              <label className={styles.inputLabel}>Fallback Text</label>
-                              <input
-                                type="text"
-                                className={styles.inputField}
-                                value={selectedElement.elseBehavior?.textOverride || ""}
-                                data-testid="else-text-override"
-                                placeholder="e.g. REGULAR"
-                                onChange={(e) =>
-                                  updateElseBehavior({ textOverride: e.target.value })
-                                }
-                              />
-                            </div>
-
-                            <div className={styles.inspectorGrid}>
-                              <div className={styles.inputGroup}>
-                                <label className={styles.inputLabel}>Fallback Color</label>
-                                <input
-                                  type="text"
-                                  className={styles.inputField}
-                                  value={selectedElement.elseBehavior?.colorOverride || ""}
-                                  data-testid="else-color-override"
-                                  placeholder="#ffffff"
-                                  onChange={(e) =>
-                                    updateElseBehavior({ colorOverride: e.target.value })
-                                  }
-                                />
-                              </div>
-
-                              <div className={styles.inputGroup}>
-                                <label className={styles.inputLabel}>Fallback BgColor</label>
-                                <input
-                                  type="text"
-                                  className={styles.inputField}
-                                  value={selectedElement.elseBehavior?.bgColorOverride || ""}
-                                  data-testid="else-bgcolor-override"
-                                  placeholder="#000000"
-                                  onChange={(e) =>
-                                    updateElseBehavior({ bgColorOverride: e.target.value })
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                </div>
-              </div>
             </div>
-          ) : (
-            <div className={styles.sidebarSection}>
-              <h3 className={styles.sectionTitle}>Inspector</h3>
-              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                Click any placeholder or QR code on the canvas to configure its position,
-                dimensions, typography, styling, and If / Else conditional rules.
-              </p>
-            </div>
-          )}
 
-          {/* Layers List */}
-          <div className={styles.sidebarSection}>
-            <div className={styles.sectionHeader}>
-              <h3 className={styles.sectionTitle}>
-                <Layers size={13} style={{ display: "inline", marginRight: 4 }} />
-                Layers ({elements.length})
-              </h3>
-            </div>
             <div className={styles.layersList}>
-              {elements.length === 0 ? (
-                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                  No elements added yet.
+              {layers.length === 0 ? (
+                <div className={styles.emptyLayers}>
+                  No layers added yet. Click <strong>+ Text Layer</strong> or{" "}
+                  <strong>+ QR Layer</strong> above.
                 </div>
               ) : (
-                elements.map((el) => {
-                  const isActive = el.id === selectedId;
+                layers.map((l) => {
+                  const isActive = selectedLayerId === l.id;
+                  const isQr = l.type === "qr";
+                  const title = isQr ? "QR Code" : l.tokenOrText || "Text Layer";
+                  const subtitle = isQr ? "QR Layer" : "Text Layer";
+
                   return (
                     <div
-                      key={el.id}
-                      className={`${styles.layerItem} ${
-                        isActive ? styles.layerItemActive : ""
-                      }`}
-                      onClick={() => setSelectedId(el.id)}
+                      key={l.id}
+                      className={`${styles.layerRow} ${isActive ? styles.layerRowActive : ""}`}
+                      onClick={() => {
+                        setMode("edit");
+                        setSelectedLayerId(l.id);
+                      }}
+                      data-testid={`layer-row-${l.id}`}
                     >
-                      <span>{el.label}</span>
-                      <div className={styles.layerActions}>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          style={{ width: 24, height: 24 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteElement(el.id);
-                          }}
-                        >
-                          <Trash2 size={11} />
-                        </button>
+                      <div className={styles.layerRowInfo}>
+                        <div className={styles.layerRowIcon}>
+                          {isQr ? <QrCode size={15} /> : <Type size={15} />}
+                        </div>
+                        <div className={styles.layerRowText}>
+                          <span className={styles.layerRowName}>{title}</span>
+                          <span className={styles.layerRowSubtitle}>
+                            {subtitle}
+                          </span>
+                        </div>
                       </div>
+
+                      <button
+                        type="button"
+                        className={styles.layerDeleteBtn}
+                        onClick={(e) => handleDeleteLayer(l.id, e)}
+                        title="Delete layer"
+                        data-testid={`delete-layer-${l.id}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   );
                 })
               )}
             </div>
           </div>
+
+          {/* CARD 2 — INSPECTOR */}
+          {selectedLayer ? (
+            <div className={styles.card} data-testid="inspector-card">
+              <div className={styles.cardHeader}>
+                <span className={styles.cardTitle}>
+                  INSPECTOR:{" "}
+                  {selectedLayer.type === "qr" ? "QR Code" : "Text Layer"}
+                </span>
+              </div>
+
+              <div className={styles.inspectorForm}>
+                {/* 2-Column: X and Y */}
+                <div className={styles.grid2Col}>
+                  <div className={styles.formField}>
+                    <label className={styles.formLabel}>X (px)</label>
+                    <Input
+                      type="number"
+                      value={selectedLayer.x}
+                      onChange={(e) =>
+                        updateSelectedLayer({
+                          x: parseInt(e.target.value, 10) || 0,
+                        })
+                      }
+                      className="h-9 text-xs"
+                      data-testid="input-x"
+                    />
+                  </div>
+
+                  <div className={styles.formField}>
+                    <label className={styles.formLabel}>Y (px)</label>
+                    <Input
+                      type="number"
+                      value={selectedLayer.y}
+                      onChange={(e) =>
+                        updateSelectedLayer({
+                          y: parseInt(e.target.value, 10) || 0,
+                        })
+                      }
+                      className="h-9 text-xs"
+                      data-testid="input-y"
+                    />
+                  </div>
+                </div>
+
+                {/* Text Layer Properties */}
+                {selectedLayer.type === "text" && (
+                  <>
+                    {/* TEXT / TOKEN with Radix UI Token Popover */}
+                    <div className={styles.formField}>
+                      <label className={styles.formLabel}>TEXT / TOKEN</label>
+                      <div className={styles.tokenInputRow}>
+                        <Input
+                          type="text"
+                          value={selectedLayer.tokenOrText}
+                          onChange={(e) =>
+                            updateSelectedLayer({
+                              tokenOrText: e.target.value,
+                            })
+                          }
+                          className="h-9 text-xs flex-1"
+                          placeholder="e.g. {{name}}"
+                          data-testid="input-text-token"
+                        />
+
+                        {/* Token Picker Popover */}
+                        <Popover
+                          open={tokenPopoverOpen}
+                          onOpenChange={setTokenPopoverOpen}
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className={styles.tokenPickerBtn}
+                              data-testid="token-picker-trigger"
+                            >
+                              <Braces size={13} />
+                              <span>Tokens</span>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className={styles.popoverTokenList}
+                            align="end"
+                          >
+                            <span className={styles.tokenSectionTitle}>
+                              STANDARD TOKENS
+                            </span>
+                            <button
+                              type="button"
+                              className={styles.tokenItemBtn}
+                              onClick={() => {
+                                updateSelectedLayer({
+                                  tokenOrText: "{{name}}",
+                                  name: "Delegate Name",
+                                });
+                                setTokenPopoverOpen(false);
+                              }}
+                            >
+                              <span className={styles.tokenItemLabel}>
+                                Delegate Name
+                              </span>
+                              <span className={styles.tokenItemToken}>
+                                {"{{name}}"}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className={styles.tokenItemBtn}
+                              onClick={() => {
+                                updateSelectedLayer({
+                                  tokenOrText: "{{email}}",
+                                  name: "Delegate Email",
+                                });
+                                setTokenPopoverOpen(false);
+                              }}
+                            >
+                              <span className={styles.tokenItemLabel}>
+                                Delegate Email
+                              </span>
+                              <span className={styles.tokenItemToken}>
+                                {"{{email}}"}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className={styles.tokenItemBtn}
+                              onClick={() => {
+                                updateSelectedLayer({
+                                  tokenOrText: "{{ticket_code}}",
+                                  name: "Ticket Code",
+                                });
+                                setTokenPopoverOpen(false);
+                              }}
+                            >
+                              <span className={styles.tokenItemLabel}>
+                                Ticket Code
+                              </span>
+                              <span className={styles.tokenItemToken}>
+                                {"{{ticket_code}}"}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className={styles.tokenItemBtn}
+                              onClick={() => {
+                                updateSelectedLayer({
+                                  tokenOrText: "{{ticket_type}}",
+                                  name: "Ticket Title",
+                                });
+                                setTokenPopoverOpen(false);
+                              }}
+                            >
+                              <span className={styles.tokenItemLabel}>
+                                Ticket Title
+                              </span>
+                              <span className={styles.tokenItemToken}>
+                                {"{{ticket_type}}"}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className={styles.tokenItemBtn}
+                              onClick={() => {
+                                updateSelectedLayer({
+                                  tokenOrText: "{{event_title}}",
+                                  name: "Event Title",
+                                });
+                                setTokenPopoverOpen(false);
+                              }}
+                            >
+                              <span className={styles.tokenItemLabel}>
+                                Event Title
+                              </span>
+                              <span className={styles.tokenItemToken}>
+                                {"{{event_title}}"}
+                              </span>
+                            </button>
+
+                            {/* Custom Event Form Fields */}
+                            {formFields.length > 0 && (
+                              <>
+                                <span className={styles.tokenSectionTitle}>
+                                  EVENT FORM FIELDS
+                                </span>
+                                {formFields.map((field) => (
+                                  <button
+                                    key={field.id}
+                                    type="button"
+                                    className={styles.tokenItemBtn}
+                                    onClick={() => {
+                                      updateSelectedLayer({
+                                        tokenOrText: `{{form.${field.label}}}`,
+                                        name: field.label,
+                                      });
+                                      setTokenPopoverOpen(false);
+                                    }}
+                                  >
+                                    <span className={styles.tokenItemLabel}>
+                                      {field.label}
+                                    </span>
+                                    <span className={styles.tokenItemToken}>
+                                      {`{{form.${field.label}}}`}
+                                    </span>
+                                  </button>
+                                ))}
+                              </>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+
+                    {/* FONT SIZE and MAX LINES (2-Col Grid) */}
+                    <div className={styles.grid2Col}>
+                      <div className={styles.formField}>
+                        <label className={styles.formLabel}>
+                          FONT SIZE (px)
+                        </label>
+                        <Input
+                          type="number"
+                          min="8"
+                          max="200"
+                          value={selectedLayer.fontSize}
+                          onChange={(e) =>
+                            updateSelectedLayer({
+                              fontSize: parseInt(e.target.value, 10) || 16,
+                            })
+                          }
+                          className="h-9 text-xs"
+                          data-testid="input-font-size"
+                        />
+                      </div>
+
+                      <div className={styles.formField}>
+                        <label className={styles.formLabel}>MAX LINES</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={selectedLayer.maxLines}
+                          onChange={(e) =>
+                            updateSelectedLayer({
+                              maxLines: parseInt(e.target.value, 10) || 1,
+                            })
+                          }
+                          className="h-9 text-xs"
+                          data-testid="input-max-lines"
+                        />
+                      </div>
+                    </div>
+
+                    {/* LINE SPACING */}
+                    <div className={styles.formField}>
+                      <label className={styles.formLabel}>LINE SPACING</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={selectedLayer.lineSpacing}
+                        onChange={(e) =>
+                          updateSelectedLayer({
+                            lineSpacing: parseInt(e.target.value, 10) || 0,
+                          })
+                        }
+                        className="h-9 text-xs"
+                        data-testid="input-line-spacing"
+                      />
+                    </div>
+
+                    {/* FONT COLOR */}
+                    <div className={styles.formField}>
+                      <label className={styles.formLabel}>FONT COLOR</label>
+                      <div className={styles.colorPickerRow}>
+                        <input
+                          type="color"
+                          value={selectedLayer.fontColor || "#000000"}
+                          onChange={(e) =>
+                            updateSelectedLayer({
+                              fontColor: e.target.value,
+                            })
+                          }
+                          className={styles.colorInputSwatch}
+                          data-testid="input-font-color-swatch"
+                        />
+                        <Input
+                          type="text"
+                          value={selectedLayer.fontColor}
+                          onChange={(e) =>
+                            updateSelectedLayer({
+                              fontColor: e.target.value,
+                            })
+                          }
+                          className="h-9 text-xs flex-1 font-mono uppercase"
+                          data-testid="input-font-color-hex"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* QR Layer Properties */}
+                {selectedLayer.type === "qr" && (
+                  <div className={styles.grid2Col}>
+                    <div className={styles.formField}>
+                      <label className={styles.formLabel}>WIDTH (px)</label>
+                      <Input
+                        type="number"
+                        min="20"
+                        max="800"
+                        value={selectedLayer.width}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 120;
+                          updateSelectedLayer({ width: val, height: val });
+                        }}
+                        className="h-9 text-xs"
+                        data-testid="input-qr-width"
+                      />
+                    </div>
+
+                    <div className={styles.formField}>
+                      <label className={styles.formLabel}>HEIGHT (px)</label>
+                      <Input
+                        type="number"
+                        min="20"
+                        max="800"
+                        value={selectedLayer.height}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 120;
+                          updateSelectedLayer({ width: val, height: val });
+                        }}
+                        className="h-9 text-xs"
+                        data-testid="input-qr-height"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div
+              className={styles.card}
+              style={{ textAlign: "center", color: "#71717a", padding: "2rem" }}
+            >
+              <Palette
+                size={24}
+                style={{ margin: "0 auto 0.5rem", opacity: 0.4 }}
+              />
+              <p style={{ fontSize: "0.85rem", fontWeight: 500 }}>
+                No layer selected
+              </p>
+              <p style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                Click any layer on the canvas or in the Layers list above to
+                inspect and adjust its coordinates, typography, or size.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* BOTTOM BAR */}
+      <div className={styles.bottomBar}>
+        <div className={styles.figmaHelper}>
+          <ExternalLink size={14} />
+          <span>
+            Create custom ticket designs using{" "}
+            <a
+              href="https://www.figma.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.figmaHelperLink}
+            >
+              Figma
+            </a>
+          </span>
+        </div>
+
+        <div className={styles.bottomActions}>
+          {onClose && (
+            <button
+              type="button"
+              className={styles.cancelBtn}
+              onClick={onClose}
+              data-testid="cancel-btn"
+            >
+              Cancel
+            </button>
+          )}
+
+          <button
+            type="button"
+            className={styles.updateBtn}
+            onClick={handleUpdate}
+            disabled={isSaving}
+            data-testid="save-template-btn"
+          >
+            <span>{isSaving ? "Saving..." : "Update"}</span>
+          </button>
         </div>
       </div>
     </div>

@@ -4,7 +4,9 @@ import {
   validateFormResponses,
   evaluateConditionRule,
   evaluateConditionGroup,
+  evaluateVisibilityConditions,
   getFieldAction,
+  type VisibilityConditionRule,
   type ConditionRule,
   type ConditionGroup,
   type FieldConditionConfig,
@@ -328,6 +330,106 @@ describe("If / Then / Else Conditional Rule Engine", () => {
 
       const profAnswers = new Map([["f-role", "Professional"]]);
       expect(getFieldAction(mockField, profAnswers)).toBe("hide");
+    });
+
+    test("evaluateVisibilityConditions with VisibilityConditionRule array", () => {
+      const conditions: VisibilityConditionRule[] = [
+        {
+          fieldId: "f-role",
+          allowedValues: ["Student", "Intern"],
+        },
+        {
+          fieldId: "f-track",
+          allowedValues: ["Engineering"],
+        },
+      ];
+
+      // Both match -> true
+      const answersMatch = new Map([
+        ["f-role", "student"],
+        ["f-track", "engineering"],
+      ]);
+      expect(evaluateVisibilityConditions(conditions, answersMatch)).toBe(true);
+
+      // Multi-select JSON array matching one allowed value
+      const answersMulti = new Map([
+        ["f-role", JSON.stringify(["Intern", "Volunteer"])],
+        ["f-track", "Engineering"],
+      ]);
+      expect(evaluateVisibilityConditions(conditions, answersMulti)).toBe(true);
+
+      // First rule fails -> false
+      const answersFail1 = new Map([
+        ["f-role", "Professional"],
+        ["f-track", "Engineering"],
+      ]);
+      expect(evaluateVisibilityConditions(conditions, answersFail1)).toBe(false);
+
+      // Second rule missing -> false
+      const answersFail2 = new Map([["f-role", "Student"]]);
+      expect(evaluateVisibilityConditions(conditions, answersFail2)).toBe(false);
+
+      // Empty conditions -> true
+      expect(evaluateVisibilityConditions([], new Map())).toBe(true);
+      expect(evaluateVisibilityConditions(null, new Map())).toBe(true);
+    });
+
+    test("validateFormResponses with clean VisibilityConditionRule[]", () => {
+      const cleanFieldRole = {
+        id: "f-clean-role",
+        eventId: "e-1",
+        name: "role",
+        label: "Role",
+        fieldType: "select" as const,
+        isRequired: true,
+        options: ["Student", "Professional"],
+        sortOrder: 1,
+        page: 1,
+        createdAt: new Date(),
+      };
+
+      const cleanFieldCollegeId = {
+        id: "f-clean-college-id",
+        eventId: "e-1",
+        name: "college_id",
+        label: "College ID",
+        fieldType: "text" as const,
+        isRequired: true,
+        options: null,
+        conditions: [
+          {
+            fieldId: "f-clean-role",
+            allowedValues: ["Student"],
+          },
+        ],
+        sortOrder: 2,
+        page: 1,
+        createdAt: new Date(),
+      };
+
+      const testFields = [cleanFieldRole, cleanFieldCollegeId];
+
+      // When Role == Student, College ID is visible & required -> missing throws 400
+      expect(() => {
+        validateFormResponses(testFields, [
+          { fieldId: "f-clean-role", responseValue: "Student" },
+        ]);
+      }).toThrow("College ID is required.");
+
+      // When Role == Student and College ID is provided -> passes
+      expect(() => {
+        validateFormResponses(testFields, [
+          { fieldId: "f-clean-role", responseValue: "Student" },
+          { fieldId: "f-clean-college-id", responseValue: "STU-999" },
+        ]);
+      }).not.toThrow();
+
+      // When Role == Professional, College ID is hidden -> passes even when omitted
+      expect(() => {
+        validateFormResponses(testFields, [
+          { fieldId: "f-clean-role", responseValue: "Professional" },
+        ]);
+      }).not.toThrow();
     });
   });
 });

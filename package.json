@@ -9,7 +9,14 @@
     "typecheck": "bun --filter '*' typecheck",
     "lint": "bunx --bun eslint .",
     "test": "FORCE_COLOR=1 bun --filter tiket-backend test && FORCE_COLOR=1 bun --filter tiket-frontend test",
-    "check": "bun run typecheck && bun run lint && bun run test"
+    "check": "bun run typecheck && bun run lint && bun run test",
+    "db:push": "bun --filter tiket-backend db:push",
+    "db:generate": "bun --filter tiket-backend db:generate",
+    "db:migrate": "bun --filter tiket-backend db:migrate",
+    "dev": "bunx --bun turbo run dev --parallel",
+    "build": "bunx --bun turbo run build --filter=tiket-frontend",
+    "start": "bunx --bun turbo run start --filter=tiket-frontend",
+    "dev:api": "bun --cwd tiket-backend dev",
+    "dev:web": "bun --cwd tiket-frontend dev"
   }
 }
-

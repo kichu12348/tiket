@@ -1,5 +1,5 @@
 import React from "react";
-import { Edit2, Trash2, GripVertical } from "lucide-react";
+import { Edit2, Trash2, GripVertical, Palette } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { TicketType } from "@/types/ticketType";
@@ -9,12 +9,14 @@ interface Props {
   ticket: TicketType;
   onEdit: () => void;
   onDelete: () => void;
+  onDesign?: () => void;
 }
 
 export default function SortableTicketCard({
   ticket,
   onEdit,
   onDelete,
+  onDesign,
 }: Props) {
   const {
     attributes,
@@ -120,6 +122,18 @@ export default function SortableTicketCard({
           </div>
         </div>
         <div className={styles.ticketActions}>
+          {onDesign && (
+            <button
+              type="button"
+              className={styles.designBtn}
+              onClick={onDesign}
+              title="Design Pass / Edit Layout"
+              data-testid={`design-pass-btn-${ticket.id}`}
+            >
+              <Palette size={15} />
+              <span>Design Pass</span>
+            </button>
+          )}
           <button className={styles.iconBtn} onClick={onEdit}>
             <Edit2 size={16} />
           </button>

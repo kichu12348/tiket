@@ -1,3 +1,15 @@
+const visibilityConditionRuleSchema = {
+  type: "object",
+  required: ["fieldId", "allowedValues"],
+  properties: {
+    fieldId: { type: "string" },
+    allowedValues: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+};
+
 const conditionRuleSchema = {
   type: "object",
   required: ["sourceType", "sourceId", "operator", "value"],
@@ -29,6 +41,52 @@ const conditionGroupSchema = {
   },
 };
 
+const ticketLayoutLayerSchema = {
+  type: "object",
+  required: [
+    "id",
+    "type",
+    "name",
+    "tokenOrText",
+    "x",
+    "y",
+    "width",
+    "height",
+    "fontSize",
+    "maxLines",
+    "lineSpacing",
+    "fontColor",
+  ],
+  properties: {
+    id: { type: "string" },
+    type: { type: "string", enum: ["qr", "text"] },
+    name: { type: "string" },
+    tokenOrText: { type: "string" },
+    x: { type: "number" },
+    y: { type: "number" },
+    width: { type: "number" },
+    height: { type: "number" },
+    rotation: { type: "number" },
+    fontSize: { type: "number" },
+    maxLines: { type: "number" },
+    lineSpacing: { type: "number" },
+    fontColor: { type: "string" },
+  },
+};
+
+const ticketLayoutConfigSchema = {
+  type: "object",
+  required: ["canvasWidth", "canvasHeight", "layers"],
+  properties: {
+    canvasWidth: { type: "number" },
+    canvasHeight: { type: "number" },
+    layers: {
+      type: "array",
+      items: ticketLayoutLayerSchema,
+    },
+  },
+};
+
 const ticketTypeObj = {
   type: "object",
   properties: {
@@ -38,10 +96,28 @@ const ticketTypeObj = {
     name: { type: "string" },
     description: { type: ["string", "null"] },
     price: { type: "string" },
+    templateImageUrl: { type: ["string", "null"] },
+    templateConfig: {
+      anyOf: [ticketLayoutConfigSchema, { type: "null" }],
+    },
     passFeeToCustomer: { type: "boolean" },
     quantityLimit: { type: ["integer", "null"], minimum: 1 },
     poolName: { type: ["string", "null"] },
     poolCapacity: { type: ["integer", "null"], minimum: 1 },
+    category: { type: ["string", "null"] },
+    tags: { type: "array", items: { type: "string" } },
+    enableWaitlist: { type: "boolean" },
+    multiDayCheckIn: { type: "boolean" },
+    maxPerUser: { type: ["integer", "null"], minimum: 1 },
+    isFixedDefault: { type: "boolean" },
+    collectGst: { type: "boolean" },
+    isClosed: { type: "boolean" },
+    conditions: {
+      anyOf: [
+        { type: "array", items: visibilityConditionRuleSchema },
+        { type: "null" },
+      ],
+    },
     eligibilityRules: {
       anyOf: [conditionGroupSchema, { type: "null" }],
     },
@@ -77,10 +153,28 @@ export const createTicketTypeSchema = {
         name: { type: "string", minLength: 2 },
         description: { type: "string" },
         price: { type: "number", minimum: 0, maximum: 10000000 },
+        templateImageUrl: { type: ["string", "null"] },
+        templateConfig: {
+          anyOf: [ticketLayoutConfigSchema, { type: "null" }],
+        },
         passFeeToCustomer: { type: "boolean" },
         quantityLimit: { type: ["integer", "null"], minimum: 1 },
         poolName: { type: ["string", "null"] },
         poolCapacity: { type: ["integer", "null"], minimum: 1 },
+        category: { type: ["string", "null"] },
+        tags: { type: "array", items: { type: "string" } },
+        enableWaitlist: { type: "boolean" },
+        multiDayCheckIn: { type: "boolean" },
+        maxPerUser: { type: ["integer", "null"], minimum: 1 },
+        isFixedDefault: { type: "boolean" },
+        collectGst: { type: "boolean" },
+        isClosed: { type: "boolean" },
+        conditions: {
+          anyOf: [
+            { type: "array", items: visibilityConditionRuleSchema },
+            { type: "null" },
+          ],
+        },
         eligibilityRules: {
           anyOf: [conditionGroupSchema, { type: "null" }],
         },
@@ -137,10 +231,28 @@ export const updateTicketTypeSchema = {
         name: { type: "string", minLength: 2 },
         description: { type: "string" },
         price: { type: "number", minimum: 0, maximum: 10000000 },
+        templateImageUrl: { type: ["string", "null"] },
+        templateConfig: {
+          anyOf: [ticketLayoutConfigSchema, { type: "null" }],
+        },
         passFeeToCustomer: { type: "boolean" },
         quantityLimit: { type: ["integer", "null"], minimum: 1 },
         poolName: { type: ["string", "null"] },
         poolCapacity: { type: ["integer", "null"], minimum: 1 },
+        category: { type: ["string", "null"] },
+        tags: { type: "array", items: { type: "string" } },
+        enableWaitlist: { type: "boolean" },
+        multiDayCheckIn: { type: "boolean" },
+        maxPerUser: { type: ["integer", "null"], minimum: 1 },
+        isFixedDefault: { type: "boolean" },
+        collectGst: { type: "boolean" },
+        isClosed: { type: "boolean" },
+        conditions: {
+          anyOf: [
+            { type: "array", items: visibilityConditionRuleSchema },
+            { type: "null" },
+          ],
+        },
         eligibilityRules: {
           anyOf: [conditionGroupSchema, { type: "null" }],
         },

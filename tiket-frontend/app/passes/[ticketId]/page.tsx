@@ -25,6 +25,13 @@ export default function TicketPassPage() {
 
   const ticketRef = React.useRef<HTMLDivElement>(null);
 
+  const hasPerTicketDesign = Boolean(
+    ticket?.ticketType?.templateImageUrl && ticket?.ticketType?.templateConfig,
+  );
+  const hasCustomDesign = Boolean(
+    hasPerTicketDesign || (ticket?.template && ticket?.template?.backgroundImageUrl),
+  );
+
   return (
     <div className={styles.pageWrapper}>
       <div className={styles.glowTopRight} />
@@ -33,7 +40,7 @@ export default function TicketPassPage() {
       <div
         className={cn(
           styles.machineWrapper,
-          ticket?.template?.backgroundImageUrl && styles.machineWrapperCustom,
+          hasCustomDesign && styles.machineWrapperCustom,
         )}
       >
         {/* 3D Machine Opening Slot Assembly */}
@@ -66,11 +73,11 @@ export default function TicketPassPage() {
                 }}
                 ref={ticketRef}
               >
-                {ticket.template && ticket.template.backgroundImageUrl ? (
+                {hasCustomDesign ? (
                   <div className={styles.customPassWrapper}>
                     <CustomTicketCanvas
                       pass={ticket}
-                      template={ticket.template}
+                      template={ticket.template ?? undefined}
                     />
                     <div className={styles.customPassDetailsCard}>
                       <PassDetails

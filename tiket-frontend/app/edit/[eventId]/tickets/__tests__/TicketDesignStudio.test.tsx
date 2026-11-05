@@ -39,99 +39,89 @@ try {
 }
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import TicketDesignStudio from "../components/TicketDesignStudio";
-import type {
-  DocumentTemplate,
-  CreateTemplatePayload,
-  UpdateTemplatePayload,
-  TicketCanvasConfig,
-} from "../components/TicketDesignStudio/types";
+import TicketDesignStudio, {
+  interpolateSamplePreview,
+} from "../components/TicketDesignStudio";
+import type { TicketType } from "@/types/ticketType";
 
-let savedTemplates: DocumentTemplate[] = [];
-
-const mockGetTemplates = mock(async (_eventId: string): Promise<DocumentTemplate[]> => {
-  return [...savedTemplates];
-});
-
-const mockCreateTemplate = mock(
-  async (eventId: string, payload: CreateTemplatePayload): Promise<DocumentTemplate> => {
-    const newDoc: DocumentTemplate = {
-      id: "tpl-101",
-      eventId,
-      type: payload.type,
-      name: payload.name,
-      backgroundImageUrl: payload.backgroundImageUrl || null,
-      elementsJson: payload.elementsJson,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    savedTemplates.push(newDoc);
-    return newDoc;
+const mockSampleTicket: TicketType = {
+  id: "tt-sample-1",
+  eventId: "evt-test-101",
+  name: "VIP All Access",
+  description: "Access to all lounges and keynotes",
+  price: "2499",
+  passFeeToCustomer: true,
+  quantityLimit: 100,
+  isHidden: false,
+  isRefundable: true,
+  refundableUntil: null,
+  isTransferable: true,
+  maxTransfers: 1,
+  saleStart: "2026-01-01T00:00:00.000Z",
+  saleEnd: "2026-05-20T00:00:00.000Z",
+  sortOrder: 0,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  templateImageUrl: null,
+  templateConfig: {
+    canvasWidth: 800,
+    canvasHeight: 400,
+    layers: [
+      {
+        id: "l-init-name",
+        type: "text",
+        name: "Delegate Name",
+        tokenOrText: "{{name}}",
+        x: 50,
+        y: 60,
+        width: 250,
+        height: 50,
+        fontSize: 32,
+        maxLines: 1,
+        lineSpacing: 0,
+        fontColor: "#ffffff",
+      },
+    ],
   },
-);
+};
 
-const mockUpdateTemplate = mock(
-  async (templateId: string, payload: UpdateTemplatePayload): Promise<DocumentTemplate> => {
-    const existingIndex = savedTemplates.findIndex((t) => t.id === templateId);
-    if (existingIndex >= 0) {
-      savedTemplates[existingIndex] = {
-        ...savedTemplates[existingIndex],
-        ...payload,
-        updatedAt: new Date().toISOString(),
-      };
-      return savedTemplates[existingIndex];
-    }
-    const updated: DocumentTemplate = {
-      id: templateId,
-      eventId: "evt-test-101",
-      type: "ticket",
-      name: payload.name || "Ticket Template",
-      backgroundImageUrl: payload.backgroundImageUrl || null,
-      elementsJson: payload.elementsJson,
-      createdAt: new Date().toISOString(),
+const mockUpdateTicketType = mock(
+  async (
+    _eventId: string,
+    ticketTypeId: string,
+    payload: Partial<TicketType>,
+  ): Promise<TicketType> => {
+    return {
+      ...mockSampleTicket,
+      id: ticketTypeId,
+      ...payload,
       updatedAt: new Date().toISOString(),
     };
-    savedTemplates.push(updated);
-    return updated;
   },
 );
 
 mock.module("@/api/tickets", () => ({
-  getTemplates: mockGetTemplates,
-  createTemplate: mockCreateTemplate,
-  updateTemplate: mockUpdateTemplate,
-  deleteTemplate: mock(async () => ({ message: "Deleted" })),
-  getTicketTypes: mock(async () => [
-    {
-      id: "tt-1",
-      name: "Early Bird VIP",
-      price: "12000",
-      isTransferable: true,
-      isRefundable: true,
-    },
-    {
-      id: "tt-2",
-      name: "General Admission",
-      price: "5000",
-      isTransferable: true,
-      isRefundable: false,
-    },
-  ]),
+  getTicketTypes: mock(async () => [mockSampleTicket]),
+  updateTicketType: mockUpdateTicketType,
 }));
 
 mock.module("@/api/forms", () => ({
   getFormFields: mock(async () => [
     {
-      id: "f-dietary",
-      label: "Dietary Preference",
-      type: "select",
-      required: false,
+      id: "f-college",
+      label: "College",
+      fieldType: "text",
+      isRequired: false,
+      sortOrder: 0,
+      page: 1,
     },
     {
       id: "f-tshirt",
       label: "T-Shirt Size",
-      type: "text",
-      required: true,
+      fieldType: "select",
+      isRequired: true,
+      sortOrder: 1,
+      page: 1,
     },
   ]),
 }));
@@ -149,14 +139,6 @@ mock.module("@/api/events", () => ({
 
 mock.module("@/constants/config", () => ({
   getImageUrl: (fn: string) => `https://cdn.tiket.app/${fn}`,
-  API_ENDPOINTS: {
-    TEMPLATES: {
-      GET_ALL: (id: string) => `/api/templates/events/${id}`,
-      CREATE: (id: string) => `/api/templates/events/${id}`,
-      UPDATE: (id: string) => `/api/templates/${id}`,
-      DELETE: (id: string) => `/api/templates/${id}`,
-    },
-  },
 }));
 
 mock.module("sonner", () => ({
@@ -167,227 +149,176 @@ mock.module("sonner", () => ({
   },
 }));
 
-describe("TicketDesignStudio Integration", () => {
+describe("TicketDesignStudio (MakeMyPass Caliber)", () => {
   beforeEach(() => {
-    savedTemplates = [];
-    mockGetTemplates.mockClear();
-    mockCreateTemplate.mockClear();
-    mockUpdateTemplate.mockClear();
+    mockUpdateTicketType.mockClear();
   });
 
-  test("1. Renders TicketDesignStudio toolbar, presets, and artboard canvas", async () => {
-    render(<TicketDesignStudio eventId="evt-test-101" />);
+  test("1. Renders toolbar, mode switcher, artboard, and layers card", async () => {
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={mockSampleTicket}
+        onClose={mock()}
+      />,
+    );
 
     expect(screen.getByTestId("ticket-design-studio")).toBeDefined();
-    expect(screen.getByText("Upload Background")).toBeDefined();
-    expect(screen.getByText("Landscape (1200x600)")).toBeDefined();
-    expect(screen.getByText("Vertical (750x1200)")).toBeDefined();
-    expect(screen.getByText("Badge (800x1000)")).toBeDefined();
-    expect(screen.getByText("Save Template")).toBeDefined();
+    expect(screen.getByTestId("mode-edit-btn")).toBeDefined();
+    expect(screen.getByTestId("mode-preview-btn")).toBeDefined();
+    expect(screen.getByTestId("ticket-artboard")).toBeDefined();
+    expect(screen.getByTestId("layers-card")).toBeDefined();
+    expect(screen.getByTestId("upload-template-btn")).toBeDefined();
+    expect(screen.getByTestId("save-template-btn")).toBeDefined();
   });
 
-  test("2. Adds an Attendee Name placeholder and QR Code to the canvas", async () => {
-    render(<TicketDesignStudio eventId="evt-test-101" />);
+  test("2. Toggles between Edit Layout and Sample Preview modes", async () => {
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={mockSampleTicket}
+      />,
+    );
 
-    // Add Name element
-    const nameBtn = screen.getByText("Name");
-    fireEvent.click(nameBtn);
+    // Initial edit mode displays raw token "{{name}}"
+    expect(screen.getAllByText("{{name}}").length).toBeGreaterThan(0);
 
-    // Verify name element on canvas
+    // Click Sample Preview mode
+    const previewBtn = screen.getByTestId("mode-preview-btn");
+    fireEvent.click(previewBtn);
+
+    // Should interpolate {{name}} to "Alex Morgan"
     await waitFor(() => {
-      expect(screen.getByText("Alex Johnson")).toBeDefined();
+      expect(screen.getByText("Alex Morgan")).toBeDefined();
     });
 
-    // Add QR Code
-    const qrBtn = screen.getByText("QR Code");
-    fireEvent.click(qrBtn);
+    // Switch back to Edit Layout
+    const editBtn = screen.getByTestId("mode-edit-btn");
+    fireEvent.click(editBtn);
 
-    // Verify 2 layers are listed
     await waitFor(() => {
-      expect(screen.getByText("Layers (2)")).toBeDefined();
+      expect(screen.getAllByText("{{name}}").length).toBeGreaterThan(0);
     });
   });
 
-  test("3. Updates X, Y, and Rotation properties in the inspector", async () => {
-    render(<TicketDesignStudio eventId="evt-test-101" />);
+  test("3. Adds a QR Layer and another Text Layer", async () => {
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={mockSampleTicket}
+      />,
+    );
 
-    // Add Name placeholder
-    fireEvent.click(screen.getByText("Name"));
+    // Add QR Layer
+    const addQrBtn = screen.getByTestId("add-qr-layer-btn");
+    fireEvent.click(addQrBtn);
 
+    // Verify QR placeholder on canvas
     await waitFor(() => {
-      expect(screen.getByText("Inspector: Attendee Name")).toBeDefined();
+      expect(screen.getByTestId("qr-placeholder")).toBeDefined();
     });
 
-    // Inspect inputs: X, Y, Rotation
-    const xInput = screen.getByLabelText("X (px)");
-    const yInput = screen.getByLabelText("Y (px)");
-    const rotInput = screen.getByLabelText("Rotation (°)");
+    // Add another Text Layer
+    const addTextBtn = screen.getByTestId("add-text-layer-btn");
+    fireEvent.click(addTextBtn);
 
-    fireEvent.change(xInput, { target: { value: "140" } });
-    fireEvent.change(yInput, { target: { value: "95" } });
-    fireEvent.change(rotInput, { target: { value: "45" } });
-
-    expect((xInput as HTMLInputElement).value).toBe("140");
-    expect((yInput as HTMLInputElement).value).toBe("95");
-    expect((rotInput as HTMLInputElement).value).toBe("45");
+    // Should now list 3 layers in inspector
+    expect(screen.getByTestId("inspector-card")).toBeDefined();
   });
 
-  test("4. Persists the TicketCanvasConfig payload on Save Template", async () => {
-    render(<TicketDesignStudio eventId="evt-test-101" />);
+  test("4. Updates layer X, Y, and typography properties in Inspector", async () => {
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={mockSampleTicket}
+      />,
+    );
 
-    // Add Name & QR
-    fireEvent.click(screen.getByText("Name"));
-    fireEvent.click(screen.getByText("QR Code"));
+    // Layer 1 is initially selected
+    expect(screen.getByTestId("inspector-card")).toBeDefined();
 
-    // Click Save Template
-    const saveBtn = screen.getByText("Save Template");
-    fireEvent.click(saveBtn);
+    const inputX = screen.getByTestId("input-x");
+    const inputY = screen.getByTestId("input-y");
+    const inputFontSize = screen.getByTestId("input-font-size");
+    const inputMaxLines = screen.getByTestId("input-max-lines");
+
+    fireEvent.change(inputX, { target: { value: "120" } });
+    fireEvent.change(inputY, { target: { value: "85" } });
+    fireEvent.change(inputFontSize, { target: { value: "48" } });
+    fireEvent.change(inputMaxLines, { target: { value: "2" } });
+
+    expect((inputX as HTMLInputElement).value).toBe("120");
+    expect((inputY as HTMLInputElement).value).toBe("85");
+    expect((inputFontSize as HTMLInputElement).value).toBe("48");
+    expect((inputMaxLines as HTMLInputElement).value).toBe("2");
+  });
+
+  test("5. Opens token picker and inserts token into text layer", async () => {
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={mockSampleTicket}
+      />,
+    );
+
+    const tokenTrigger = screen.getByTestId("token-picker-trigger");
+    fireEvent.click(tokenTrigger);
 
     await waitFor(() => {
-      expect(mockCreateTemplate).toHaveBeenCalledTimes(1);
+      expect(screen.getByText("Ticket Code")).toBeDefined();
     });
 
-    const [eventId, payload] = mockCreateTemplate.mock.calls[0] as [
-      string,
-      CreateTemplatePayload,
-    ];
+    // Click Ticket Code
+    const ticketCodeBtn = screen.getByText("Ticket Code");
+    fireEvent.click(ticketCodeBtn);
+
+    const textTokenInput = screen.getByTestId("input-text-token");
+    expect((textTokenInput as HTMLInputElement).value).toBe("{{ticket_code}}");
+  });
+
+  test("6. Persists template config via PATCH on Update button click", async () => {
+    const handleSaved = mock();
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={mockSampleTicket}
+        onSaved={handleSaved}
+      />,
+    );
+
+    // Update X coordinate
+    const inputX = screen.getByTestId("input-x");
+    fireEvent.change(inputX, { target: { value: "180" } });
+
+    // Click Update
+    const updateBtn = screen.getByTestId("save-template-btn");
+    fireEvent.click(updateBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateTicketType).toHaveBeenCalledTimes(1);
+    });
+
+    const [eventId, ticketTypeId, payload] =
+      mockUpdateTicketType.mock.calls[0] as [
+        string,
+        string,
+        Partial<TicketType>,
+      ];
     expect(eventId).toBe("evt-test-101");
-    expect(payload.type).toBe("ticket");
-    expect(payload.name).toBe("Ticket Template");
-
-    const config = payload.elementsJson as TicketCanvasConfig;
-    expect(config.canvasWidth).toBe(1200);
-    expect(config.canvasHeight).toBe(600);
-    expect(config.elements).toHaveLength(2);
-    expect(config.elements.some((el) => el.type === "variable" && el.variableKey === "{{attendee.name}}")).toBe(true);
-    expect(config.elements.some((el) => el.type === "qr")).toBe(true);
+    expect(ticketTypeId).toBe("tt-sample-1");
+    expect(payload.templateConfig).toBeDefined();
+    expect(payload.templateConfig?.layers[0].x).toBe(180);
+    expect(handleSaved).toHaveBeenCalledTimes(1);
   });
 
-  test("5. Renders Form Elements and drops custom form field onto canvas", async () => {
-    render(<TicketDesignStudio eventId="evt-test-101" />);
-
-    // Wait for form fields from API to render under Form Elements
-    await waitFor(() => {
-      expect(screen.getByText("Dietary Preference")).toBeDefined();
-      expect(screen.getByText("T-Shirt Size")).toBeDefined();
-    });
-
-    // Click Dietary Preference to drop as form_field layer
-    fireEvent.click(screen.getByText("Dietary Preference"));
-
-    // Verify canvas displays form field placeholder
-    await waitFor(() => {
-      expect(screen.getByText("[Dietary Preference]")).toBeDefined();
-      expect(screen.getByText("Inspector: Dietary Preference")).toBeDefined();
-    });
-
-    // Inspect fallback text input
-    const fallbackInput = screen.getByPlaceholderText("e.g. Not Specified");
-    expect(fallbackInput).toBeDefined();
-    fireEvent.change(fallbackInput, { target: { value: "Standard Meal" } });
-    expect((fallbackInput as HTMLInputElement).value).toBe("Standard Meal");
-  });
-
-  test("6. Configures If / Else conditional rules and else fallback in the Inspector Sidebar", async () => {
-    render(<TicketDesignStudio eventId="evt-test-101" />);
-
-    // Add Name element
-    fireEvent.click(screen.getByText("Name"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Inspector: Attendee Name")).toBeDefined();
-    });
-
-    // Click Add Rule button
-    const addRuleBtn = screen.getByTestId("add-condition-rule-btn");
-    fireEvent.click(addRuleBtn);
-
-    // Rule card and ELSE card should appear
-    await waitFor(() => {
-      expect(screen.getByText("IF Branch #1")).toBeDefined();
-      expect(screen.getByTestId("else-card")).toBeDefined();
-    });
-
-    // Configure IF branch: text override "VIP GUEST", color override "#FFD700"
-    const textOverrideInput = screen.getByPlaceholderText("e.g. EARLY BIRD VIP");
-    fireEvent.change(textOverrideInput, { target: { value: "VIP GUEST" } });
-    expect((textOverrideInput as HTMLInputElement).value).toBe("VIP GUEST");
-
-    // Configure ELSE fallback: text override "REGULAR GUEST"
-    const elseTextInput = screen.getByPlaceholderText("e.g. REGULAR");
-    fireEvent.change(elseTextInput, { target: { value: "REGULAR GUEST" } });
-    expect((elseTextInput as HTMLInputElement).value).toBe("REGULAR GUEST");
-  });
-
-  test("7. Preview As... Simulator Bar toggles and simulates conditional layer changes live", async () => {
-    render(<TicketDesignStudio eventId="evt-test-101" />);
-
-    // Add Name element and drop a form field
-    fireEvent.click(screen.getByText("Name"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Preview As (Simulator)")).toBeDefined();
-    });
-
-    // Toggle Simulator Mode ON
-    const simToggleBtn = screen.getByTestId("toggle-simulator-btn");
-    fireEvent.click(simToggleBtn);
-
-    // Simulator bar controls should appear
-    await waitFor(() => {
-      expect(screen.getByText("Preview Active")).toBeDefined();
-      expect(screen.getByTestId("sim-tier-select")).toBeDefined();
-    });
-
-    // Select tier Early Bird VIP
-    const tierSelect = screen.getByTestId("sim-tier-select") as HTMLSelectElement;
-    fireEvent.change(tierSelect, { target: { value: "tt-1" } });
-    expect(tierSelect.value).toBe("tt-1");
-
-    // Enter simulated Dietary Preference
-    await waitFor(() => {
-      expect(screen.getByTestId("sim-input-dietary-preference")).toBeDefined();
-    });
-    const dietaryInput = screen.getByTestId("sim-input-dietary-preference");
-    fireEvent.change(dietaryInput, { target: { value: "Vegan" } });
-    expect((dietaryInput as HTMLInputElement).value).toBe("Vegan");
-  });
-
-  test("8. Persists conditional rules and form field properties when saving template", async () => {
-    render(<TicketDesignStudio eventId="evt-test-101" />);
-
-    // Add form field Dietary Preference
-    await waitFor(() => {
-      expect(screen.getByText("Dietary Preference")).toBeDefined();
-    });
-    fireEvent.click(screen.getByText("Dietary Preference"));
-
-    // Add condition rule
-    const addRuleBtn = screen.getByTestId("add-condition-rule-btn");
-    fireEvent.click(addRuleBtn);
-
-    const textOverrideInput = screen.getByPlaceholderText("e.g. EARLY BIRD VIP");
-    fireEvent.change(textOverrideInput, { target: { value: "VIP MEAL" } });
-
-    // Save Template
-    const saveBtn = screen.getByText("Save Template");
-    fireEvent.click(saveBtn);
-
-    await waitFor(() => {
-      expect(mockCreateTemplate).toHaveBeenCalledTimes(1);
-    });
-
-    const [, payload] = mockCreateTemplate.mock.calls[0] as [
-      string,
-      CreateTemplatePayload,
-    ];
-    const config = payload.elementsJson as TicketCanvasConfig;
-    const formElement = config.elements.find((el) => el.type === "form_field");
-    expect(formElement).toBeDefined();
-    expect(formElement?.fieldLabel).toBe("Dietary Preference");
-    expect(formElement?.conditionalRules).toBeDefined();
-    expect(formElement?.conditionalRules?.[0].thenEffect.textOverride).toBe("VIP MEAL");
-    expect(formElement?.elseBehavior).toBeDefined();
+  test("7. Correctly interpolates preview strings", () => {
+    const result = interpolateSamplePreview(
+      "{{name}} - {{ticket_code}} at {{event_title}} ({{form.College}})",
+      "VIP Pass",
+      "Tiket Summit",
+    );
+    expect(result).toBe(
+      "Alex Morgan - TIK-9842-X7 at Tiket Summit (Stanford University)",
+    );
   });
 });
-

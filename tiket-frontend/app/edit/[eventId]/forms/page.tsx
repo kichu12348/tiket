@@ -225,6 +225,7 @@ export default function EditFormsPage() {
                 <SortableFieldCard
                   key={field.localId}
                   field={field}
+                  availableFields={customFields}
                   onEdit={() => openEditModal(field)}
                   onToggleInlineEdit={() => toggleInlineEdit(field.localId)}
                   onSaveInline={handleInlineSave}
@@ -246,6 +247,7 @@ export default function EditFormsPage() {
         onClose={closeFieldModal}
         mode={modalMode}
         initialField={editingField}
+        availableFields={customFields}
         onSave={handleModalSave}
         onDelete={
           modalMode === "edit" && editingField

@@ -1,6 +1,11 @@
 import type { formFields } from "@db/schema";
 import { HttpError } from "./errors";
 
+export interface VisibilityConditionRule {
+  fieldId: string; // Selected via Radix UI Select dropdown (single form question)
+  allowedValues: string[]; // Checked via Radix UI Checkbox list (one or multiple values can be checked)
+}
+
 export interface ConditionRule {
   sourceType: "field" | "ticketType";
   sourceId: string; // fieldId or "ticketTypeId"
@@ -24,9 +29,48 @@ export interface FormResponse {
   fieldId: string;
   responseValue: string;
 }
-type Field = typeof formFields.$inferSelect & {
-  conditions?: FieldConditionConfig | null;
+type Field = Omit<typeof formFields.$inferSelect, "conditions"> & {
+  conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
 };
+
+export function evaluateVisibilityConditions(
+  conditions: VisibilityConditionRule[] | null | undefined,
+  answers: Map<string, string>,
+): boolean {
+  if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
+    return true;
+  }
+  return conditions.every((rule) => {
+    if (!rule.fieldId || !rule.allowedValues || rule.allowedValues.length === 0) {
+      return true;
+    }
+    const rawAnswer = answers.get(rule.fieldId) ?? "";
+    if (!rawAnswer) return false;
+
+    let userAnswers: string[] = [];
+    if (rawAnswer.startsWith("[") && rawAnswer.endsWith("]")) {
+      try {
+        const parsed: unknown = JSON.parse(rawAnswer);
+        if (Array.isArray(parsed)) {
+          userAnswers = parsed.map(String);
+        } else {
+          userAnswers = [rawAnswer];
+        }
+      } catch {
+        userAnswers = [rawAnswer];
+      }
+    } else {
+      userAnswers = [rawAnswer];
+    }
+
+    const compareEq = (a: string, b: string) =>
+      a.trim().toLowerCase() === b.trim().toLowerCase();
+
+    return userAnswers.some((ua) =>
+      rule.allowedValues.some((av) => compareEq(ua, av)),
+    );
+  });
+}
 
 export function evaluateConditionRule(
   rule: ConditionRule,
@@ -143,21 +187,48 @@ export function getFieldAction(
   answers: Map<string, string>,
   ticketTypeId?: string,
 ): "show" | "require" | "hide" | "optional" {
-  const fieldAny = field as unknown as { conditions?: FieldConditionConfig | null };
-  const config = (fieldAny.conditions ||
+  const fieldAny = field as unknown as {
+    conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+  };
+  const rawConditions =
+    fieldAny.conditions ||
     (field.options &&
     typeof field.options === "object" &&
     !Array.isArray(field.options) &&
     "conditions" in field.options
-      ? (field.options as { conditions?: FieldConditionConfig }).conditions
-      : null)) as FieldConditionConfig | null | undefined;
+      ? (field.options as {
+          conditions?: VisibilityConditionRule[] | FieldConditionConfig;
+        }).conditions
+      : null);
 
-  if (!config || !config.rules || config.rules.length === 0) {
+  if (!rawConditions) {
     return field.isRequired ? "require" : "optional";
   }
 
-  const isMatch = evaluateConditionGroup(config, answers, ticketTypeId);
-  return isMatch ? config.thenAction : config.elseAction;
+  // Pure VisibilityConditionRule[] array
+  if (Array.isArray(rawConditions)) {
+    if (rawConditions.length === 0) {
+      return field.isRequired ? "require" : "optional";
+    }
+    const isVisible = evaluateVisibilityConditions(rawConditions, answers);
+    if (!isVisible) return "hide";
+    return field.isRequired ? "require" : "show";
+  }
+
+  // Backward-compatibility with legacy FieldConditionConfig object
+  if ("rules" in rawConditions && Array.isArray(rawConditions.rules)) {
+    if (rawConditions.rules.length === 0) {
+      return field.isRequired ? "require" : "optional";
+    }
+    const isMatch = evaluateConditionGroup(
+      rawConditions,
+      answers,
+      ticketTypeId,
+    );
+    return isMatch ? rawConditions.thenAction : rawConditions.elseAction;
+  }
+
+  return field.isRequired ? "require" : "optional";
 }
 
 export function validateFormResponses(

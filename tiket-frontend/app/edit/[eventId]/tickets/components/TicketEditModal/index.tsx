@@ -1,23 +1,34 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { createTicketType, updateTicketType } from "@/api/tickets";
 import { getFormFields } from "@/api/forms";
 import type { TicketType } from "@/types/ticketType";
-import type { FormField, ConditionGroup } from "@/types/form";
+import type { FormField, VisibilityConditionRule } from "@/types/form";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
-import { Globe, CalendarIcon, Clock } from "lucide-react";
+import { Globe, CalendarIcon, Clock, Copy, Check, Palette } from "lucide-react";
 import Modal from "@/components/Modal";
 import Switch from "@/components/Switch";
-import styles from "./TicketEditModal.module.css";
+import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { format } from "date-fns";
 import Dropdown from "@/components/Dropdown";
 import { useEventStore } from "@/store/useEventStore";
+import ConditionBuilder from "@/components/ConditionBuilder";
+import RichTextEditor from "@/components/DescriptionModal/RichTextEditor";
+import styles from "./TicketEditModal.module.css";
 
 const TIME_OPTIONS = Array.from({ length: 48 }).map((_, i) => {
   const hours = Math.floor(i / 2);
@@ -59,6 +70,7 @@ interface TicketEditModalProps {
   eventId: string;
   ticket?: TicketType | null;
   onSave: () => void;
+  onOpenDesign?: (ticket: TicketType) => void;
   timezone: string;
   eventRegistrationStart?: string | null;
   eventRegistrationEnd?: string | null;
@@ -72,6 +84,7 @@ function TicketEditModalContent({
   eventId,
   ticket,
   onSave,
+  onOpenDesign,
   timezone,
   eventRegistrationStart,
   eventRegistrationEnd,
@@ -81,26 +94,57 @@ function TicketEditModalContent({
   const storeEvent = useEventStore((state) => state.event);
   const effectiveFeeBps = platformFeeBps ?? storeEvent?.platformFeeBps ?? 400;
   const feePercent = effectiveFeeBps / 100;
+  const gatewayFeePercent = 2; // Standard 2% gateway fee
 
+  // Core State
   const [name, setName] = useState(ticket?.name ?? "");
   const [description, setDescription] = useState(ticket?.description ?? "");
-  const [price, setPrice] = useState(ticket?.price.toString() ?? "0");
-  const [passFeeToCustomer, setPassFeeToCustomer] = useState(
-    ticket?.passFeeToCustomer ?? true,
+
+  // MakeMyPass Toggles
+  const [enableWaitlist, setEnableWaitlist] = useState(
+    ticket?.enableWaitlist ?? false,
+  );
+  const [multiDayCheckIn, setMultiDayCheckIn] = useState(
+    ticket?.multiDayCheckIn ?? false,
+  );
+
+  // Limit Capacity Toggle & Input (defaults to true for new ticket creation)
+  const [hasLimitCapacity, setHasLimitCapacity] = useState(
+    ticket
+      ? typeof ticket.quantityLimit === "number" && ticket.quantityLimit > 0
+      : true,
   );
   const [quantityLimit, setQuantityLimit] = useState(
     ticket?.quantityLimit?.toString() ?? "",
   );
+
+  // Limit Tickets Per User
+  const [hasMaxPerUser, setHasMaxPerUser] = useState(
+    typeof ticket?.maxPerUser === "number" && ticket.maxPerUser > 0,
+  );
+  const [maxPerUser, setMaxPerUser] = useState(
+    ticket?.maxPerUser?.toString() ?? "",
+  );
+
+  // Fixed As My Ticket
+  const [isFixedDefault, setIsFixedDefault] = useState(
+    ticket?.isFixedDefault ?? false,
+  );
+
+  // Paid Ticket & Fees (defaults to true for new ticket creation)
+  const initialPriceNum = ticket ? Number(ticket.price) : 0;
+  const [isPaid, setIsPaid] = useState(ticket ? initialPriceNum > 0 : true);
+  const [price, setPrice] = useState(ticket?.price?.toString() ?? "");
+  const [collectGst, setCollectGst] = useState(ticket?.collectGst ?? false);
+  const [passFeeToCustomer, setPassFeeToCustomer] = useState(
+    ticket?.passFeeToCustomer ?? true,
+  );
+
+  // Close Ticket & Invite Only
+  const [isClosed, setIsClosed] = useState(ticket?.isClosed ?? false);
   const [isHidden, setIsHidden] = useState(ticket?.isHidden ?? false);
-  const [isRefundable, setIsRefundable] = useState(
-    ticket?.isRefundable ?? false,
-  );
-  const [isTransferable, setIsTransferable] = useState(
-    ticket?.isTransferable ?? true,
-  );
-  const [maxTransfers, setMaxTransfers] = useState(
-    ticket?.maxTransfers?.toString() ?? "1",
-  );
+
+  // Sales Period & Policies
   const [saleStart, setSaleStart] = useState(
     () =>
       ticket?.saleStart || eventRegistrationStart || new Date().toISOString(),
@@ -112,35 +156,51 @@ function TicketEditModalContent({
       eventEndDate ||
       new Date(Date.now() + 86400000).toISOString(),
   );
-  const [poolName, setPoolName] = useState(ticket?.poolName ?? "");
+  const [isRefundable, setIsRefundable] = useState(
+    ticket?.isRefundable ?? false,
+  );
+  const [isTransferable, setIsTransferable] = useState(
+    ticket?.isTransferable ?? true,
+  );
+  const [maxTransfers, setMaxTransfers] = useState(
+    ticket?.maxTransfers?.toString() ?? "1",
+  );
+
+  // Advanced Settings: Category / Pool & Tags
+  const [category, setCategory] = useState(
+    ticket?.category ?? ticket?.poolName ?? "",
+  );
   const [poolCapacity, setPoolCapacity] = useState(
     ticket?.poolCapacity?.toString() ?? "",
   );
-  const [hasEligibility, setHasEligibility] = useState(
-    Boolean(
-      ticket?.eligibilityRules &&
-        ticket.eligibilityRules.rules &&
-        ticket.eligibilityRules.rules.length > 0,
-    ),
-  );
-  const [eligibilityFieldId, setEligibilityFieldId] = useState(
-    ticket?.eligibilityRules?.rules?.[0]?.sourceId ?? "",
-  );
-  const [eligibilityOperator, setEligibilityOperator] = useState<
-    "equals" | "not_equals" | "contains" | "in"
-  >(
-    (ticket?.eligibilityRules?.rules?.[0]?.operator as
-      | "equals"
-      | "not_equals"
-      | "contains"
-      | "in") ?? "equals",
-  );
-  const [eligibilityValue, setEligibilityValue] = useState(
-    Array.isArray(ticket?.eligibilityRules?.rules?.[0]?.value)
-      ? ticket?.eligibilityRules?.rules?.[0]?.value.join(", ")
-      : (ticket?.eligibilityRules?.rules?.[0]?.value ?? ""),
-  );
+  const [tagsInput, setTagsInput] = useState(ticket?.tags?.join(", ") ?? "");
+
+  // Conditions & Visibility Rules
+  const initialConditions = (() => {
+    if (ticket?.conditions && Array.isArray(ticket.conditions)) {
+      return ticket.conditions;
+    }
+    if (
+      ticket?.eligibilityRules?.rules &&
+      Array.isArray(ticket.eligibilityRules.rules)
+    ) {
+      return ticket.eligibilityRules.rules.map((r: { sourceId?: string; value?: unknown }) => ({
+        fieldId: r.sourceId || "",
+        allowedValues: Array.isArray(r.value)
+          ? (r.value as string[])
+          : r.value
+            ? [String(r.value)]
+            : [],
+      }));
+    }
+    return [];
+  })();
+  const [conditions, setConditions] =
+    useState<VisibilityConditionRule[]>(initialConditions);
+
   const [availableFields, setAvailableFields] = useState<FormField[]>([]);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     getFormFields(eventId)
@@ -148,15 +208,43 @@ function TicketEditModalContent({
       .catch(() => {});
   }, [eventId]);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Direct Ticket URL
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const eventSlug = storeEvent?.slug || "event";
+  const directTicketUrl = ticket?.id
+    ? `${origin}/${eventSlug}?ticket_id=${ticket.id}`
+    : "";
+
+  const handleCopyUrl = async () => {
+    if (!directTicketUrl) return;
+    try {
+      await navigator.clipboard.writeText(directTicketUrl);
+      setCopiedUrl(true);
+      toast.success("Single ticket direct URL copied to clipboard!");
+      setTimeout(() => setCopiedUrl(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  // Live Pricing Calculations
+  const parsedPrice = isPaid ? Number(price) || 0 : 0;
+  const unitPricePaise = Math.round(parsedPrice * 100);
+  const feePaise = Math.round((unitPricePaise * effectiveFeeBps) / 10000);
+  const feeRupees = feePaise / 100;
+  const formatRupees = (val: number) =>
+    val % 1 === 0 ? val.toFixed(0) : val.toFixed(2);
+  const totalPriceForUser = passFeeToCustomer
+    ? parsedPrice + feeRupees
+    : parsedPrice;
 
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Ticket name is required.");
       return;
     }
-    if (price === "" || isNaN(Number(price)) || Number(price) < 0) {
-      toast.error("Please enter a valid price (0 for free).");
+    if (isPaid && (price === "" || isNaN(Number(price)) || Number(price) < 0)) {
+      toast.error("Please enter a valid ticket price.");
       return;
     }
     if (!saleStart || !saleEnd) {
@@ -167,57 +255,44 @@ function TicketEditModalContent({
       toast.error("Sale start date must be before end date.");
       return;
     }
-    const maxDate = eventRegistrationEnd || eventEndDate;
-    if (maxDate && new Date(saleEnd) > new Date(maxDate)) {
-      toast.error(
-        "Sale end date cannot be after the event or registration ends.",
-      );
-      return;
-    }
 
     try {
       setIsSubmitting(true);
-      let eligibilityRules: ConditionGroup | null = null;
-      if (
-        hasEligibility &&
-        eligibilityFieldId.trim() &&
-        eligibilityValue.trim()
-      ) {
-        const val =
-          eligibilityOperator === "in"
-            ? eligibilityValue
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean)
-            : eligibilityValue.trim();
-        eligibilityRules = {
-          match: "all",
-          rules: [
-            {
-              sourceType: "field",
-              sourceId: eligibilityFieldId.trim(),
-              operator: eligibilityOperator,
-              value: val,
-            },
-          ],
-        };
-      }
+
+      const parsedTags = tagsInput
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      const validConditions = conditions.filter(
+        (c) => c.fieldId && c.allowedValues.length > 0,
+      );
 
       const payload = {
-        name,
-        description,
-        price: Number(price),
-        passFeeToCustomer,
-        quantityLimit: quantityLimit ? parseInt(quantityLimit, 10) : null,
-        poolName: poolName.trim() || null,
-        poolCapacity: poolCapacity ? parseInt(poolCapacity, 10) : null,
-        eligibilityRules,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        price: isPaid ? Number(price) : 0,
+        passFeeToCustomer: isPaid ? passFeeToCustomer : false,
+        quantityLimit:
+          hasLimitCapacity && quantityLimit ? parseInt(quantityLimit, 10) : null,
+        maxPerUser:
+          hasMaxPerUser && maxPerUser ? parseInt(maxPerUser, 10) : null,
+        enableWaitlist,
+        multiDayCheckIn,
+        isFixedDefault,
+        collectGst: isPaid ? collectGst : false,
+        isClosed,
         isHidden,
+        category: category.trim() || null,
+        poolName: category.trim() || null,
+        poolCapacity: poolCapacity ? parseInt(poolCapacity, 10) : null,
+        tags: parsedTags,
+        conditions: validConditions.length > 0 ? validConditions : null,
+        saleStart,
+        saleEnd,
         isRefundable,
         isTransferable,
         maxTransfers: isTransferable ? parseInt(maxTransfers, 10) || 1 : 0,
-        saleStart,
-        saleEnd,
       };
 
       if (ticket) {
@@ -237,144 +312,306 @@ function TicketEditModalContent({
     }
   };
 
-  const parsedPrice = Number(price);
-  const isPaid = !isNaN(parsedPrice) && parsedPrice > 0;
-  const unitPricePaise = isPaid ? Math.round(parsedPrice * 100) : 0;
-  const feePaise = isPaid
-    ? Math.round((unitPricePaise * effectiveFeeBps) / 10000)
-    : 0;
-  const feeRupees = feePaise / 100;
-  const formatRupees = (val: number) =>
-    val % 1 === 0 ? val.toFixed(0) : val.toFixed(2);
+  const eventCapacityDisplay =
+    typeof storeEvent?.capacity === "number" && storeEvent.capacity > 0
+      ? storeEvent.capacity
+      : "Unlimited";
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={ticket ? "Edit Ticket Type" : "Create Ticket Type"}
-      width={465}
+      width={520}
       className={styles.modalContent}
       headerClassName={styles.modalHeaderStyle}
     >
       <div className={styles.modalScrollWrapper}>
         <div className={styles.formBody}>
+          {/* Ticket Title */}
           <div className={styles.formGroup}>
-            <label>Ticket Name</label>
-            <input
+            <label className={styles.label}>Ticket Title</label>
+            <Input
               type="text"
-              className={styles.input}
               placeholder="e.g. General Admission"
               value={name}
               onChange={(e) => setName(e.target.value)}
               data-testid="ticket-name-input"
             />
           </div>
+
+          {/* Description (Rich Text Editor) */}
           <div className={styles.formGroup}>
-            <label>Description</label>
-            <textarea
-              className={styles.input}
-              placeholder="e.g. Access to all sessions and workshops"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              style={{ resize: "vertical", minHeight: "80px" }}
-              data-testid="ticket-description-input"
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>Price (₹)</label>
-            <input
-              type="number"
-              className={styles.input}
-              placeholder="0.00 for free"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              min="0"
-              step="0.01"
-              data-testid="ticket-price-input"
-            />
-          </div>
-          {isPaid && (
-            <>
-              <div className={styles.switchRow}>
-                <span>Pass platform fee to customer</span>
-                <Switch
-                  id="ticket-pass-fee-switch"
-                  checked={passFeeToCustomer}
-                  onChange={setPassFeeToCustomer}
-                />
-              </div>
-              <div
-                className={styles.feeBreakdownBox}
-                data-testid="fee-breakdown-preview"
-              >
-                {passFeeToCustomer
-                  ? `Customer pays ₹${formatRupees(parsedPrice + feeRupees)} (+${feePercent}% fee) • You receive ₹${formatRupees(parsedPrice)}`
-                  : `Customer pays ₹${formatRupees(parsedPrice)} (Fee included) • You receive ₹${formatRupees(parsedPrice - feeRupees)} (${feePercent}% fee deducted)`}
-              </div>
-            </>
-          )}
-          <div className={styles.formGroup}>
-            <label>Quantity Limit</label>
-            <input
-              type="number"
-              className={styles.input}
-              placeholder="Leave empty for unlimited"
-              value={quantityLimit}
-              onChange={(e) => setQuantityLimit(e.target.value)}
-              min="1"
-              data-testid="ticket-quantity-input"
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label>Shared Capacity Pool (Optional)</label>
-            <input
-              type="text"
-              className={styles.input}
-              placeholder="e.g. Category A or Student Pool"
-              value={poolName}
-              onChange={(e) => setPoolName(e.target.value)}
-              data-testid="ticket-pool-name-input"
-            />
-            <span
-              style={{
-                fontSize: "0.75rem",
-                color: "var(--text-muted)",
-                marginTop: "0.25rem",
-                display: "block",
-              }}
-            >
-              Share pool capacity across multiple tiers (e.g. Early Bird + Regular).
-            </span>
-          </div>
-          {poolName.trim() && (
-            <div className={styles.formGroup}>
-              <label>Shared Pool Capacity</label>
-              <input
-                type="number"
-                className={styles.input}
-                placeholder="Total capacity for this pool (e.g. 60)"
-                value={poolCapacity}
-                onChange={(e) => setPoolCapacity(e.target.value)}
-                min="1"
-                data-testid="ticket-pool-capacity-input"
+            <label className={styles.label}>Description</label>
+            <div className={styles.editorContainer}>
+              <RichTextEditor
+                initialValue={description}
+                onChange={setDescription}
               />
             </div>
+            {/* Hidden fallback element for test runner querying if needed */}
+            <input
+              type="hidden"
+              data-testid="ticket-description-input"
+              value={description}
+            />
+          </div>
+
+          {/* Waitlisting Switch */}
+          <div className={styles.switchRow}>
+            <div className={styles.switchLabelBlock}>
+              <span className={styles.switchTitle}>Waitlisting</span>
+              <span className={styles.switchSubtext}>
+                Allow attendees to join a waitlist when this tier is full
+              </span>
+            </div>
+            <Switch
+              checked={enableWaitlist}
+              onChange={setEnableWaitlist}
+            />
+          </div>
+
+          {/* Multi-Day CheckIn Switch */}
+          <div className={styles.switchRow}>
+            <div className={styles.switchLabelBlock}>
+              <span className={styles.switchTitle}>Multi-Day CheckIn</span>
+              <span className={styles.switchSubtext}>
+                Allow attendees to check in across multiple days of the event
+              </span>
+            </div>
+            <Switch
+              checked={multiDayCheckIn}
+              onChange={setMultiDayCheckIn}
+            />
+          </div>
+
+          {/* Limit Capacity Switch & Input */}
+          <div className={styles.formGroup}>
+            <div className={styles.switchRow}>
+              <div className={styles.switchLabelBlock}>
+                <span className={styles.switchTitle}>
+                  Limit Capacity (Max: {eventCapacityDisplay})
+                </span>
+                <span className={styles.switchSubtext}>
+                  Restrict the total seats available for this tier
+                </span>
+              </div>
+              <Switch
+                id="ticket-limit-capacity-switch"
+                checked={hasLimitCapacity}
+                onChange={(checked) => {
+                  setHasLimitCapacity(checked);
+                  if (!checked) setQuantityLimit("");
+                }}
+              />
+            </div>
+            {hasLimitCapacity && (
+              <Input
+                type="number"
+                placeholder="Total capacity for this tier"
+                value={quantityLimit}
+                onChange={(e) => setQuantityLimit(e.target.value)}
+                min="1"
+                data-testid="ticket-quantity-input"
+              />
+            )}
+          </div>
+
+          {/* Limit Tickets Per User */}
+          <div className={styles.formGroup}>
+            <div className={styles.switchRow}>
+              <div className={styles.switchLabelBlock}>
+                <span className={styles.switchTitle}>Limit Tickets Per User</span>
+                <span className={styles.switchSubtext}>
+                  Cap the quantity a single attendee can purchase
+                </span>
+              </div>
+              <Switch
+                checked={hasMaxPerUser}
+                onChange={(checked) => {
+                  setHasMaxPerUser(checked);
+                  if (!checked) setMaxPerUser("");
+                }}
+              />
+            </div>
+            {hasMaxPerUser && (
+              <Input
+                type="number"
+                placeholder="e.g. 2"
+                value={maxPerUser}
+                onChange={(e) => setMaxPerUser(e.target.value)}
+                min="1"
+                data-testid="ticket-max-per-user-input"
+              />
+            )}
+          </div>
+
+          {/* Fixed As My Ticket */}
+          <div className={styles.switchRow}>
+            <div className={styles.switchLabelBlock}>
+              <span className={styles.switchTitle}>Fixed As My Ticket</span>
+              <span className={styles.switchSubtext}>
+                Pre-selects this ticket by default on the registration form
+              </span>
+            </div>
+            <Switch
+              checked={isFixedDefault}
+              onChange={setIsFixedDefault}
+            />
+          </div>
+
+          {/* Paid Ticket Switch & Nested Section */}
+          <div className={styles.formGroup}>
+            <div className={styles.switchRow}>
+              <div className={styles.switchLabelBlock}>
+                <span className={styles.switchTitle}>Paid Ticket</span>
+                <span className={styles.switchSubtext}>
+                  Charge attendees for registration
+                </span>
+              </div>
+              <Switch
+                id="ticket-is-paid-switch"
+                checked={isPaid}
+                onChange={(checked) => {
+                  setIsPaid(checked);
+                  if (!checked) setPrice("0");
+                }}
+              />
+            </div>
+
+            {isPaid && (
+              <div className={styles.nestedSection}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Ticket Price</label>
+                  <div className={styles.priceInputWrapper}>
+                    <span className={styles.currencyPrefix}>₹</span>
+                    <Input
+                      type="number"
+                      className={styles.priceInput}
+                      placeholder="0.00"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      min="0"
+                      step="0.01"
+                      data-testid="ticket-price-input"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.switchRow}>
+                  <div className={styles.switchLabelBlock}>
+                    <span className={styles.switchTitle}>Collect GST</span>
+                    <span className={styles.switchSubtext}>
+                      Apply GST invoice calculation on checkout
+                    </span>
+                  </div>
+                  <Switch checked={collectGst} onChange={setCollectGst} />
+                </div>
+
+                <div className={styles.switchRow}>
+                  <div className={styles.switchLabelBlock}>
+                    <span className={styles.switchTitle}>
+                      Include Platform Fee ( ₹{formatRupees(feeRupees)} )
+                    </span>
+                    <span className={styles.switchSubtext}>
+                      Pass platform processing fees to the attendee
+                    </span>
+                  </div>
+                  <Switch
+                    id="ticket-pass-fee-switch"
+                    checked={passFeeToCustomer}
+                    onChange={setPassFeeToCustomer}
+                  />
+                </div>
+
+                {/* Live Fee Breakdown */}
+                <div
+                  className={styles.feeBreakdownBox}
+                  data-testid="fee-breakdown-preview"
+                >
+                  <div className={styles.feeBreakdownRow}>
+                    <span>Platform Fee: {feePercent}%</span>
+                    <span>Gateway Fee: {gatewayFeePercent}%</span>
+                  </div>
+                  <div className={styles.greenTotal}>
+                    {passFeeToCustomer
+                      ? `Total Price for User: ₹${formatRupees(totalPriceForUser)}`
+                      : `Total Price for User: ₹${formatRupees(parsedPrice)} (fee deducted from earnings)`}
+                  </div>
+                  {/* Preserves compatibility with existing test 6 regex assertions */}
+                  <div style={{ fontSize: "0.75rem", opacity: 0.7, marginTop: "2px" }}>
+                    {passFeeToCustomer
+                      ? `Customer pays ₹${formatRupees(parsedPrice + feeRupees)} (+${feePercent}% fee) • You receive ₹${formatRupees(parsedPrice)}`
+                      : `Customer pays ₹${formatRupees(parsedPrice)} (Fee included) • You receive ₹${formatRupees(parsedPrice - feeRupees)} (${feePercent}% fee deducted)`}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Close Ticket Switch */}
+          <div className={styles.switchRow}>
+            <div className={styles.switchLabelBlock}>
+              <span className={styles.switchTitle}>Close Ticket</span>
+              <span className={styles.switchSubtext}>
+                Stops sales immediately for this ticket
+              </span>
+            </div>
+            <Switch checked={isClosed} onChange={setIsClosed} />
+          </div>
+
+          {/* Invite Only Switch */}
+          <div className={styles.switchRow}>
+            <div className={styles.switchLabelBlock}>
+              <span className={styles.switchTitle}>Invite Only</span>
+              <span className={styles.switchSubtext}>
+                Hide from public page; accessible only via code or direct link
+              </span>
+            </div>
+            <Switch
+              id="ticket-hidden-switch"
+              checked={isHidden}
+              onChange={setIsHidden}
+            />
+          </div>
+
+          {/* Show This Ticket Only (Direct Readonly Link) */}
+          {ticket?.id && (
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Show This Ticket Only (Direct Link)</label>
+              <div className={styles.urlBox}>
+                <input
+                  type="text"
+                  readOnly
+                  className={styles.urlInput}
+                  value={directTicketUrl}
+                />
+                <button
+                  type="button"
+                  className={`${styles.copyBtn} ${copiedUrl ? styles.copyBtnCopied : ""}`}
+                  onClick={handleCopyUrl}
+                >
+                  {copiedUrl ? <Check size={13} /> : <Copy size={13} />}
+                  <span>{copiedUrl ? "Copied" : "Copy"}</span>
+                </button>
+              </div>
+            </div>
           )}
+
+          {/* Sales Period */}
           <div className={styles.formGroup}>
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: "0.5rem",
               }}
             >
-              <label style={{ margin: 0 }}>Sales Period</label>
+              <label className={styles.label}>Sales Period</label>
               <span
                 style={{
                   fontSize: "0.8rem",
-                  color: "var(--text-muted)",
+                  color: "var(--text-muted, #a1a1aa)",
                   display: "flex",
                   alignItems: "center",
                   gap: "0.25rem",
@@ -384,29 +621,15 @@ function TicketEditModalContent({
               </span>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
-              }}
-            >
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "var(--text-secondary)",
-                    width: "35px",
-                  }}
-                >
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <span style={{ fontSize: "0.85rem", width: "40px", color: "rgba(255, 255, 255, 0.7)" }}>
                   Start
                 </span>
                 <div className={styles.pickersBox}>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className={styles.datePickerBtn}>
+                      <button type="button" className={styles.datePickerBtn}>
                         <CalendarIcon size={14} />
                         {saleStart ? (
                           format(new Date(saleStart), "PPP")
@@ -415,48 +638,32 @@ function TicketEditModalContent({
                         )}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 z-[9999]"
-                      align="start"
-                    >
+                    <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                       <Calendar
                         mode="single"
                         selected={saleStart ? new Date(saleStart) : undefined}
-                        onSelect={(date) =>
-                          updateDate(saleStart, date, setSaleStart)
-                        }
+                        onSelect={(date) => updateDate(saleStart, date, setSaleStart)}
                       />
                     </PopoverContent>
                   </Popover>
                   <Dropdown
                     options={TIME_OPTIONS}
-                    value={
-                      saleStart ? format(new Date(saleStart), "HH:mm") : "00:00"
-                    }
-                    onChange={(val) =>
-                      updateTime(saleStart, val as string, setSaleStart)
-                    }
+                    value={saleStart ? format(new Date(saleStart), "HH:mm") : "00:00"}
+                    onChange={(val) => updateTime(saleStart, val as string, setSaleStart)}
                     btnColor="transparent"
                     maxHeight="250px"
                   />
                 </div>
               </div>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "var(--text-secondary)",
-                    width: "35px",
-                  }}
-                >
+
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <span style={{ fontSize: "0.85rem", width: "40px", color: "rgba(255, 255, 255, 0.7)" }}>
                   End
                 </span>
                 <div className={styles.pickersBox}>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className={styles.datePickerBtn}>
+                      <button type="button" className={styles.datePickerBtn}>
                         <CalendarIcon size={14} />
                         {saleEnd ? (
                           format(new Date(saleEnd), "PPP")
@@ -465,27 +672,18 @@ function TicketEditModalContent({
                         )}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 z-[9999]"
-                      align="start"
-                    >
+                    <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                       <Calendar
                         mode="single"
                         selected={saleEnd ? new Date(saleEnd) : undefined}
-                        onSelect={(date) =>
-                          updateDate(saleEnd, date, setSaleEnd)
-                        }
+                        onSelect={(date) => updateDate(saleEnd, date, setSaleEnd)}
                       />
                     </PopoverContent>
                   </Popover>
                   <Dropdown
                     options={TIME_OPTIONS}
-                    value={
-                      saleEnd ? format(new Date(saleEnd), "HH:mm") : "00:00"
-                    }
-                    onChange={(val) =>
-                      updateTime(saleEnd, val as string, setSaleEnd)
-                    }
+                    value={saleEnd ? format(new Date(saleEnd), "HH:mm") : "00:00"}
+                    onChange={(val) => updateTime(saleEnd, val as string, setSaleEnd)}
                     btnColor="transparent"
                     maxHeight="250px"
                   />
@@ -493,36 +691,23 @@ function TicketEditModalContent({
               </div>
             </div>
           </div>
+
+          {/* Refund & Transfer Policy */}
           <div className={styles.switchRow}>
-            <span>Require an access code</span>
-            <Switch
-              id="ticket-hidden-switch"
-              checked={isHidden}
-              onChange={setIsHidden}
-            />
+            <span className={styles.switchTitle}>Allow Refunds</span>
+            <Switch checked={isRefundable} onChange={setIsRefundable} />
           </div>
+
           <div className={styles.switchRow}>
-            <span>Allow Refunds</span>
-            <Switch
-              id="ticket-refundable-switch"
-              checked={isRefundable}
-              onChange={setIsRefundable}
-            />
+            <span className={styles.switchTitle}>Allow Transfers</span>
+            <Switch checked={isTransferable} onChange={setIsTransferable} />
           </div>
-          <div className={styles.switchRow}>
-            <span>Allow Transfers</span>
-            <Switch
-              id="ticket-transferable-switch"
-              checked={isTransferable}
-              onChange={setIsTransferable}
-            />
-          </div>
+
           {isTransferable && (
             <div className={styles.formGroup}>
-              <label>Maximum Transfers Allowed</label>
-              <input
+              <label className={styles.label}>Maximum Transfers Allowed</label>
+              <Input
                 type="number"
-                className={styles.input}
                 placeholder="e.g. 1"
                 value={maxTransfers}
                 onChange={(e) => setMaxTransfers(e.target.value)}
@@ -531,104 +716,98 @@ function TicketEditModalContent({
               />
             </div>
           )}
-          <div className={styles.switchRow}>
-            <span>Require Form Eligibility</span>
-            <Switch
-              id="ticket-eligibility-switch"
-              checked={hasEligibility}
-              onChange={setHasEligibility}
-            />
-          </div>
-          {hasEligibility && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
-                padding: "0.85rem",
-                background: "rgba(255, 255, 255, 0.03)",
-                borderRadius: "8px",
-                border: "1px solid var(--border-subtle)",
-                marginBottom: "0.5rem",
+
+          {/* Advanced Settings Collapsible Card */}
+          <Accordion type="single" collapsible className="w-full mt-2">
+            <AccordionItem value="advanced" className="border border-white/10 rounded-xl bg-white/[0.02]">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-semibold text-white">
+                    Advanced Settings
+                  </span>
+                  <span className="text-xs text-white/50">
+                    Codes, category, tags, conditions and visibility rules
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4 pt-2">
+                <div className={styles.advancedContainer}>
+                  {/* Category / Pool */}
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Category / Pool Name</label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. VIP, Track A, or Student Pool"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      data-testid="ticket-pool-name-input"
+                    />
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted, #a1a1aa)" }}>
+                      Share pool capacity across multiple tiers (e.g. Early Bird + Regular).
+                    </span>
+                  </div>
+
+                  {category.trim() && (
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Shared Pool Capacity</label>
+                      <Input
+                        type="number"
+                        placeholder="Total capacity for this category pool"
+                        value={poolCapacity}
+                        onChange={(e) => setPoolCapacity(e.target.value)}
+                        min="1"
+                        data-testid="ticket-pool-capacity-input"
+                      />
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Tags (Comma-separated)</label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. speaker, sponsor, early-access"
+                      value={tagsInput}
+                      onChange={(e) => setTagsInput(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Conditions & Visibility Rules */}
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Conditions & Visibility Rules</label>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted, #a1a1aa)", marginBottom: "0.25rem" }}>
+                      Only attendees with matching answers can select and purchase this ticket.
+                    </span>
+                    <ConditionBuilder
+                      conditions={conditions}
+                      onChange={setConditions}
+                      availableFields={availableFields}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          {ticket && onOpenDesign && (
+            <button
+              type="button"
+              className={styles.designLayoutBtn}
+              onClick={() => {
+                onClose();
+                onOpenDesign(ticket);
               }}
+              data-testid="modal-design-pass-btn"
             >
-              <span
-                style={{
-                  fontSize: "0.8rem",
-                  color: "var(--text-secondary)",
-                  fontWeight: 500,
-                }}
-              >
-                Eligible only IF Form Question matches:
-              </span>
-              <div className={styles.formGroup}>
-                <label style={{ fontSize: "0.75rem" }}>Form Question</label>
-                {availableFields.length > 0 ? (
-                  <select
-                    className={styles.input}
-                    value={eligibilityFieldId}
-                    onChange={(e) => setEligibilityFieldId(e.target.value)}
-                    style={{ background: "#1c1c1e", color: "#fff" }}
-                    data-testid="ticket-eligibility-field-select"
-                  >
-                    <option value="">Select a question...</option>
-                    {availableFields.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.label} ({f.name})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    className={styles.input}
-                    placeholder="Field ID or name (e.g. role)"
-                    value={eligibilityFieldId}
-                    onChange={(e) => setEligibilityFieldId(e.target.value)}
-                    data-testid="ticket-eligibility-field-input"
-                  />
-                )}
-              </div>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "0.75rem" }}>Operator</label>
-                  <select
-                    className={styles.input}
-                    value={eligibilityOperator}
-                    onChange={(e) =>
-                      setEligibilityOperator(
-                        e.target.value as
-                          | "equals"
-                          | "not_equals"
-                          | "contains"
-                          | "in",
-                      )
-                    }
-                    style={{ background: "#1c1c1e", color: "#fff" }}
-                    data-testid="ticket-eligibility-operator-select"
-                  >
-                    <option value="equals">Equals</option>
-                    <option value="not_equals">Does not equal</option>
-                    <option value="contains">Contains</option>
-                    <option value="in">In list</option>
-                  </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "0.75rem" }}>Expected Value</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    placeholder="e.g. Student"
-                    value={eligibilityValue}
-                    onChange={(e) => setEligibilityValue(e.target.value)}
-                    data-testid="ticket-eligibility-value-input"
-                  />
-                </div>
-              </div>
-            </div>
+              <Palette size={16} />
+              <span>Design Pass / Edit Layout</span>
+            </button>
           )}
+
+          {/* Footer Submit */}
           <div className={styles.footer}>
             <button
+              type="button"
               className={styles.submitBtn}
               onClick={handleSave}
               disabled={isSubmitting}

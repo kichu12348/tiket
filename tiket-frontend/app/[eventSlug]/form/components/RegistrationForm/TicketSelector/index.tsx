@@ -1,4 +1,5 @@
 import { Check, Ticket, Sparkles } from "lucide-react";
+import DOMPurify from "isomorphic-dompurify";
 import type { TicketSelectorProps, AutoSelectedBadgeProps } from "../types";
 import { formatPrice } from "../utils";
 import styles from "./TicketSelector.module.css";
@@ -48,7 +49,12 @@ export function TicketSelector({
                     <span className={styles.ticketName}>{tt.name}</span>
                   </div>
                   {tt.description && (
-                    <span className={styles.ticketDesc}>{tt.description}</span>
+                    <div
+                      className={styles.ticketDesc}
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(tt.description),
+                      }}
+                    />
                   )}
                 </div>
               </div>
