@@ -198,11 +198,8 @@
 }
 
 .designerOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.92);
-  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
+  margin-top: 1.5rem;
+  width: 100%;
 }

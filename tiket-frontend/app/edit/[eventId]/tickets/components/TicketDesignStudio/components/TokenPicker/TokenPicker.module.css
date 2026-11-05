@@ -1,0 +1,72 @@
+.tokenPickerBtn {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 0.65rem;
+  font-size: 0.78rem;
+  background: var(--color-soft-bg, rgba(255, 255, 255, 0.07));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #e4e4e7);
+  border-radius: var(--radius-sm, 8px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.tokenPickerBtn:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.14));
+  color: var(--text-primary, #ffffff);
+}
+
+.popoverTokenList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--surface-base, #16171b);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-md, 10px);
+  padding: 0.5rem;
+}
+
+.tokenSectionTitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #71717a);
+  text-transform: uppercase;
+  padding: 0.3rem 0.4rem 0.1rem;
+}
+
+.tokenItemBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.45rem 0.6rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary, #e4e4e7);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.tokenItemBtn:hover {
+  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #ffffff);
+}
+
+.tokenItemLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.tokenItemToken {
+  font-size: 0.7rem;
+  font-family: monospace;
+  color: #60a5fa;
+}
+

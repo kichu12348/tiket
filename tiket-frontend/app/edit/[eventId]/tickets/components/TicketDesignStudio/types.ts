@@ -1,5 +1,33 @@
 export type { TicketLayoutLayer, TicketLayoutConfig } from "@/types/ticketType";
 
+export type StudioMode = "edit" | "settings" | "preview";
+
+export interface TicketDesignerLayer {
+  id: string;
+  type: "text" | "qr";
+  x: number;
+  y: number;
+  size: number;
+  text?: string;
+  color?: string;
+  // Compatibility with TicketLayoutLayer
+  name?: string;
+  tokenOrText?: string;
+  fontSize?: number;
+  fontColor?: string;
+  width?: number;
+  height?: number;
+  maxLines?: number;
+  lineSpacing?: number;
+}
+
+export interface TicketDesignOutput {
+  artboardW: number;
+  artboardH: number;
+  templateImageUrl: string | null;
+  layers: TicketDesignerLayer[];
+}
+
 export type TicketElementType =
   | "qr"
   | "variable"

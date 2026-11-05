@@ -1,0 +1,94 @@
+.layerItem {
+  position: absolute;
+  cursor: grab;
+  box-sizing: border-box;
+}
+
+.layerItem:active {
+  cursor: grabbing;
+}
+
+.layerSelected {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 1px;
+}
+
+.coordBadge {
+  position: absolute;
+  top: calc(-28px / var(--zoom-scale, 1));
+  left: 0;
+  background: #18181b;
+  color: #e4e4e7;
+  border: 1px solid #3f3f46;
+  border-radius: calc(4px / var(--zoom-scale, 1));
+  padding: calc(2px / var(--zoom-scale, 1)) calc(6px / var(--zoom-scale, 1));
+  font-size: calc(10px / var(--zoom-scale, 1));
+  font-family: monospace;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.resizeHandle {
+  position: absolute;
+  width: calc(12px / var(--zoom-scale, 1));
+  height: calc(12px / var(--zoom-scale, 1));
+  background: #ffffff;
+  border: calc(1.5px / var(--zoom-scale, 1)) solid #3b82f6;
+  border-radius: calc(2px / var(--zoom-scale, 1));
+  z-index: 60;
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.handleNw { top: calc(-6px / var(--zoom-scale, 1)); left: calc(-6px / var(--zoom-scale, 1)); cursor: nwse-resize; }
+.handleNe { top: calc(-6px / var(--zoom-scale, 1)); right: calc(-6px / var(--zoom-scale, 1)); cursor: nesw-resize; }
+.handleSe { bottom: calc(-6px / var(--zoom-scale, 1)); right: calc(-6px / var(--zoom-scale, 1)); cursor: nwse-resize; }
+.handleSw { bottom: calc(-6px / var(--zoom-scale, 1)); left: calc(-6px / var(--zoom-scale, 1)); cursor: nesw-resize; }
+
+.handleN { top: calc(-6px / var(--zoom-scale, 1)); left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+.handleS { bottom: calc(-6px / var(--zoom-scale, 1)); left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+.handleW { top: 50%; left: calc(-6px / var(--zoom-scale, 1)); transform: translateY(-50%); cursor: ew-resize; }
+.handleE { top: 50%; right: calc(-6px / var(--zoom-scale, 1)); transform: translateY(-50%); cursor: ew-resize; }
+
+.qrLayerBox {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #090a0d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  padding: 6px;
+}
+
+.qrPlaceholderText {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #090a0d;
+  margin-top: 2px;
+}
+
+.textLayerBox {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.textClamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  width: 100%;
+}
+

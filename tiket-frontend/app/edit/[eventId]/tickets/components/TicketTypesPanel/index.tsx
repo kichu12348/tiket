@@ -11,9 +11,6 @@ import { toast } from "sonner";
 import { Plus, Ticket } from "lucide-react";
 import styles from "./TicketTypesPanel.module.css";
 import { confirm } from "@/components/ConfirmModal";
-import { useEventStore } from "@/store/useEventStore";
-import TicketEditModal from "../TicketEditModal";
-import TicketDesignStudio from "../TicketDesignStudio";
 import SortableTicketCard from "./SortableTicketCard";
 
 import type { DragEndEvent } from "@dnd-kit/core";
@@ -38,15 +35,19 @@ import {
 
 interface Props {
   eventId: string;
+  onAddTicket?: () => void;
+  onEditTicket?: (ticket: TicketType) => void;
+  onDesignTicket?: (ticket: TicketType) => void;
 }
 
-export default function TicketTypesPanel({ eventId }: Props) {
-  const { event } = useEventStore();
+export default function TicketTypesPanel({
+  eventId,
+  onAddTicket,
+  onEditTicket,
+  onDesignTicket,
+}: Props) {
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
-  const [designingTicket, setDesigningTicket] = useState<TicketType | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -72,11 +73,6 @@ export default function TicketTypesPanel({ eventId }: Props) {
   useEffect(() => {
     void fetchTicketTypes();
   }, [fetchTicketTypes]);
-
-  const openModal = (ticket?: TicketType) => {
-    setEditingTicket(ticket || null);
-    setIsModalOpen(true);
-  };
 
   const handleDelete = async (ticketId: string) => {
     await confirm("Are you sure you want to delete this ticket type?", {
@@ -119,7 +115,6 @@ export default function TicketTypesPanel({ eventId }: Props) {
     } catch (error) {
       console.error("Failed to reorder tickets", error);
       toast.error("Failed to save new order.");
-      // Revert if it fails
       fetchTicketTypes();
     }
   };
@@ -128,8 +123,21 @@ export default function TicketTypesPanel({ eventId }: Props) {
     return <div className={styles.loading}>Loading ticket types...</div>;
   }
 
-  const timezone =
-    event?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const handleAddClick = () => {
+    if (onAddTicket) {
+      onAddTicket();
+    } else if (onDesignTicket) {
+      onDesignTicket(null as unknown as TicketType);
+    }
+  };
+
+  const handleEditClick = (ticket: TicketType) => {
+    if (onEditTicket) {
+      onEditTicket(ticket);
+    } else if (onDesignTicket) {
+      onDesignTicket(ticket);
+    }
+  };
 
   return (
     <div className={styles.panel}>
@@ -137,7 +145,7 @@ export default function TicketTypesPanel({ eventId }: Props) {
         <h3 className={styles.title}>Ticket Types</h3>
         <button
           className={styles.createBtn}
-          onClick={() => openModal()}
+          onClick={handleAddClick}
           data-testid="add-ticket-btn"
         >
           <Plus size={16} />
@@ -171,42 +179,19 @@ export default function TicketTypesPanel({ eventId }: Props) {
                 <SortableTicketCard
                   key={ticket.id}
                   ticket={ticket}
-                  onEdit={() => openModal(ticket)}
+                  onEdit={() => handleEditClick(ticket)}
                   onDelete={() => handleDelete(ticket.id)}
-                  onDesign={() => setDesigningTicket(ticket)}
+                  onDesign={() => {
+                    if (onDesignTicket) {
+                      onDesignTicket(ticket);
+                    }
+                  }}
                 />
               ))}
             </SortableContext>
           </DndContext>
         )}
       </div>
-
-      <TicketEditModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        eventId={eventId}
-        ticket={editingTicket}
-        onSave={fetchTicketTypes}
-        onOpenDesign={(t) => setDesigningTicket(t)}
-        timezone={timezone}
-        eventRegistrationStart={event?.registrationStart}
-        eventRegistrationEnd={event?.registrationEnd}
-        eventEndDate={event?.endDate}
-      />
-
-      {designingTicket && (
-        <div className={styles.designerOverlay}>
-          <TicketDesignStudio
-            eventId={eventId}
-            ticket={designingTicket}
-            onClose={() => setDesigningTicket(null)}
-            onSaved={() => {
-              setDesigningTicket(null);
-              void fetchTicketTypes();
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }

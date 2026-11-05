@@ -3,10 +3,7 @@
 import React from "react";
 import QRCode from "react-qr-code";
 import { Lock } from "lucide-react";
-import type {
-  TicketPassData,
-  TicketPassTemplate,
-} from "@/types/ticket";
+import type { TicketPassData, TicketPassTemplate } from "@/types/ticket";
 import type {
   TicketCanvasConfig,
   TicketCanvasElement,
@@ -39,7 +36,10 @@ export function formatEventDate(dateString?: string | null): string {
   }
 }
 
-export function resolveVariable(key: string, pass: Partial<TicketPassData>): string {
+export function resolveVariable(
+  key: string,
+  pass: Partial<TicketPassData>,
+): string {
   const normalizedKey = key.replace(/[{}]/g, "").trim().toLowerCase();
 
   switch (normalizedKey) {
@@ -72,7 +72,10 @@ export function resolveVariable(key: string, pass: Partial<TicketPassData>): str
     case "event.locationdetails":
     case "event.location":
     case "location":
-      return formatLocation(pass.event?.locationType, pass.event?.locationDetails);
+      return formatLocation(
+        pass.event?.locationType,
+        pass.event?.locationDetails,
+      );
     case "ticket.id":
     case "ticketid":
     case "id":
@@ -105,7 +108,10 @@ export function resolveVariable(key: string, pass: Partial<TicketPassData>): str
   }
 }
 
-export function interpolateText(text: string, pass: Partial<TicketPassData>): string {
+export function interpolateText(
+  text: string,
+  pass: Partial<TicketPassData>,
+): string {
   return text.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
     return resolveVariable(key, pass);
   });
@@ -184,8 +190,7 @@ export function resolveTicketLayer(
     let actualValue = "";
 
     if (branch.sourceType === "ticketType") {
-      actualValue =
-        passData.ticketType?.name || passData.ticketType?.id || "";
+      actualValue = passData.ticketType?.name || passData.ticketType?.id || "";
     } else if (branch.sourceType === "formField") {
       const cleanSourceKey = branch.sourceKey
         .replace(/[{}]/g, "")
@@ -328,18 +333,21 @@ export function CustomTicketCanvas({
   }, [isPerTicket, perTicketConfig, elementsJson]);
 
   const canvasWidth = isPerTicket
-    ? perTicketConfig?.canvasWidth || 800
+    ? perTicketConfig?.canvasWidth || 2082
     : parsedConfig.canvasWidth || 600;
   const canvasHeight = isPerTicket
-    ? perTicketConfig?.canvasHeight || 400
+    ? perTicketConfig?.canvasHeight || 576
     : parsedConfig.canvasHeight || 300;
   const backgroundImageUrl = isPerTicket
-    ? pass.ticketType?.templateImageUrl || template?.backgroundImageUrl
-    : template?.backgroundImageUrl;
+    ? pass.ticketType?.templateImageUrl ||
+      template?.backgroundImageUrl ||
+      "/cuppon.png"
+    : template?.backgroundImageUrl || "/cuppon.png";
   const elements = parsedConfig.elements || [];
   const perTicketLayers = perTicketConfig?.layers || [];
 
-  const [containerWidth, setContainerWidth] = React.useState<number>(canvasWidth);
+  const [containerWidth, setContainerWidth] =
+    React.useState<number>(canvasWidth);
 
   React.useEffect(() => {
     const el = containerRef.current;
@@ -518,159 +526,167 @@ export function CustomTicketCanvas({
               );
             })
           : elements.map((el) => {
-          const resolved = resolveTicketLayer(el, pass);
-          if (!resolved.visible) {
-            return null;
-          }
+              const resolved = resolveTicketLayer(el, pass);
+              if (!resolved.visible) {
+                return null;
+              }
 
-          const isQr = el.type === "qr";
-          const rotation = el.rotation ?? 0;
+              const isQr = el.type === "qr";
+              const rotation = el.rotation ?? 0;
 
-          if (isQr) {
-            const isScannable =
-              pass.status === "active" || pass.status === "used";
+              if (isQr) {
+                const isScannable =
+                  pass.status === "active" || pass.status === "used";
 
-            const elementStyle: React.CSSProperties = {
-              position: "absolute",
-              left: `${el.x}px`,
-              top: `${el.y}px`,
-              width: `${el.width}px`,
-              height: `${el.height}px`,
-              transform: `rotate(${rotation}deg)`,
-              transformOrigin: "center center",
-              zIndex: el.zIndex,
-            };
+                const elementStyle: React.CSSProperties = {
+                  position: "absolute",
+                  left: `${el.x}px`,
+                  top: `${el.y}px`,
+                  width: `${el.width}px`,
+                  height: `${el.height}px`,
+                  transform: `rotate(${rotation}deg)`,
+                  transformOrigin: "center center",
+                  zIndex: el.zIndex,
+                };
 
-            if (isScannable) {
+                if (isScannable) {
+                  return (
+                    <div
+                      key={el.id}
+                      className={styles.elementWrapper}
+                      style={elementStyle}
+                      data-testid="qr-container"
+                    >
+                      <div
+                        className={styles.qrContainer}
+                        style={{
+                          backgroundColor:
+                            resolved.bgColor ||
+                            el.style?.qrBgColor ||
+                            "#ffffff",
+                          borderRadius: el.style?.borderRadius || 6,
+                          padding: 6,
+                        }}
+                      >
+                        <QRCode
+                          value={pass.qrCode}
+                          size={Math.max(
+                            20,
+                            Math.min(el.width, el.height) - 12,
+                          )}
+                          fgColor={
+                            resolved.color || el.style?.qrFgColor || "#000000"
+                          }
+                          bgColor={
+                            resolved.bgColor || el.style?.qrBgColor || "#ffffff"
+                          }
+                          className={styles.qrSvg}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={el.id}
+                    className={styles.elementWrapper}
+                    style={elementStyle}
+                    data-testid="locked-qr-badge"
+                  >
+                    <div className={styles.lockedQrBadge}>
+                      <Lock size={16} className={styles.lockedQrIcon} />
+                      <span className={styles.lockedQrText}>
+                        {pass.status === "pending_approval"
+                          ? "PENDING APPROVAL"
+                          : "LOCKED"}
+                      </span>
+                      <span className={styles.lockedQrSubtext}>
+                        QR Unscannable
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              const rawText = resolved.text ?? getElementText(el, pass);
+              const baseFontSize = el.style?.fontSize ?? 16;
+              const isVariable =
+                el.type === "variable" ||
+                el.type === "form_field" ||
+                Boolean(el.variableKey);
+              const autoFit =
+                el.style?.autoFitText ?? (isVariable ? true : false);
+
+              const finalFontSize = autoFit
+                ? calculateAutoFitFontSize(
+                    rawText,
+                    baseFontSize,
+                    el.width,
+                    el.style?.fontFamily,
+                    el.style?.fontWeight,
+                  )
+                : baseFontSize;
+
+              const isBadge = el.type === "badge";
+
+              const elementStyle: React.CSSProperties = {
+                position: "absolute",
+                left: `${el.x}px`,
+                top: `${el.y}px`,
+                width: `${el.width}px`,
+                height: `${el.height}px`,
+                transform: `rotate(${rotation}deg)`,
+                transformOrigin: "center center",
+                color: resolved.color || el.style?.color || "inherit",
+                backgroundColor:
+                  resolved.bgColor ||
+                  el.style?.backgroundColor ||
+                  el.style?.bgColor ||
+                  (isBadge ? "rgba(255, 255, 255, 0.15)" : undefined),
+                borderRadius:
+                  el.style?.borderRadius ?? (isBadge ? 8 : undefined),
+                fontFamily: el.style?.fontFamily,
+                fontWeight: el.style?.fontWeight,
+                fontSize: `${finalFontSize}px`,
+                textAlign: el.style?.textAlign,
+                opacity: el.style?.opacity,
+                lineHeight: el.style?.lineHeight,
+                letterSpacing: el.style?.letterSpacing,
+                textTransform: el.style?.textTransform,
+                zIndex: el.zIndex,
+                display: "flex",
+                alignItems: "center",
+                justifyContent:
+                  el.style?.textAlign === "center"
+                    ? "center"
+                    : el.style?.textAlign === "right"
+                      ? "flex-end"
+                      : "flex-start",
+                boxSizing: "border-box",
+                padding: el.style?.padding ?? (isBadge ? "4px 8px" : undefined),
+              };
+
               return (
                 <div
                   key={el.id}
                   className={styles.elementWrapper}
                   style={elementStyle}
-                  data-testid="qr-container"
+                  data-testid={`custom-element-${el.id || el.type}`}
+                  data-variable-key={el.variableKey}
                 >
                   <div
-                    className={styles.qrContainer}
+                    className={styles.textContent}
                     style={{
-                      backgroundColor:
-                        resolved.bgColor || el.style?.qrBgColor || "#ffffff",
-                      borderRadius: el.style?.borderRadius || 6,
-                      padding: 6,
+                      textAlign: el.style?.textAlign || "left",
+                      width: "100%",
                     }}
                   >
-                    <QRCode
-                      value={pass.qrCode}
-                      size={Math.max(20, Math.min(el.width, el.height) - 12)}
-                      fgColor={resolved.color || el.style?.qrFgColor || "#000000"}
-                      bgColor={
-                        resolved.bgColor || el.style?.qrBgColor || "#ffffff"
-                      }
-                      className={styles.qrSvg}
-                    />
+                    {rawText}
                   </div>
                 </div>
               );
-            }
-
-            return (
-              <div
-                key={el.id}
-                className={styles.elementWrapper}
-                style={elementStyle}
-                data-testid="locked-qr-badge"
-              >
-                <div className={styles.lockedQrBadge}>
-                  <Lock size={16} className={styles.lockedQrIcon} />
-                  <span className={styles.lockedQrText}>
-                    {pass.status === "pending_approval"
-                      ? "PENDING APPROVAL"
-                      : "LOCKED"}
-                  </span>
-                  <span className={styles.lockedQrSubtext}>QR Unscannable</span>
-                </div>
-              </div>
-            );
-          }
-
-          const rawText = resolved.text ?? getElementText(el, pass);
-          const baseFontSize = el.style?.fontSize ?? 16;
-          const isVariable =
-            el.type === "variable" ||
-            el.type === "form_field" ||
-            Boolean(el.variableKey);
-          const autoFit =
-            el.style?.autoFitText ?? (isVariable ? true : false);
-
-          const finalFontSize = autoFit
-            ? calculateAutoFitFontSize(
-                rawText,
-                baseFontSize,
-                el.width,
-                el.style?.fontFamily,
-                el.style?.fontWeight,
-              )
-            : baseFontSize;
-
-          const isBadge = el.type === "badge";
-
-          const elementStyle: React.CSSProperties = {
-            position: "absolute",
-            left: `${el.x}px`,
-            top: `${el.y}px`,
-            width: `${el.width}px`,
-            height: `${el.height}px`,
-            transform: `rotate(${rotation}deg)`,
-            transformOrigin: "center center",
-            color: resolved.color || el.style?.color || "inherit",
-            backgroundColor:
-              resolved.bgColor ||
-              el.style?.backgroundColor ||
-              el.style?.bgColor ||
-              (isBadge ? "rgba(255, 255, 255, 0.15)" : undefined),
-            borderRadius:
-              el.style?.borderRadius ?? (isBadge ? 8 : undefined),
-            fontFamily: el.style?.fontFamily,
-            fontWeight: el.style?.fontWeight,
-            fontSize: `${finalFontSize}px`,
-            textAlign: el.style?.textAlign,
-            opacity: el.style?.opacity,
-            lineHeight: el.style?.lineHeight,
-            letterSpacing: el.style?.letterSpacing,
-            textTransform: el.style?.textTransform,
-            zIndex: el.zIndex,
-            display: "flex",
-            alignItems: "center",
-            justifyContent:
-              el.style?.textAlign === "center"
-                ? "center"
-                : el.style?.textAlign === "right"
-                  ? "flex-end"
-                  : "flex-start",
-            boxSizing: "border-box",
-            padding:
-              el.style?.padding ?? (isBadge ? "4px 8px" : undefined),
-          };
-
-          return (
-            <div
-              key={el.id}
-              className={styles.elementWrapper}
-              style={elementStyle}
-              data-testid={`custom-element-${el.id || el.type}`}
-              data-variable-key={el.variableKey}
-            >
-              <div
-                className={styles.textContent}
-                style={{
-                  textAlign: el.style?.textAlign || "left",
-                  width: "100%",
-                }}
-              >
-                {rawText}
-              </div>
-            </div>
-          );
-        })}
+            })}
       </div>
     </div>
   );

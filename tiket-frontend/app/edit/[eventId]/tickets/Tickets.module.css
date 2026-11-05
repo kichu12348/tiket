@@ -1,17 +1,14 @@
 .page {
-  padding: 2.5rem;
+  padding: 2rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
   color: var(--text-primary);
-  max-width: 800px;
+  max-width: 900px;
   width: 100%;
   margin: 0 auto;
-  transition: max-width 0.2s ease;
-}
-
-.pageWide {
-  max-width: 1360px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .header {

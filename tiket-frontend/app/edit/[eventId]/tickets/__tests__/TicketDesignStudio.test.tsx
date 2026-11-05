@@ -126,15 +126,19 @@ mock.module("@/api/forms", () => ({
   ]),
 }));
 
+const mockGetSignedUrl = mock(async () => ({
+  url: "https://r2.tiket.app/upload",
+  max_size: 10,
+  filename: "events/bg-ticket.png",
+}));
+
+const mockUploadToCDN = mock(async () => ({
+  filename: "events/bg-ticket.png",
+}));
+
 mock.module("@/api/events", () => ({
-  getSignedUrl: mock(async () => ({
-    url: "https://r2.tiket.app/upload",
-    max_size: 10,
-    filename: "events/bg-ticket.png",
-  })),
-  uploadToCDN: mock(async () => ({
-    filename: "events/bg-ticket.png",
-  })),
+  getSignedUrl: mockGetSignedUrl,
+  uploadToCDN: mockUploadToCDN,
 }));
 
 mock.module("@/constants/config", () => ({
@@ -169,7 +173,7 @@ describe("TicketDesignStudio (MakeMyPass Caliber)", () => {
     expect(screen.getByTestId("ticket-artboard")).toBeDefined();
     expect(screen.getByTestId("layers-card")).toBeDefined();
     expect(screen.getByTestId("upload-template-btn")).toBeDefined();
-    expect(screen.getByTestId("save-template-btn")).toBeDefined();
+    expect(screen.getByTestId("ticket-submit-btn")).toBeDefined();
   });
 
   test("2. Toggles between Edit Layout and Sample Preview modes", async () => {
@@ -291,7 +295,7 @@ describe("TicketDesignStudio (MakeMyPass Caliber)", () => {
     fireEvent.change(inputX, { target: { value: "180" } });
 
     // Click Update
-    const updateBtn = screen.getByTestId("save-template-btn");
+    const updateBtn = screen.getByTestId("ticket-submit-btn");
     fireEvent.click(updateBtn);
 
     await waitFor(() => {
@@ -319,6 +323,115 @@ describe("TicketDesignStudio (MakeMyPass Caliber)", () => {
     );
     expect(result).toBe(
       "Alex Morgan - TIK-9842-X7 at Tiket Summit (Stanford University)",
+    );
+  });
+
+  test("8. Uses plain neutral background and 2082x576 canonical dimensions when no custom image is configured", async () => {
+    const unconfiguredTicket: TicketType = {
+      ...mockSampleTicket,
+      id: "tt-unconfigured",
+      templateImageUrl: null,
+      templateConfig: null,
+    };
+
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={unconfiguredTicket}
+      />,
+    );
+
+    // No background image when no template is uploaded
+    expect(screen.queryByTestId("template-bg-image")).toBeNull();
+
+    const artboard = screen.getByTestId("ticket-artboard");
+    expect(artboard.style.width).toBe("2082px");
+    expect(artboard.style.height).toBe("576px");
+  });
+
+  test("9. Preserves image natural aspect ratio on image load", async () => {
+    const unconfiguredTicket: TicketType = {
+      ...mockSampleTicket,
+      id: "tt-load-test",
+      templateImageUrl: "/custom-banner.png",
+      templateConfig: null,
+    };
+
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={unconfiguredTicket}
+      />,
+    );
+
+    const bgImage = screen.getByTestId("template-bg-image");
+    // Simulate image onLoad with natural dimensions 1600x600 (aspect ratio 2.67:1)
+    Object.defineProperty(bgImage, "naturalWidth", { value: 1600, configurable: true });
+    Object.defineProperty(bgImage, "naturalHeight", { value: 600, configurable: true });
+    fireEvent.load(bgImage);
+
+    await waitFor(() => {
+      const artboard = screen.getByTestId("ticket-artboard");
+      expect(artboard.style.width).toBe("1600px");
+      expect(artboard.style.height).toBe("600px");
+    });
+  });
+
+  test("10. Selects image locally for editing first, uploads to CDN only when Update button is clicked", async () => {
+    if (typeof URL.createObjectURL === "undefined") {
+      URL.createObjectURL = mock(() => "blob:http://localhost/test-blob");
+    } else {
+      mock.restore();
+    }
+    if (typeof URL.revokeObjectURL === "undefined") {
+      URL.revokeObjectURL = mock(() => {});
+    }
+
+    mockGetSignedUrl.mockClear();
+    mockUploadToCDN.mockClear();
+    mockUpdateTicketType.mockClear();
+
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={mockSampleTicket}
+      />,
+    );
+
+    const fileInput = screen.getByTestId("template-image-input");
+    const testFile = new File(["fake-image-bytes"], "my-ticket.png", {
+      type: "image/png",
+    });
+
+    // User selects image file
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    // Assert that image is NOT uploaded to CDN yet!
+    expect(mockGetSignedUrl).toHaveBeenCalledTimes(0);
+    expect(mockUploadToCDN).toHaveBeenCalledTimes(0);
+
+    // Image preview is shown with local blob
+    const bgImage = screen.getByTestId("template-bg-image");
+    expect(bgImage.getAttribute("src")).toContain("blob:");
+
+    // Click Update to save
+    const updateBtn = screen.getByTestId("ticket-submit-btn");
+    fireEvent.click(updateBtn);
+
+    // Now it uploads to CDN upon Update!
+    await waitFor(() => {
+      expect(mockGetSignedUrl).toHaveBeenCalledTimes(1);
+      expect(mockUploadToCDN).toHaveBeenCalledTimes(1);
+      expect(mockUpdateTicketType).toHaveBeenCalledTimes(1);
+    });
+
+    const [,, payload] = mockUpdateTicketType.mock.calls[0] as [
+      string,
+      string,
+      Partial<TicketType>,
+    ];
+    expect(payload.templateImageUrl).toBe(
+      "https://cdn.tiket.app/events/bg-ticket.png",
     );
   });
 });
