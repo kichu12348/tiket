@@ -10,8 +10,6 @@ import {
   ticketTypes,
   users,
   orders,
-  ticketFormResponses,
-  formFields,
   documentTemplates,
   ticketTransfers,
 } from "@db/schema";
@@ -82,14 +80,15 @@ export const getTicketPass = async (
     }
 
     // 4. Fetch optional registration form responses
-    const responses = await db
-      .select({
-        label: formFields.label,
-        value: ticketFormResponses.responseValue,
-      })
-      .from(ticketFormResponses)
-      .innerJoin(formFields, eq(ticketFormResponses.fieldId, formFields.id))
-      .where(eq(ticketFormResponses.ticketId, ticketId));
+    const formFieldsMap = new Map(
+      (row.event.formFields || []).map((f) => [f.id, f.label]),
+    );
+    const responses = (row.ticket.formResponses || [])
+      .filter((r) => formFieldsMap.has(r.fieldId))
+      .map((r) => ({
+        label: formFieldsMap.get(r.fieldId) || "",
+        value: r.responseValue,
+      }));
 
     // 5. Fetch active ticket template (if configured for this event)
     const [template] = await db

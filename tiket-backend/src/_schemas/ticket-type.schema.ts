@@ -71,6 +71,12 @@ const ticketLayoutLayerSchema = {
     maxLines: { type: "number" },
     lineSpacing: { type: "number" },
     fontColor: { type: "string" },
+    fontWeight: { type: "string" },
+    fontFamily: { type: "string" },
+    fontStyle: { type: "string" },
+    textDecoration: { type: "string" },
+    qrColor: { type: "string" },
+    qrBgColor: { type: "string" },
   },
 };
 

@@ -1,6 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import db from "@db";
-import { emailConnections, events, formFields, uploads } from "@db/schema";
+import { emailConnections, events, uploads } from "@db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
 import { verifyEventPermission } from "../utils/permissions";
@@ -63,20 +63,19 @@ export async function beginUpload(
   const body = request.body;
   if (!ALLOWED_FILES.includes(body.contentType))
     throw new HttpError(400, "Use a PDF, PNG, JPEG or plain text file.");
-  const [field] = await db
-    .select()
-    .from(formFields)
-    .innerJoin(events, eq(events.id, formFields.eventId))
-    .where(
-      and(
-        eq(formFields.id, body.fieldId),
-        eq(formFields.eventId, body.eventId),
-      ),
-    );
+  const [event] = await db
+    .select({
+      status: events.status,
+      formFields: events.formFields,
+    })
+    .from(events)
+    .where(eq(events.id, body.eventId));
+  const field = event?.formFields?.find((f) => f.id === body.fieldId);
   if (
+    !event ||
+    event.status !== "published" ||
     !field ||
-    field.form_fields.fieldType !== "file" ||
-    field.events.status !== "published"
+    field.fieldType !== "file"
   )
     throw new HttpError(404, "Registration upload field not found.");
   const id = crypto.randomUUID();

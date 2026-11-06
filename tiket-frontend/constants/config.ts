@@ -10,6 +10,7 @@ export const TOKEN_KEY = "authToken";
 export const MAX_AGE = 30 * 24 * 60 * 60;
 
 export const API_ENDPOINTS = {
+  REALTIME_CONNECT: (eventId: string) => `/api/realtime/events/${eventId}/connect`,
   COMMERCE: {
     PERMISSIONS: (id: string) => `/api/commerce/${id}/permissions`,
     APPROVALS: (id: string) => `/api/commerce/${id}/approvals`,

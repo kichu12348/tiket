@@ -19,6 +19,12 @@ export interface TicketDesignerLayer {
   height?: number;
   maxLines?: number;
   lineSpacing?: number;
+  fontWeight?: string;
+  fontFamily?: string;
+  fontStyle?: string;
+  textDecoration?: string;
+  qrColor?: string;
+  qrBgColor?: string;
 }
 
 export interface TicketDesignOutput {

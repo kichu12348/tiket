@@ -10,7 +10,6 @@ import {
   tickets,
   users,
   checkIns,
-  formFields,
   ticketTypes,
 } from "@db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -345,10 +344,7 @@ export const getAvailableVariables = async (
       .select()
       .from(events)
       .where(eq(events.id, eventId));
-    const fields = await db
-      .select()
-      .from(formFields)
-      .where(eq(formFields.eventId, eventId));
+    const fields = eventObj?.formFields || [];
 
     const eventVariables = [
       {

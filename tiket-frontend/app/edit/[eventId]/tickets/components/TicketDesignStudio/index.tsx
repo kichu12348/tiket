@@ -86,6 +86,18 @@ export default function TicketDesignStudio({
     platformFeeBps: effectiveFeeBps,
   });
 
+  const [prevTicketProp, setPrevTicketProp] = useState<
+    TicketType | null | undefined
+  >(initialTicket);
+  if (initialTicket !== prevTicketProp) {
+    setPrevTicketProp(initialTicket);
+    setActiveTicket(initialTicket ?? null);
+    if (initialTicket) {
+      design.resetDesignState(initialTicket);
+      settings.resetSettingsState(initialTicket);
+    }
+  }
+
   // Layer interaction hook
   const interaction = useLayerInteraction({
     artboardW: design.canvasWidth,
@@ -101,7 +113,17 @@ export default function TicketDesignStudio({
     getTicketTypes(eventId)
       .then((data) => {
         if (!isMounted) return;
-        setTicketTypesList(data || []);
+        const list = data || [];
+        setTicketTypesList(list);
+
+        // In pass designer mode ("edit"), auto-select the first tier if none was passed
+        // so the user's saved pass layout and template image are immediately loaded
+        if (!activeTicket && list.length > 0 && mode === "edit") {
+          const first = list[0];
+          setActiveTicket(first);
+          design.resetDesignState(first);
+          settings.resetSettingsState(first);
+        }
       })
       .catch((err) => {
         console.error("Failed to load tickets", err);
@@ -110,6 +132,8 @@ export default function TicketDesignStudio({
       isMounted = false;
     };
   }, [eventId]);
+
+
 
   // Load form fields for tokens
   useEffect(() => {
@@ -173,6 +197,9 @@ export default function TicketDesignStudio({
           setIsSaving(false);
           return;
         }
+      } else if (finalImageUrl && finalImageUrl.startsWith("blob:")) {
+        // Fallback for stale blob URL when file handle has been released
+        finalImageUrl = activeTicket?.templateImageUrl || null;
       }
 
       const parsedTags = settings.tagsInput
@@ -187,8 +214,12 @@ export default function TicketDesignStudio({
       const designOutput = design.getDesign();
 
       const config: TicketLayoutConfig = {
-        canvasWidth: designOutput.artboardW,
-        canvasHeight: designOutput.artboardH,
+        canvasWidth: Math.round(
+          designOutput.artboardW || DEFAULT_ARTBOARD_WIDTH,
+        ),
+        canvasHeight: Math.round(
+          designOutput.artboardH || DEFAULT_ARTBOARD_HEIGHT,
+        ),
         layers: designOutput.layers.map((l) => ({
           id: l.id,
           type: l.type,
@@ -197,17 +228,35 @@ export default function TicketDesignStudio({
             l.tokenOrText ||
             l.text ||
             (l.type === "qr" ? "{{ticket_code}}" : "Text"),
-          x: l.x,
-          y: l.y,
-          width:
+          x: Math.round(l.x),
+          y: Math.round(l.y),
+          width: Math.round(
             l.width || (l.type === "qr" ? l.size : Math.max(120, l.size * 5)),
-          height:
+          ),
+          height: Math.round(
             l.height ||
             (l.type === "qr" ? l.size : Math.max(30, Math.round(l.size * 1.4))),
-          fontSize: l.type === "text" ? l.size : 14,
-          fontColor: l.color || l.fontColor || "#ffffff",
+          ),
+          fontSize: Math.round(
+            l.type === "text" ? l.size || l.fontSize || 48 : 14,
+          ),
+          fontColor:
+            l.color ||
+            l.fontColor ||
+            (l.type === "qr" ? l.qrColor || "#000000" : "#ffffff"),
           maxLines: l.maxLines || 1,
           lineSpacing: l.lineSpacing || 0,
+          fontWeight: l.fontWeight || (l.type === "text" ? "600" : undefined),
+          fontFamily:
+            l.fontFamily || (l.type === "text" ? "'Inter', sans-serif" : undefined),
+          fontStyle: l.fontStyle || (l.type === "text" ? "normal" : undefined),
+          textDecoration:
+            l.textDecoration || (l.type === "text" ? "none" : undefined),
+          qrColor:
+            l.type === "qr"
+              ? l.qrColor || l.color || l.fontColor || "#000000"
+              : undefined,
+          qrBgColor: l.type === "qr" ? l.qrBgColor || "#ffffff" : undefined,
         })),
       };
 
@@ -262,8 +311,20 @@ export default function TicketDesignStudio({
       } else {
         resultTicket = await createTicketType(eventId, payload);
         toast.success("Ticket type created.");
-        setActiveTicket(resultTicket);
       }
+
+      setActiveTicket(resultTicket);
+      setTicketTypesList((prev) => {
+        const idx = prev.findIndex((t) => t.id === resultTicket.id);
+        if (idx !== -1) {
+          const next = [...prev];
+          next[idx] = resultTicket;
+          return next;
+        }
+        return [...prev, resultTicket];
+      });
+      design.resetDesignState(resultTicket);
+      settings.resetSettingsState(resultTicket);
 
       if (onSaved) {
         onSaved(resultTicket);

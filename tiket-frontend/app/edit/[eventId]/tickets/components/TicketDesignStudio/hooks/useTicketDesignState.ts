@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { getImageUrl } from "@/constants/config";
 import type { TicketType, TicketLayoutLayer } from "@/types/ticketType";
 import type { TicketDesignerLayer, TicketDesignOutput } from "../types";
 import { toast } from "sonner";
@@ -15,40 +16,79 @@ function normalizeLayer(
 ): TicketDesignerLayer {
   const isQr = l.type === "qr";
   const rawSize =
-    "size" in l && typeof l.size === "number" ? l.size : undefined;
+    "size" in l && typeof l.size === "number" && !isNaN(l.size)
+      ? l.size
+      : undefined;
   const rawText =
     "text" in l && typeof l.text === "string" ? l.text : undefined;
   const rawColor =
     "color" in l && typeof l.color === "string" ? l.color : undefined;
+  const rawWidth =
+    typeof l.width === "number" && !isNaN(l.width) && l.width > 0
+      ? l.width
+      : undefined;
+  const rawHeight =
+    typeof l.height === "number" && !isNaN(l.height) && l.height > 0
+      ? l.height
+      : undefined;
 
   const size =
     rawSize ||
     (isQr
-      ? (l as TicketLayoutLayer).width || 300
+      ? rawWidth || 300
       : (l as TicketLayoutLayer).fontSize || 48);
   const text =
     rawText ??
     (l as TicketLayoutLayer).tokenOrText ??
     (isQr ? undefined : "Text");
+
+  const qrColor =
+    (l as TicketLayoutLayer).qrColor ||
+    (isQr ? rawColor || (l as TicketLayoutLayer).fontColor || "#000000" : undefined);
+  const qrBgColor =
+    (l as TicketLayoutLayer).qrBgColor || (isQr ? "#ffffff" : undefined);
+
   const color =
-    rawColor ?? (l as TicketLayoutLayer).fontColor ?? "#ffffff";
+    rawColor ??
+    (l as TicketLayoutLayer).fontColor ??
+    (isQr ? qrColor || "#000000" : "#ffffff");
+
+  const width = rawWidth ?? (isQr ? size : Math.max(120, size * 5));
+  const height =
+    rawHeight ?? (isQr ? size : Math.max(30, Math.round(size * 1.4)));
+
+  const fontWeight =
+    (l as TicketLayoutLayer).fontWeight || (isQr ? undefined : "600");
+  const fontFamily =
+    (l as TicketLayoutLayer).fontFamily ||
+    (isQr ? undefined : "'Inter', sans-serif");
+  const fontStyle =
+    (l as TicketLayoutLayer).fontStyle || (isQr ? undefined : "normal");
+  const textDecoration =
+    (l as TicketLayoutLayer).textDecoration || (isQr ? undefined : "none");
 
   return {
     id: l.id,
     type: l.type,
     x: l.x,
     y: l.y,
-    size,
+    size: isQr ? width : size,
     text,
     color,
     name: (l as TicketLayoutLayer).name || (isQr ? "QR Code" : text || "Text"),
     tokenOrText: text || (isQr ? "{{ticket_code}}" : "Text"),
     fontSize: isQr ? 14 : size,
     fontColor: color,
-    width: isQr ? size : Math.max(120, size * 5),
-    height: isQr ? size : Math.max(30, Math.round(size * 1.4)),
+    width,
+    height,
     maxLines: (l as TicketLayoutLayer).maxLines || 1,
     lineSpacing: (l as TicketLayoutLayer).lineSpacing || 0,
+    fontWeight,
+    fontFamily,
+    fontStyle,
+    textDecoration,
+    qrColor,
+    qrBgColor,
   };
 }
 
@@ -60,7 +100,9 @@ export function useTicketDesignState({
   initialTicket,
 }: UseTicketDesignStateParams) {
   const [templateImageUrl, setTemplateImageUrl] = useState<string | null>(
-    initialTicket?.templateImageUrl || null,
+    initialTicket?.templateImageUrl
+      ? getImageUrl(initialTicket.templateImageUrl)
+      : null,
   );
   const [canvasWidth, setCanvasWidth] = useState<number>(
     initialTicket?.templateConfig?.canvasWidth ?? DEFAULT_ARTBOARD_WIDTH,
@@ -163,6 +205,10 @@ export function useTicketDesignState({
       height: estHeight,
       maxLines: 1,
       lineSpacing: 0,
+      fontWeight: "600",
+      fontFamily: "'Inter', sans-serif",
+      fontStyle: "normal",
+      textDecoration: "none",
     };
 
     setLayers((prev) => [...prev, newLayer]);
@@ -186,6 +232,9 @@ export function useTicketDesignState({
       tokenOrText: "{{ticket_code}}",
       fontSize: 14,
       fontColor: "#000000",
+      color: "#000000",
+      qrColor: "#000000",
+      qrBgColor: "#ffffff",
       width: size,
       height: size,
       maxLines: 1,
@@ -257,9 +306,20 @@ export function useTicketDesignState({
           }
           if (fields.color !== undefined) {
             updated.fontColor = fields.color;
+            if (updated.type === "qr") {
+              updated.qrColor = fields.color;
+            }
           }
           if (fields.fontColor !== undefined) {
             updated.color = fields.fontColor;
+            if (updated.type === "qr") {
+              updated.qrColor = fields.fontColor;
+            }
+          }
+          if (fields.qrColor !== undefined && updated.type === "qr") {
+            updated.color = fields.qrColor;
+            updated.fontColor = fields.qrColor;
+            updated.qrColor = fields.qrColor;
           }
           return updated;
         }),
@@ -270,7 +330,9 @@ export function useTicketDesignState({
 
   const resetDesignState = useCallback((t?: TicketType | null) => {
     setPendingImageFile(null);
-    setTemplateImageUrl(t?.templateImageUrl || null);
+    setTemplateImageUrl(
+      t?.templateImageUrl ? getImageUrl(t.templateImageUrl) : null,
+    );
     setCanvasWidth(t?.templateConfig?.canvasWidth ?? DEFAULT_ARTBOARD_WIDTH);
     setCanvasHeight(t?.templateConfig?.canvasHeight ?? DEFAULT_ARTBOARD_HEIGHT);
     const rawLayers = t?.templateConfig?.layers ?? [];

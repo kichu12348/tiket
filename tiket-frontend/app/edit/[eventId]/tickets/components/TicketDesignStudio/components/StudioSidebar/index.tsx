@@ -30,17 +30,17 @@ export default function StudioSidebar({
   selectedLayerId,
   selectedLayer,
   formFields,
-  ticketName,
-  isPaid,
-  price,
-  hasLimitCapacity,
-  quantityLimit,
+  ticketName: _ticketName,
+  isPaid: _isPaid,
+  price: _price,
+  hasLimitCapacity: _hasLimitCapacity,
+  quantityLimit: _quantityLimit,
   onSelectLayer,
   onAddTextLayer,
   onAddQrLayer,
   onDeleteLayer,
   onUpdateLayer,
-  onSwitchToSettings,
+  onSwitchToSettings: _onSwitchToSettings,
 }: StudioSidebarProps) {
   return (
     <div className={`${styles.sidebar} scrollbar`}>
@@ -58,41 +58,6 @@ export default function StudioSidebar({
         formFields={formFields}
         onUpdateLayer={onUpdateLayer}
       />
-
-      <div className={styles.overviewCard}>
-        <div className={styles.overviewHeader}>
-          <span className={styles.overviewTitle}>Tier Overview</span>
-        </div>
-        <div className={styles.overviewContent}>
-          <div className={styles.overviewRow}>
-            <span className={styles.overviewLabel}>Name:</span>
-            <span className={styles.overviewValue}>
-              {ticketName || "Untitled"}
-            </span>
-          </div>
-          <div className={styles.overviewRow}>
-            <span className={styles.overviewLabel}>Price:</span>
-            <span className={styles.overviewValue}>
-              {isPaid ? `₹${price || 0}` : "Free"}
-            </span>
-          </div>
-          <div className={styles.overviewRow}>
-            <span className={styles.overviewLabel}>Capacity:</span>
-            <span className={styles.overviewValue}>
-              {hasLimitCapacity && quantityLimit
-                ? quantityLimit
-                : "Unlimited"}
-            </span>
-          </div>
-          <button
-            type="button"
-            className={styles.quickLinkBtn}
-            onClick={onSwitchToSettings}
-          >
-            Edit Full Ticket Settings
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

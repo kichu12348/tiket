@@ -4,14 +4,12 @@ import {
   emailLogs,
   emailTemplates,
   events,
-  formFields,
   orders,
-  ticketFormResponses,
   tickets,
   ticketTypes,
   users,
 } from "@db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Transaction } from "../db/types";
 import { deliverMail } from "./mail.service";
 import { sanitizeEmailHtml } from "../utils/html";
@@ -40,28 +38,22 @@ export async function enqueueOrderEmail(
       id: tickets.id,
       qrCode: tickets.qrCode,
       ticketTypeName: ticketTypes.name,
+      formResponses: tickets.formResponses,
     })
     .from(tickets)
     .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
     .where(eq(tickets.orderId, orderId));
 
-  const ticketIds = orderTickets.map((t) => t.id);
-  const responses =
-    ticketIds.length > 0
-      ? await tx
-          .select({
-            label: formFields.label,
-            value: ticketFormResponses.responseValue,
-          })
-          .from(ticketFormResponses)
-          .innerJoin(formFields, eq(ticketFormResponses.fieldId, formFields.id))
-          .where(inArray(ticketFormResponses.ticketId, ticketIds))
-      : [];
-
+  const formFieldsMap = new Map(
+    (data.event.formFields || []).map((f) => [f.id, f.label]),
+  );
   const formMap: Record<string, string> = {};
-  for (const resp of responses) {
-    if (resp.label && resp.value !== null && resp.value !== undefined) {
-      formMap[resp.label] = resp.value;
+  for (const t of orderTickets) {
+    for (const resp of t.formResponses || []) {
+      const label = formFieldsMap.get(resp.fieldId);
+      if (label && resp.responseValue !== null && resp.responseValue !== undefined) {
+        formMap[label] = resp.responseValue;
+      }
     }
   }
 
@@ -203,19 +195,14 @@ export async function enqueueCheckInEmail(
 
   if (!data) return;
 
-  const responses = await tx
-    .select({
-      label: formFields.label,
-      value: ticketFormResponses.responseValue,
-    })
-    .from(ticketFormResponses)
-    .innerJoin(formFields, eq(ticketFormResponses.fieldId, formFields.id))
-    .where(eq(ticketFormResponses.ticketId, ticketId));
-
+  const formFieldsMap = new Map(
+    (data.event.formFields || []).map((f) => [f.id, f.label]),
+  );
   const formMap: Record<string, string> = {};
-  for (const resp of responses) {
-    if (resp.label && resp.value !== null && resp.value !== undefined) {
-      formMap[resp.label] = resp.value;
+  for (const resp of data.ticket.formResponses || []) {
+    const label = formFieldsMap.get(resp.fieldId);
+    if (label && resp.responseValue !== null && resp.responseValue !== undefined) {
+      formMap[label] = resp.responseValue;
     }
   }
 

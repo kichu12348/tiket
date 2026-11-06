@@ -2,35 +2,24 @@ import { verifyEventPermission } from "../utils/permissions";
 import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
-import { formFields } from "@db/schema";
-import { eq, and, asc, gt, sql } from "drizzle-orm";
-import { verifyEventOwner } from "@utils";
+import { events } from "@db/schema";
+import type {
+  FormFieldDefinition,
+  FormFieldType,
+  FormFieldOptionsConfig,
+  VisibilityConditionRule,
+} from "@db/schema";
+import { eq } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
+import { lockEvent } from "../services/inventory.service";
 
 interface CreateFieldBody {
   name: string;
   label: string;
-  fieldType:
-    | "text"
-    | "long_text"
-    | "email"
-    | "phone"
-    | "number"
-    | "single_select"
-    | "multi_select"
-    | "radio"
-    | "checkbox"
-    | "date"
-    | "datetime"
-    | "time"
-    | "rating"
-    | "file"
-    | "url"
-    | "select";
+  fieldType: FormFieldType;
   isRequired?: boolean;
-  options?:
-    | string[]
-    | { choices?: string[]; min?: number | null; max?: number | null }
-    | null;
+  options?: string[] | FormFieldOptionsConfig | null;
+  conditions?: VisibilityConditionRule[];
   sortOrder?: number;
   page?: number;
 }
@@ -61,25 +50,33 @@ export const createField = async (
     }
 
     const body = request.body;
+    const createdField: FormFieldDefinition = {
+      id: uuidv7(),
+      eventId,
+      name: body.name,
+      label: body.label,
+      fieldType: body.fieldType,
+      isRequired: body.isRequired ?? true,
+      options: body.options ?? null,
+      conditions: body.conditions,
+      sortOrder: body.sortOrder ?? 0,
+      page: body.page ?? 1,
+      createdAt: new Date().toISOString(),
+    };
 
-    const newFieldList = await db
-      .insert(formFields)
-      .values({
-        eventId,
-        name: body.name,
-        label: body.label,
-        fieldType: body.fieldType,
-        isRequired: body.isRequired ?? true,
-        options: body.options ? body.options : null,
-        sortOrder: body.sortOrder ?? 0,
-        page: body.page ?? 1,
-      })
-      .returning();
+    await db.transaction(async (tx) => {
+      const event = await lockEvent(tx, eventId);
+      const currentFields = event.formFields || [];
+      const updatedFields = [...currentFields, createdField];
 
-    const createdField = newFieldList[0];
-    if (!createdField) {
-      return reply.status(500).send({ error: "Failed to create form field." });
-    }
+      await tx
+        .update(events)
+        .set({
+          formFields: updatedFields,
+          updatedAt: new Date(),
+        })
+        .where(eq(events.id, eventId));
+    });
 
     return reply.status(201).send(createdField);
   } catch (error) {
@@ -94,12 +91,20 @@ export const getFields = async (
   try {
     const { eventId } = request.params;
 
-    // Sort order natively evaluated via Drizzle to pre-sort rendering flow directly from Postgres
-    const fieldsList = await db
-      .select()
-      .from(formFields)
-      .where(eq(formFields.eventId, eventId))
-      .orderBy(asc(formFields.sortOrder));
+    const [event] = await db
+      .select({ formFields: events.formFields })
+      .from(events)
+      .where(eq(events.id, eventId));
+
+    if (!event) {
+      return reply.status(404).send({ error: "Event not found" });
+    }
+
+    const fieldsList = [...(event.formFields || [])].sort((a, b) => {
+      const pageDiff = (a.page ?? 1) - (b.page ?? 1);
+      if (pageDiff !== 0) return pageDiff;
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    });
 
     return reply.send(fieldsList);
   } catch (error) {
@@ -132,22 +137,41 @@ export const updateField = async (
         .send({ error: "Only the event creator can modify form fields." });
     }
 
-    const payload: Partial<typeof formFields.$inferInsert> = {};
-    if (body.name !== undefined) payload.name = body.name;
-    if (body.label !== undefined) payload.label = body.label;
-    if (body.fieldType !== undefined) payload.fieldType = body.fieldType;
-    if (body.isRequired !== undefined) payload.isRequired = body.isRequired;
-    if (body.options !== undefined) payload.options = body.options;
-    if (body.sortOrder !== undefined) payload.sortOrder = body.sortOrder;
-    if (body.page !== undefined) payload.page = body.page;
+    let updatedField: FormFieldDefinition | null = null;
 
-    const updatedFieldList = await db
-      .update(formFields)
-      .set(payload)
-      .where(and(eq(formFields.id, fieldId), eq(formFields.eventId, eventId)))
-      .returning();
+    await db.transaction(async (tx) => {
+      const event = await lockEvent(tx, eventId);
+      const currentFields = event.formFields || [];
+      const fieldIndex = currentFields.findIndex((f) => f.id === fieldId);
+      if (fieldIndex === -1) {
+        return;
+      }
 
-    const updatedField = updatedFieldList[0];
+      const existing = currentFields[fieldIndex]!;
+      updatedField = {
+        ...existing,
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.label !== undefined ? { label: body.label } : {}),
+        ...(body.fieldType !== undefined ? { fieldType: body.fieldType } : {}),
+        ...(body.isRequired !== undefined ? { isRequired: body.isRequired } : {}),
+        ...(body.options !== undefined ? { options: body.options } : {}),
+        ...(body.conditions !== undefined ? { conditions: body.conditions } : {}),
+        ...(body.sortOrder !== undefined ? { sortOrder: body.sortOrder } : {}),
+        ...(body.page !== undefined ? { page: body.page } : {}),
+      };
+
+      const updatedFields = [...currentFields];
+      updatedFields[fieldIndex] = updatedField;
+
+      await tx
+        .update(events)
+        .set({
+          formFields: updatedFields,
+          updatedAt: new Date(),
+        })
+        .where(eq(events.id, eventId));
+    });
+
     if (!updatedField) {
       return reply.status(404).send({ error: "Form field not found" });
     }
@@ -176,12 +200,27 @@ export const deleteField = async (
       return reply.status(403).send({ error: "Unauthorized" });
     }
 
-    const deletedFieldList = await db
-      .delete(formFields)
-      .where(and(eq(formFields.id, fieldId), eq(formFields.eventId, eventId)))
-      .returning();
+    let found = false;
+    await db.transaction(async (tx) => {
+      const event = await lockEvent(tx, eventId);
+      const currentFields = event.formFields || [];
+      const fieldIndex = currentFields.findIndex((f) => f.id === fieldId);
+      if (fieldIndex === -1) {
+        return;
+      }
+      found = true;
+      const updatedFields = currentFields.filter((f) => f.id !== fieldId);
 
-    if (deletedFieldList.length === 0) {
+      await tx
+        .update(events)
+        .set({
+          formFields: updatedFields,
+          updatedAt: new Date(),
+        })
+        .where(eq(events.id, eventId));
+    });
+
+    if (!found) {
       return reply.status(404).send({ error: "Form field not found" });
     }
 
@@ -209,27 +248,85 @@ export const deletePage = async (
       return reply.status(403).send({ error: "Unauthorized" });
     }
 
-    // Run transaction to ensure atomicity
-    await db.transaction(async (tx) => {
-      // 1. Delete all fields on this page
-      await tx
-        .delete(formFields)
-        .where(
-          and(eq(formFields.eventId, eventId), eq(formFields.page, pageNum)),
-        );
+    const pageInt = Number(pageNum);
 
-      // 2. Shift subsequent pages down by 1
+    await db.transaction(async (tx) => {
+      const event = await lockEvent(tx, eventId);
+      const currentFields = event.formFields || [];
+
+      // 1. Delete all fields on this page, and 2. shift subsequent pages down by 1
+      const updatedFields = currentFields
+        .filter((f) => f.page !== pageInt)
+        .map((f) => (f.page > pageInt ? { ...f, page: f.page - 1 } : f));
+
       await tx
-        .update(formFields)
-        .set({ page: sql`${formFields.page} - 1` })
-        .where(
-          and(eq(formFields.eventId, eventId), gt(formFields.page, pageNum)),
-        );
+        .update(events)
+        .set({
+          formFields: updatedFields,
+          updatedAt: new Date(),
+        })
+        .where(eq(events.id, eventId));
     });
 
     return reply.send({
       message: `Page ${pageNum} successfully deleted and subsequent pages shifted.`,
     });
+  } catch (error) {
+    return handleControllerError(request, reply, error);
+  }
+};
+
+export const replaceFormFields = async (
+  request: FastifyRequest<{
+    Params: { eventId: string };
+    Body: FormFieldDefinition[] | { fields: FormFieldDefinition[] };
+  }>,
+  reply: FastifyReply,
+) => {
+  try {
+    await request.jwtVerify();
+    const user = request.user as { id: string };
+    const { eventId } = request.params;
+
+    const isOwner = await verifyEventPermission(
+      eventId,
+      user.id,
+      "manage_forms",
+    );
+    if (!isOwner) {
+      return reply.status(403).send({ error: "Unauthorized" });
+    }
+
+    const rawList = Array.isArray(request.body)
+      ? request.body
+      : request.body.fields || [];
+
+    const normalizedFields: FormFieldDefinition[] = rawList.map((f, idx) => ({
+      id: f.id || uuidv7(),
+      eventId,
+      name: f.name,
+      label: f.label,
+      fieldType: f.fieldType,
+      isRequired: f.isRequired ?? true,
+      options: f.options ?? null,
+      conditions: f.conditions,
+      sortOrder: f.sortOrder ?? idx,
+      page: f.page ?? 1,
+      createdAt: f.createdAt || new Date().toISOString(),
+    }));
+
+    await db.transaction(async (tx) => {
+      await lockEvent(tx, eventId);
+      await tx
+        .update(events)
+        .set({
+          formFields: normalizedFields,
+          updatedAt: new Date(),
+        })
+        .where(eq(events.id, eventId));
+    });
+
+    return reply.send(normalizedFields);
   } catch (error) {
     return handleControllerError(request, reply, error);
   }

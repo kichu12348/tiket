@@ -2,10 +2,8 @@ import db from "@db";
 import {
   type events,
   eventTeamMembers,
-  formFields,
   orderItems,
   orders,
-  ticketFormResponses,
   tickets,
   ticketTypes,
   uploads,
@@ -163,10 +161,7 @@ async function cart(
     .where(eq(ticketTypes.eventId, event.id));
   const requested = new Map<string, number>();
   const coupon = await validateCoupon(tx, event.id, body.code);
-  const fields = await tx
-    .select()
-    .from(formFields)
-    .where(eq(formFields.eventId, event.id));
+  const fields = event.formFields || [];
   const now = new Date();
   for (const purchase of body.purchases) {
     const tier = tiers.find((t) => t.id === purchase.ticketTypeId);
@@ -436,6 +431,7 @@ export async function createCheckout(
               ? "pending_approval"
               : "active"
             : "pending",
+          formResponses: purchase.formResponses ?? [],
         })
         .returning();
       await tx.insert(orderItems).values({
@@ -451,13 +447,6 @@ export async function createCheckout(
           passFeeToCustomer: tier.passFeeToCustomer,
         },
       });
-      if (purchase.formResponses?.length)
-        await tx.insert(ticketFormResponses).values(
-          purchase.formResponses.map((response) => ({
-            ...response,
-            ticketId: ticket!.id,
-          })),
-        );
     }
     if (isFree)
       await enqueueOrderEmail(

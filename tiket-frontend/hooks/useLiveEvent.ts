@@ -1,65 +1,151 @@
 "use client";
+
 import { useEffect } from "react";
-import { connectDashboard } from "@/api/commerce";
+import api from "@/lib/api";
 import { API_ENDPOINTS, API_URL } from "@/constants/config";
 import { useLiveStore } from "@/store/useLiveStore";
+
 export function useLiveEvent(eventId: string) {
   useEffect(() => {
+    if (!eventId) return;
+
     let disposed = false;
     let socket: WebSocket | undefined;
-    let retry: ReturnType<typeof setTimeout> | undefined;
+    let retryTimeout: ReturnType<typeof setTimeout> | undefined;
+    let fallbackTimer: ReturnType<typeof setInterval> | undefined;
     let attempts = 0;
-    const { changed, setStatus } = useLiveStore.getState();
-    const connect = async () => {
-      setStatus("connecting");
+
+    const stopFallbackPolling = () => {
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = undefined;
+      }
+    };
+
+    const pollVersion = async () => {
+      if (disposed) return;
       try {
-        const { ticket } = await connectDashboard(eventId);
+        const response = await api.get<{ version: number }>(
+          API_ENDPOINTS.COMMERCE.AVAILABILITY(eventId),
+        );
         if (disposed) return;
+        const newVersion = response.data?.version;
+        const currentVersion = useLiveStore.getState().version[eventId];
+        if (typeof newVersion === "number" && newVersion !== currentVersion) {
+          useLiveStore.getState().setVersion(eventId, newVersion);
+        }
+      } catch {
+        /* Fallback polling error, ignore */
+      }
+    };
+
+    const startFallbackPolling = () => {
+      if (fallbackTimer || disposed) return;
+      fallbackTimer = setInterval(() => {
+        void pollVersion();
+      }, 15000);
+    };
+
+    const connect = async () => {
+      if (disposed) return;
+      useLiveStore.getState().setStatus("connecting");
+
+      try {
+        const { data } = await api.post<{ ticket: string }>(
+          API_ENDPOINTS.REALTIME_CONNECT(eventId),
+        );
+        if (disposed) return;
+
         if (typeof WebSocket === "undefined") {
-          setStatus("polling");
+          useLiveStore.getState().setConnected(false);
+          startFallbackPolling();
           return;
         }
+
         const base =
-          API_URL ||
-          (typeof window !== "undefined"
-            ? window.location.origin
-            : "http://localhost:3000");
+          API_URL && API_URL !== "undefined"
+            ? API_URL
+            : typeof window !== "undefined" &&
+                window.location.origin &&
+                window.location.origin !== "null"
+              ? window.location.origin
+              : "http://localhost:3000";
         const url = new URL(API_ENDPOINTS.REALTIME.SOCKET, base);
         url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-        socket = new WebSocket(url);
-        socket.onopen = () => socket?.send(JSON.stringify({ ticket }));
+
+        socket = new WebSocket(url.toString());
+
+        socket.onopen = () => {
+          if (disposed) {
+            socket?.close();
+            return;
+          }
+          socket?.send(JSON.stringify({ ticket: data.ticket }));
+        };
+
         socket.onmessage = (message) => {
           try {
-            const data: unknown = JSON.parse(String(message.data));
+            const payload: unknown = JSON.parse(String(message.data));
             if (
-              data &&
-              typeof data === "object" &&
-              "type" in data &&
-              "eventId" in data &&
-              data.eventId === eventId
+              payload &&
+              typeof payload === "object" &&
+              "type" in payload &&
+              "eventId" in payload &&
+              payload.eventId === eventId
             ) {
-              if (data.type === "ready") {
+              if (payload.type === "ready") {
                 attempts = 0;
-                setStatus("live");
-                changed(eventId);
-              } else if (data.type === "event.changed") changed(eventId);
+                stopFallbackPolling();
+                useLiveStore.getState().setConnected(true);
+                if (
+                  "version" in payload &&
+                  typeof payload.version === "number"
+                ) {
+                  useLiveStore.getState().setVersion(eventId, payload.version);
+                }
+              } else if (payload.type === "event.changed") {
+                stopFallbackPolling();
+                useLiveStore.getState().setConnected(true);
+                if (
+                  "version" in payload &&
+                  typeof payload.version === "number"
+                ) {
+                  useLiveStore.getState().setVersion(eventId, payload.version);
+                } else {
+                  useLiveStore.getState().changed(eventId);
+                }
+              }
             }
           } catch {
-            /* Ignore malformed notifications and keep HTTP fallback. */
+            /* Ignore malformed messages */
           }
         };
-        socket.onclose = () => reconnect();
+
+        socket.onclose = () => {
+          if (disposed) return;
+          useLiveStore.getState().setConnected(false);
+          startFallbackPolling();
+          reconnect();
+        };
+
         socket.onerror = () => {
+          if (disposed) return;
+          useLiveStore.getState().setConnected(false);
+          startFallbackPolling();
           reconnect();
         };
       } catch {
+        if (disposed) return;
+        useLiveStore.getState().setConnected(false);
+        startFallbackPolling();
         reconnect();
       }
     };
+
     const reconnect = () => {
       if (disposed) return;
-      setStatus("polling");
-      retry = setTimeout(
+      if (retryTimeout) clearTimeout(retryTimeout);
+      retryTimeout = setTimeout(
         () => {
           void connect();
         },
@@ -67,22 +153,41 @@ export function useLiveEvent(eventId: string) {
           Math.random() * 500,
       );
     };
-    // Periodic snapshots also recover missed notifications and background-tab suspension.
-    const fallback = setInterval(() => changed(eventId), 15000);
-    const refresh = () => changed(eventId);
-    window.addEventListener("online", refresh);
-    window.addEventListener("focus", refresh);
+
+    const onOnlineOrFocus = () => {
+      if (disposed) return;
+      if (!useLiveStore.getState().connected) {
+        void pollVersion();
+        void connect();
+      }
+    };
+
+    window.addEventListener("online", onOnlineOrFocus);
+    window.addEventListener("focus", onOnlineOrFocus);
+
     void connect();
+
     return () => {
       disposed = true;
-      clearInterval(fallback);
-      clearTimeout(retry);
-      socket?.close();
-      window.removeEventListener("online", refresh);
-      window.removeEventListener("focus", refresh);
+      stopFallbackPolling();
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (socket) {
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onclose = null;
+        socket.onerror = null;
+        socket.close();
+      }
+      window.removeEventListener("online", onOnlineOrFocus);
+      window.removeEventListener("focus", onOnlineOrFocus);
     };
   }, [eventId]);
 }
+
 export function useEventRevision(eventId: string) {
-  return useLiveStore((state) => state.revisions[eventId] || 0);
+  return useLiveStore(
+    (state) => state.version[eventId] ?? state.revisions[eventId] ?? 0,
+  );
 }
+
+export const useEventVersion = useEventRevision;

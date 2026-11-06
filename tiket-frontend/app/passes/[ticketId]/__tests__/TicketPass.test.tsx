@@ -545,6 +545,95 @@ describe("TicketPassPage Integration", () => {
     expect(screen.queryByTestId("qr-container")).toBeNull();
     expect(screen.queryByText("TIKET_ENTRY_QR_PENDING")).toBeNull();
   });
+
+  test("renders custom ticket canvas when ticketType has templateConfig and templateImageUrl", async () => {
+    const mockPerTicket: TicketPassData = {
+      ...mockActiveTicket,
+      id: "ticket-per-type-1",
+      template: null,
+      ticketType: {
+        ...mockActiveTicket.ticketType,
+        templateImageUrl: "https://cdn.example.com/tickets/custom-bg.png",
+        templateConfig: {
+          canvasWidth: 2082,
+          canvasHeight: 576,
+          layers: [
+            {
+              id: "layer-qr-1",
+              type: "qr",
+              name: "QR Code",
+              tokenOrText: "{{ticket_code}}",
+              x: 1600,
+              y: 100,
+              width: 300,
+              height: 300,
+              fontSize: 14,
+              fontColor: "#000000",
+              maxLines: 1,
+              lineSpacing: 0,
+            },
+          ],
+        },
+      },
+    };
+
+    mockParams = { ticketId: "ticket-per-type-1" };
+    mockGetTicketPass.mockResolvedValueOnce(mockPerTicket);
+
+    render(<TicketPassPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("custom-ticket-artboard")).toBeInTheDocument();
+      expect(screen.getByTestId("custom-ticket-bg")).toHaveAttribute(
+        "src",
+        "https://cdn.example.com/tickets/custom-bg.png",
+      );
+    });
+    expect(screen.getByTestId("qr-container")).toBeInTheDocument();
+  });
+
+  test("renders custom ticket canvas with neutral background when ticketType has templateConfig but no background image", async () => {
+    const mockPerTicketNoBg: TicketPassData = {
+      ...mockActiveTicket,
+      id: "ticket-per-type-2",
+      template: null,
+      ticketType: {
+        ...mockActiveTicket.ticketType,
+        templateImageUrl: null,
+        templateConfig: {
+          canvasWidth: 2082,
+          canvasHeight: 576,
+          layers: [
+            {
+              id: "layer-text-1",
+              type: "text",
+              name: "Attendee Name",
+              tokenOrText: "{{attendee.name}}",
+              x: 100,
+              y: 100,
+              width: 400,
+              height: 80,
+              fontSize: 48,
+              fontColor: "#ffffff",
+              maxLines: 1,
+              lineSpacing: 0,
+            },
+          ],
+        },
+      },
+    };
+
+    mockParams = { ticketId: "ticket-per-type-2" };
+    mockGetTicketPass.mockResolvedValueOnce(mockPerTicketNoBg);
+
+    render(<TicketPassPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("custom-ticket-artboard")).toBeInTheDocument();
+      expect(screen.queryByTestId("custom-ticket-bg")).toBeNull();
+      expect(screen.getByTestId("custom-element-layer-text-1")).toHaveTextContent("Alex Morgan");
+    });
+  });
 });
 
 describe("CustomTicketCanvas component", () => {

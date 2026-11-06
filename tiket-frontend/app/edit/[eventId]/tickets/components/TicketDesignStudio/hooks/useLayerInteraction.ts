@@ -144,13 +144,27 @@ export function useLayerInteraction({
             }
 
             if (isQr) {
-              const qrSize = Math.max(minW, Math.min(newW, newH));
+              let qrSize = Math.max(minW, Math.min(newW, newH));
+              if (handle === "e" || handle === "w") {
+                qrSize = Math.max(minW, newW);
+              } else if (handle === "s" || handle === "n") {
+                qrSize = Math.max(minH, newH);
+              }
+
+              // Keep anchor side steady if top or left was pulled
+              if (handle === "w" || handle === "sw" || handle === "nw") {
+                newX = startX + startW - qrSize;
+              }
+              if (handle === "n" || handle === "ne" || handle === "nw") {
+                newY = startY + startH - qrSize;
+              }
+
               return {
                 ...l,
-                x: newX,
-                y: newY,
-                width: newW,
-                height: newH,
+                x: Math.max(0, newX),
+                y: Math.max(0, newY),
+                width: qrSize,
+                height: qrSize,
                 size: qrSize,
               };
             }

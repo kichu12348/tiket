@@ -14,6 +14,12 @@ export interface TicketLayoutLayer {
   maxLines: number; // e.g. 2
   lineSpacing: number; // e.g. 0
   fontColor: string; // e.g. "#000000"
+  fontWeight?: string;
+  fontFamily?: string;
+  fontStyle?: string;
+  textDecoration?: string;
+  qrColor?: string;
+  qrBgColor?: string;
 }
 
 export interface TicketLayoutConfig {

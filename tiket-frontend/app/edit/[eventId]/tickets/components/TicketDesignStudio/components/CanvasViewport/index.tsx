@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect, useState, useMemo } from "react";
 import { Upload } from "lucide-react";
+import { getImageUrl } from "@/constants/config";
 import {
   Select,
   SelectTrigger,
@@ -236,7 +237,7 @@ export default function CanvasViewport({
             {/* Uploaded Background Image: object-fit fill, same size as artboard */}
             {templateImageUrl ? (
               <img
-                src={templateImageUrl}
+                src={getImageUrl(templateImageUrl)}
                 alt="Ticket Template"
                 className={styles.artboardBgImage}
                 data-testid="template-bg-image"

@@ -43,27 +43,60 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-.handleNw { top: calc(-6px / var(--zoom-scale, 1)); left: calc(-6px / var(--zoom-scale, 1)); cursor: nwse-resize; }
-.handleNe { top: calc(-6px / var(--zoom-scale, 1)); right: calc(-6px / var(--zoom-scale, 1)); cursor: nesw-resize; }
-.handleSe { bottom: calc(-6px / var(--zoom-scale, 1)); right: calc(-6px / var(--zoom-scale, 1)); cursor: nwse-resize; }
-.handleSw { bottom: calc(-6px / var(--zoom-scale, 1)); left: calc(-6px / var(--zoom-scale, 1)); cursor: nesw-resize; }
+.handleNw {
+  top: calc(-6px / var(--zoom-scale, 1));
+  left: calc(-6px / var(--zoom-scale, 1));
+  cursor: nwse-resize;
+}
+.handleNe {
+  top: calc(-6px / var(--zoom-scale, 1));
+  right: calc(-6px / var(--zoom-scale, 1));
+  cursor: nesw-resize;
+}
+.handleSe {
+  bottom: calc(-6px / var(--zoom-scale, 1));
+  right: calc(-6px / var(--zoom-scale, 1));
+  cursor: nwse-resize;
+}
+.handleSw {
+  bottom: calc(-6px / var(--zoom-scale, 1));
+  left: calc(-6px / var(--zoom-scale, 1));
+  cursor: nesw-resize;
+}
 
-.handleN { top: calc(-6px / var(--zoom-scale, 1)); left: 50%; transform: translateX(-50%); cursor: ns-resize; }
-.handleS { bottom: calc(-6px / var(--zoom-scale, 1)); left: 50%; transform: translateX(-50%); cursor: ns-resize; }
-.handleW { top: 50%; left: calc(-6px / var(--zoom-scale, 1)); transform: translateY(-50%); cursor: ew-resize; }
-.handleE { top: 50%; right: calc(-6px / var(--zoom-scale, 1)); transform: translateY(-50%); cursor: ew-resize; }
+.handleN {
+  top: calc(-6px / var(--zoom-scale, 1));
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+.handleS {
+  bottom: calc(-6px / var(--zoom-scale, 1));
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+.handleW {
+  top: 50%;
+  left: calc(-6px / var(--zoom-scale, 1));
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+.handleE {
+  top: 50%;
+  right: calc(-6px / var(--zoom-scale, 1));
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
 
 .qrLayerBox {
   width: 100%;
   height: 100%;
-  background: #ffffff;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #090a0d;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   padding: 6px;
 }
@@ -91,4 +124,3 @@
   overflow: hidden;
   width: 100%;
 }
-

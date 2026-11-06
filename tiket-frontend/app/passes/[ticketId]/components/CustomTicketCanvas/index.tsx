@@ -3,6 +3,7 @@
 import React from "react";
 import QRCode from "react-qr-code";
 import { Lock } from "lucide-react";
+import { getImageUrl } from "@/constants/config";
 import type { TicketPassData, TicketPassTemplate } from "@/types/ticket";
 import type {
   TicketCanvasConfig,
@@ -314,8 +315,8 @@ export function CustomTicketCanvas({
   const parsedConfig: TicketCanvasConfig = React.useMemo(() => {
     if (isPerTicket && perTicketConfig) {
       return {
-        canvasWidth: perTicketConfig.canvasWidth || 800,
-        canvasHeight: perTicketConfig.canvasHeight || 400,
+        canvasWidth: perTicketConfig.canvasWidth || 2082,
+        canvasHeight: perTicketConfig.canvasHeight || 576,
         elements: [],
       };
     }
@@ -338,11 +339,10 @@ export function CustomTicketCanvas({
   const canvasHeight = isPerTicket
     ? perTicketConfig?.canvasHeight || 576
     : parsedConfig.canvasHeight || 300;
-  const backgroundImageUrl = isPerTicket
-    ? pass.ticketType?.templateImageUrl ||
-      template?.backgroundImageUrl ||
-      "/cuppon.png"
-    : template?.backgroundImageUrl || "/cuppon.png";
+  const rawBgUrl = isPerTicket
+    ? pass.ticketType?.templateImageUrl || template?.backgroundImageUrl || null
+    : template?.backgroundImageUrl || null;
+  const backgroundImageUrl = rawBgUrl ? getImageUrl(rawBgUrl) : null;
   const elements = parsedConfig.elements || [];
   const perTicketLayers = perTicketConfig?.layers || [];
 
@@ -414,6 +414,10 @@ export function CustomTicketCanvas({
           ? perTicketLayers.map((layer) => {
               const isQr = layer.type === "qr";
               const rotation = layer.rotation ?? 0;
+              const layerWidth =
+                layer.width || (isQr ? (layer.fontSize || 300) : 320);
+              const layerHeight =
+                layer.height || (isQr ? (layer.fontSize || 300) : 80);
 
               if (isQr) {
                 const isScannable =
@@ -423,8 +427,8 @@ export function CustomTicketCanvas({
                   position: "absolute",
                   left: `${layer.x}px`,
                   top: `${layer.y}px`,
-                  width: `${layer.width}px`,
-                  height: `${layer.height}px`,
+                  width: `${layerWidth}px`,
+                  height: `${layerHeight}px`,
                   transform: `rotate(${rotation}deg)`,
                   transformOrigin: "center center",
                 };
@@ -441,17 +445,19 @@ export function CustomTicketCanvas({
                         className={styles.qrContainer}
                         style={{
                           borderRadius: 6,
-                          //padding: 6,
+                          backgroundColor: layer.qrBgColor || "#ffffff",
                         }}
                       >
                         <QRCode
                           value={pass.qrCode}
                           size={Math.max(
                             20,
-                            Math.min(layer.width, layer.height) - 12,
+                            Math.min(layerWidth, layerHeight) - 12,
                           )}
-                          fgColor="#000000"
-                          bgColor="#ffffff"
+                          fgColor={
+                            layer.qrColor || layer.fontColor || "#000000"
+                          }
+                          bgColor={layer.qrBgColor || "#ffffff"}
                           className={styles.qrSvg}
                         />
                       </div>
@@ -492,14 +498,17 @@ export function CustomTicketCanvas({
                     position: "absolute",
                     left: `${layer.x}px`,
                     top: `${layer.y}px`,
-                    width: `${layer.width}px`,
-                    height: `${layer.height}px`,
+                    width: `${layerWidth}px`,
+                    height: `${layerHeight}px`,
                     transform: `rotate(${rotation}deg)`,
                     transformOrigin: "center center",
                     color: layer.fontColor || "inherit",
+                    fontFamily: layer.fontFamily || "inherit",
+                    fontWeight: layer.fontWeight || 600,
+                    fontStyle: layer.fontStyle || "normal",
+                    textDecoration: layer.textDecoration || "none",
                     fontSize: `${layer.fontSize}px`,
                     letterSpacing: `${layer.lineSpacing}px`,
-                    fontWeight: 600,
                     display: "flex",
                     alignItems: "flex-start",
                     overflow: "hidden",

@@ -19,8 +19,6 @@ import {
   users,
   orders,
   checkIns,
-  ticketFormResponses,
-  formFields,
   eventTeamMembers,
 } from "@db/schema";
 import {
@@ -466,30 +464,35 @@ export const getAttendeeFormResponses = async (
     }
 
     const [boundTicket] = await db
-      .select({ id: tickets.id })
+      .select({ id: tickets.id, formResponses: tickets.formResponses })
       .from(tickets)
       .where(and(eq(tickets.id, ticketId), eq(tickets.eventId, eventId)));
     if (!boundTicket)
       return reply.status(404).send({ error: "Ticket not found." });
-    const formResRows = await db
-      .select({
-        fieldId: formFields.id,
-        label: formFields.label,
-        fieldType: formFields.fieldType,
-        value: ticketFormResponses.responseValue,
-      })
-      .from(ticketFormResponses)
-      .innerJoin(formFields, eq(ticketFormResponses.fieldId, formFields.id))
-      .where(eq(ticketFormResponses.ticketId, ticketId))
-      .orderBy(formFields.sortOrder);
+
+    const [eventRow] = await db
+      .select({ formFields: events.formFields })
+      .from(events)
+      .where(eq(events.id, eventId));
+
+    const formFieldsList = [...(eventRow?.formFields || [])].sort(
+      (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+    );
+
+    const responsesMap = new Map<string, string>();
+    for (const r of boundTicket.formResponses || []) {
+      responsesMap.set(r.fieldId, r.responseValue);
+    }
+
+    const responses = formFieldsList.map((f) => ({
+      fieldId: f.id,
+      label: f.label,
+      fieldType: f.fieldType,
+      value: responsesMap.get(f.id) || "",
+    }));
 
     return reply.status(200).send({
-      responses: formResRows.map((r) => ({
-        fieldId: r.fieldId,
-        label: r.label,
-        fieldType: r.fieldType,
-        value: r.value || "",
-      })),
+      responses,
     });
   } catch (error) {
     return handleControllerError(request, reply, error);
@@ -762,6 +765,7 @@ export const getEventInsights = async (
       .select({
         capacity: events.capacity,
         customInsightsConfig: events.customInsightsConfig,
+        formFields: events.formFields,
       })
       .from(events)
       .where(eq(events.id, eventId));
@@ -1033,34 +1037,50 @@ export const getEventInsights = async (
     }));
 
     // 7. Form Field Analytics & Response Aggregation
-    const eventFormFields = await db
-      .select({
-        id: formFields.id,
-        name: formFields.name,
-        label: formFields.label,
-        fieldType: formFields.fieldType,
-        sortOrder: formFields.sortOrder,
-      })
-      .from(formFields)
-      .where(eq(formFields.eventId, eventId))
-      .orderBy(formFields.sortOrder);
+    const eventFormFields = [...(event?.formFields || [])]
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .map((f) => ({
+        id: f.id,
+        name: f.name,
+        label: f.label,
+        fieldType: f.fieldType,
+        sortOrder: f.sortOrder ?? 0,
+      }));
 
-    const formResponsesRaw = await db
+    const ticketRows = await db
       .select({
-        fieldId: ticketFormResponses.fieldId,
         ticketId: tickets.id,
         ticketTypeId: tickets.ticketTypeId,
         ticketStatus: tickets.status,
-        responseValue: ticketFormResponses.responseValue,
+        formResponses: tickets.formResponses,
       })
-      .from(ticketFormResponses)
-      .innerJoin(tickets, eq(ticketFormResponses.ticketId, tickets.id))
+      .from(tickets)
       .where(
         and(
           eq(tickets.eventId, eventId),
           inArray(tickets.status, ["active", "used", "pending_approval"]),
         ),
       );
+
+    const formResponsesRaw: Array<{
+      fieldId: string;
+      ticketId: string;
+      ticketTypeId: string;
+      ticketStatus: string;
+      responseValue: string;
+    }> = [];
+
+    for (const t of ticketRows) {
+      for (const resp of t.formResponses || []) {
+        formResponsesRaw.push({
+          fieldId: resp.fieldId,
+          ticketId: t.ticketId,
+          ticketTypeId: t.ticketTypeId,
+          ticketStatus: t.ticketStatus,
+          responseValue: resp.responseValue,
+        });
+      }
+    }
 
     const checkedInTicketRows = await db
       .select({ ticketId: checkIns.ticketId })

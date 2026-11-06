@@ -1,4 +1,4 @@
-import type { formFields } from "@db/schema";
+import type { FormFieldDefinition } from "@db/schema";
 import { HttpError } from "./errors";
 
 export interface VisibilityConditionRule {
@@ -29,9 +29,7 @@ export interface FormResponse {
   fieldId: string;
   responseValue: string;
 }
-type Field = Omit<typeof formFields.$inferSelect, "conditions"> & {
-  conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
-};
+export type Field = FormFieldDefinition;
 
 export function evaluateVisibilityConditions(
   conditions: VisibilityConditionRule[] | null | undefined,

@@ -41,8 +41,6 @@ export default function StudioHeader({
   onStartNewTicket,
   onSave,
 }: StudioHeaderProps) {
-  const isCreatingNew = !activeTicket;
-
   return (
     <div className={styles.topHeader}>
       <div className={styles.topLeftControls}>
@@ -110,10 +108,10 @@ export default function StudioHeader({
         </div>
 
         {/* Tier Selector Dropdown */}
-        {ticketTypesList.length > 0 && !isCreatingNew && (
+        {ticketTypesList.length > 0 && (
           <div className={styles.tierSelectWrapper}>
             <Select
-              value={activeTicket?.id || ""}
+              value={activeTicket?.id || "__new__"}
               onValueChange={(val) => {
                 if (val === "__new__") {
                   onStartNewTicket();
@@ -127,8 +125,11 @@ export default function StudioHeader({
                 <SelectValue placeholder="Switch tier" />
               </SelectTrigger>
               <SelectContent>
-                {ticketTypesList.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
+                {ticketTypesList.map((t, idx) => (
+                  <SelectItem
+                    key={t.id || `tier-${idx}`}
+                    value={t.id || `tier-${idx}`}
+                  >
                     {t.name}
                   </SelectItem>
                 ))}

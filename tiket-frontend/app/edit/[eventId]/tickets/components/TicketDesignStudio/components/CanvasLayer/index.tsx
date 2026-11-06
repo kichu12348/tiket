@@ -140,31 +140,53 @@ export default function CanvasLayer({
       {/* Layer Content */}
       {isQr ? (
         mode === "preview" ? (
-          <div className={styles.qrLayerBox}>
+          <div
+            className={styles.qrLayerBox}
+            style={{
+              backgroundColor: layer.qrBgColor || "#ffffff",
+            }}
+          >
             <QRCode
               value="TIK-9842-X7"
               size={Math.max(16, Math.min(width, height) - 24)}
-              fgColor="#000000"
-              bgColor="#ffffff"
+              fgColor={layer.qrColor || layer.color || layer.fontColor || "#000000"}
+              bgColor={layer.qrBgColor || "#ffffff"}
             />
           </div>
         ) : (
           <div
             className={styles.qrLayerBox}
+            style={{
+              backgroundColor: layer.qrBgColor || "#ffffff",
+              color: layer.qrColor || layer.color || layer.fontColor || "#000000",
+            }}
             data-testid="qr-placeholder"
           >
-            <QrCode size={Math.min(64, Math.max(20, Math.round(Math.min(width, height) * 0.4)))} />
-            <span className={styles.qrPlaceholderText}>QR Code</span>
+            <QrCode
+              size={Math.min(64, Math.max(20, Math.round(Math.min(width, height) * 0.4)))}
+              style={{ color: layer.qrColor || layer.color || layer.fontColor || "#000000" }}
+            />
+            <span
+              className={styles.qrPlaceholderText}
+              style={{ color: layer.qrColor || layer.color || layer.fontColor || "#000000" }}
+            >
+              QR Code
+            </span>
           </div>
         )
       ) : (
         <div
           className={styles.textLayerBox}
           style={{
-            fontSize: `${layer.size}px`,
-            color: layer.color || "#ffffff",
+            fontSize: `${layer.size || layer.fontSize}px`,
+            color: layer.color || layer.fontColor || "#ffffff",
+            fontFamily: layer.fontFamily || "'Inter', sans-serif",
+            fontWeight: layer.fontWeight || 600,
+            fontStyle: layer.fontStyle || "normal",
+            textDecoration: layer.textDecoration || "none",
             lineHeight: 1.2,
           }}
+          data-testid={`text-content-${layer.id}`}
         >
           <span className={styles.textClamped}>
             {displayText}

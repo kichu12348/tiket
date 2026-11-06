@@ -167,6 +167,7 @@ export const createFieldSchema = {
       201: formFieldObj,
       400: errorResponseSchema,
       401: errorResponseSchema,
+      403: errorResponseSchema,
       500: errorResponseSchema,
     },
   },
@@ -290,6 +291,45 @@ export const deletePageSchema = {
         properties: { message: { type: "string" } },
       },
       401: errorResponseSchema,
+      404: errorResponseSchema,
+      500: errorResponseSchema,
+    },
+  },
+};
+
+export const replaceFormFieldsSchema = {
+  schema: {
+    params: {
+      type: "object",
+      required: ["eventId"],
+      properties: { eventId: { type: "string" } },
+    },
+    body: {
+      anyOf: [
+        {
+          type: "array",
+          items: formFieldObj,
+        },
+        {
+          type: "object",
+          required: ["fields"],
+          properties: {
+            fields: {
+              type: "array",
+              items: formFieldObj,
+            },
+          },
+        },
+      ],
+    },
+    response: {
+      200: {
+        type: "array",
+        items: formFieldObj,
+      },
+      400: errorResponseSchema,
+      401: errorResponseSchema,
+      403: errorResponseSchema,
       404: errorResponseSchema,
       500: errorResponseSchema,
     },

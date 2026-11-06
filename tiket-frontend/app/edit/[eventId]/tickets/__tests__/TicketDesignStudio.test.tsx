@@ -434,4 +434,157 @@ describe("TicketDesignStudio (MakeMyPass Caliber)", () => {
       "https://cdn.tiket.app/events/bg-ticket.png",
     );
   });
+
+  test("11. Preserves and updates layer width and height independently and persists to templateConfig", async () => {
+    mockUpdateTicketType.mockClear();
+
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={mockSampleTicket}
+      />,
+    );
+
+    // Initial layer is loaded with width: 250, height: 50
+    const layerBox = screen.getByTestId("layer-box-l-init-name");
+    expect(layerBox.style.width).toBe("250px");
+    expect(layerBox.style.height).toBe("50px");
+
+    // Modify width and height in Inspector
+    const inputWidth = screen.getByTestId("input-width");
+    const inputHeight = screen.getByTestId("input-height");
+
+    fireEvent.change(inputWidth, { target: { value: "480" } });
+    fireEvent.change(inputHeight, { target: { value: "115" } });
+
+    expect((inputWidth as HTMLInputElement).value).toBe("480");
+    expect((inputHeight as HTMLInputElement).value).toBe("115");
+    expect(layerBox.style.width).toBe("480px");
+    expect(layerBox.style.height).toBe("115px");
+
+    // Click Update to save
+    const updateBtn = screen.getByTestId("ticket-submit-btn");
+    fireEvent.click(updateBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateTicketType).toHaveBeenCalledTimes(1);
+    });
+
+    const [,, payload] = mockUpdateTicketType.mock.calls[0] as [
+      string,
+      string,
+      Partial<TicketType>,
+    ];
+
+    expect(payload.templateConfig?.layers[0].width).toBe(480);
+    expect(payload.templateConfig?.layers[0].height).toBe(115);
+
+    // Verify after save/reset, the layer still retains 480x115
+    expect(layerBox.style.width).toBe("480px");
+    expect(layerBox.style.height).toBe("115px");
+  });
+
+  test("12. Allows customizing QR code colors and text typography (font weight, bold, italic, underline)", async () => {
+    mockUpdateTicketType.mockClear();
+
+    const multiLayerTicket: TicketType = {
+      ...mockSampleTicket,
+      templateConfig: {
+        canvasWidth: 800,
+        canvasHeight: 400,
+        layers: [
+          {
+            id: "l-test-qr",
+            type: "qr",
+            name: "QR Code",
+            tokenOrText: "{{ticket_code}}",
+            x: 50,
+            y: 50,
+            width: 200,
+            height: 200,
+            fontSize: 14,
+            maxLines: 1,
+            lineSpacing: 0,
+            fontColor: "#000000",
+            qrColor: "#000000",
+            qrBgColor: "#ffffff",
+          },
+          {
+            id: "l-test-text",
+            type: "text",
+            name: "Attendee",
+            tokenOrText: "{{name}}",
+            x: 300,
+            y: 50,
+            width: 300,
+            height: 80,
+            fontSize: 32,
+            maxLines: 1,
+            lineSpacing: 0,
+            fontColor: "#ffffff",
+            fontWeight: "400",
+            fontFamily: "'Inter', sans-serif",
+            fontStyle: "normal",
+            textDecoration: "none",
+          },
+        ],
+      },
+    };
+
+    render(
+      <TicketDesignStudio
+        eventId="evt-test-101"
+        ticket={multiLayerTicket}
+      />,
+    );
+
+    // 1. QR Layer is initially selected
+    const inputQrColor = screen.getByTestId("input-qr-color");
+    const inputQrBgColor = screen.getByTestId("input-qr-bg-color");
+
+    fireEvent.change(inputQrColor, { target: { value: "#3b82f6" } });
+    fireEvent.change(inputQrBgColor, { target: { value: "#1e293b" } });
+
+    expect((inputQrColor as HTMLInputElement).value).toBe("#3b82f6");
+    expect((inputQrBgColor as HTMLInputElement).value).toBe("#1e293b");
+
+    // 2. Select Text Layer
+    const textLayerBox = screen.getByTestId("layer-box-l-test-text");
+    fireEvent.click(textLayerBox);
+
+    // Verify format buttons exist
+    const btnBold = screen.getByTestId("btn-format-bold");
+    const btnItalic = screen.getByTestId("btn-format-italic");
+    const btnUnderline = screen.getByTestId("btn-format-underline");
+
+    // Toggle Bold, Italic, Underline
+    fireEvent.click(btnBold);
+    fireEvent.click(btnItalic);
+    fireEvent.click(btnUnderline);
+
+    const textContentEl = screen.getByTestId("text-content-l-test-text");
+    expect(textContentEl.style.fontStyle).toBe("italic");
+    expect(textContentEl.style.textDecoration).toBe("underline");
+    expect(textContentEl.style.fontWeight).toBe("700");
+
+    // 3. Save and verify persistence
+    const updateBtn = screen.getByTestId("ticket-submit-btn");
+    fireEvent.click(updateBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateTicketType).toHaveBeenCalledTimes(1);
+    });
+
+    const [,, payload] = mockUpdateTicketType.mock.calls[0] as [
+      string,
+      string,
+      Partial<TicketType>,
+    ];
+
+    expect(payload.templateConfig?.layers[0].qrColor).toBe("#3b82f6");
+    expect(payload.templateConfig?.layers[0].qrBgColor).toBe("#1e293b");
+    expect(payload.templateConfig?.layers[1].fontWeight).toBe("700");
+    expect(payload.templateConfig?.layers[1].fontStyle).toBe("italic");
+    expect(payload.templateConfig?.layers[1].textDecoration).toBe("underline");
+  });
 });

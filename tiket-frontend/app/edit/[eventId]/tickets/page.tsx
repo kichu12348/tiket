@@ -67,7 +67,6 @@ export default function EditTicketsPage() {
               aria-selected={false}
               className={styles.tabBtn}
               onClick={() => {
-                setSelectedTicketForDesign(null);
                 setStudioMode("edit");
                 setActiveTab("designer");
               }}
@@ -91,9 +90,13 @@ export default function EditTicketsPage() {
           ticket={selectedTicketForDesign}
           initialMode={studioMode}
           onClose={handleCloseStudio}
-          onSaved={() => {
-            setActiveTab("tiers");
-            setSelectedTicketForDesign(null);
+          onSaved={(updatedTicket) => {
+            if (studioMode === "settings") {
+              setActiveTab("tiers");
+              setSelectedTicketForDesign(null);
+            } else {
+              setSelectedTicketForDesign(updatedTicket);
+            }
           }}
         />
       )}

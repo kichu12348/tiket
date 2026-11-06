@@ -26,10 +26,13 @@ export default function TicketPassPage() {
   const ticketRef = React.useRef<HTMLDivElement>(null);
 
   const hasPerTicketDesign = Boolean(
-    ticket?.ticketType?.templateImageUrl && ticket?.ticketType?.templateConfig,
+    (ticket?.ticketType?.templateConfig?.layers &&
+      ticket.ticketType.templateConfig.layers.length > 0) ||
+      ticket?.ticketType?.templateImageUrl,
   );
   const hasCustomDesign = Boolean(
-    hasPerTicketDesign || (ticket?.template && ticket?.template?.backgroundImageUrl),
+    hasPerTicketDesign ||
+      (ticket?.template && ticket?.template?.backgroundImageUrl),
   );
 
   return (
