@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef } from "react";
 import { removeTokenServer } from "@/actions/removeToken";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getToken } from "@/lib/getToken";
+import { getClientToken, setClientToken, clearClientToken } from "@/lib/api";
+
+export { setClientToken, clearClientToken, getClientToken };
 
 export async function removeToken() {
+  clearClientToken();
   try {
     await removeTokenServer();
   } catch (error) {
@@ -15,24 +17,28 @@ export async function removeToken() {
   }
 }
 
-export function useToken() {
+export interface UseTokenReturn {
+  logout: () => Promise<void>;
+  getAuthToken: () => Promise<string | undefined>;
+  setAuthToken?: (token: string | null) => void;
+}
+
+export function useToken(): UseTokenReturn {
   const router = useRouter();
-  const tokenRef = useRef<string | undefined>(undefined);
 
-  async function getAuthToken() {
-    if (tokenRef.current) {
-      return tokenRef.current;
-    }
+  async function getAuthToken(): Promise<string | undefined> {
+    const token = await getClientToken();
+    return token ?? undefined;
+  }
 
-    const token = await getToken();
-    tokenRef.current = token;
-    return token;
+  function setAuthToken(token: string | null): void {
+    setClientToken(token);
   }
 
   async function logout() {
     try {
+      clearClientToken();
       await removeToken();
-      tokenRef.current = undefined;
       router.push("/signin");
     } catch (error) {
       console.error("Error removing token:", error);
@@ -40,5 +46,5 @@ export function useToken() {
     }
   }
 
-  return { logout, getAuthToken };
+  return { logout, getAuthToken, setAuthToken };
 }

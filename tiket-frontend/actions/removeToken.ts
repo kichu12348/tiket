@@ -7,3 +7,5 @@ export async function removeTokenServer() {
   const cookieJar = await cookies();
   cookieJar.delete(TOKEN_KEY);
 }
+
+export const removeToken = removeTokenServer;

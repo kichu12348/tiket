@@ -3,10 +3,21 @@ import { useState } from "react";
 import type { AxiosError } from "axios";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/constants/config";
+import {
+  setClientToken,
+  hydrateClientToken,
+  clearClientToken,
+} from "@/lib/api";
 
 interface AuthErrorResponse {
   error?: string;
   needsName?: boolean;
+}
+
+interface AuthSuccessResponse {
+  token?: string;
+  message?: string;
+  user?: unknown;
 }
 
 export function useAuth() {
@@ -17,10 +28,18 @@ export function useAuth() {
     setIsLoading(true);
     setError("");
     try {
-      await axios.post(API_ENDPOINTS.FRONTEND.AUTH.OTP_VERIFY, {
-        email,
-        otp,
-      });
+      const response = await axios.post<AuthSuccessResponse>(
+        API_ENDPOINTS.FRONTEND.AUTH.OTP_VERIFY,
+        {
+          email,
+          otp,
+        },
+      );
+      if (response.data?.token) {
+        setClientToken(response.data.token);
+      } else {
+        await hydrateClientToken();
+      }
       return { success: true };
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -73,11 +92,19 @@ export function useAuth() {
     setIsLoading(true);
     setError("");
     try {
-      await axios.post(API_ENDPOINTS.FRONTEND.AUTH.PASSWORD, {
-        email,
-        password,
-        name,
-      });
+      const response = await axios.post<AuthSuccessResponse>(
+        API_ENDPOINTS.FRONTEND.AUTH.PASSWORD,
+        {
+          email,
+          password,
+          name,
+        },
+      );
+      if (response.data?.token) {
+        setClientToken(response.data.token);
+      } else {
+        await hydrateClientToken();
+      }
       return { success: true };
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -100,10 +127,20 @@ export function useAuth() {
     }
   };
 
+  const logout = async () => {
+    clearClientToken();
+    try {
+      await axios.post(API_ENDPOINTS.FRONTEND.AUTH.LOGOUT);
+    } catch (err: unknown) {
+      console.error("Logout error:", err);
+    }
+  };
+
   return {
     verifyOtp,
     sendOtp,
     loginWithPassword,
+    logout,
     isLoading,
     error,
     setError,

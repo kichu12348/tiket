@@ -8,7 +8,7 @@ export default function Navbar({
 }: {
   isAuthenticated?: boolean;
   borderBottom?: boolean;
-  onSignOut?: () => void;
+  onSignOut?: () => void | Promise<void>;
 }) {
   return (
     <header
