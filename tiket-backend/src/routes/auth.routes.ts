@@ -12,6 +12,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.post("/otp/send", sendOtpSchema, sendOtp);
   fastify.post("/otp/verify", verifyOtpSchema, verifyOtp);
 
-  //Protected Route Requires standard Authorization: Bearer <token> Header
+  // Protected Route Requires standard Authorization: Bearer <token> Header
   fastify.get("/me", getMeSchema, getMe);
 }
