@@ -1,0 +1,55 @@
+name: Build Compiled Bun Binary & Deploy to Oracle Micro
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tiket-backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/tiket-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest # Native x86_64 — matches Oracle AMD Micro!
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@v4
+
+      - name: Convert image name to lowercase
+        run: echo "IMAGE_URI=${REGISTRY}/${IMAGE_NAME,,}:latest" >> $GITHUB_ENV
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push compiled Distroless image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./tiket-backend
+          file: ./tiket-backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_URI }}
+
+      - name: Deploy to tiket-api VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            cd ~/app
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
