@@ -30,6 +30,7 @@ export function buildApp() {
         allowUnionTypes: true,
       },
     },
+    trustProxy: true,
   });
 
   fastify.register(cors, {
