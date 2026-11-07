@@ -1,7 +1,7 @@
 import type { FastifyRequest } from "fastify";
 import db from "@db";
-import { emailConnections, events, uploads } from "@db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { emailConnections, events, forms, uploads } from "@db/schema";
+import { and, eq } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
 import { verifyEventPermission } from "../utils/permissions";
 import { saveMailConfig, type MailConfig } from "../services/mail.service";
@@ -66,11 +66,16 @@ export async function beginUpload(
   const [event] = await db
     .select({
       status: events.status,
-      formFields: events.formFields,
     })
     .from(events)
     .where(eq(events.id, body.eventId));
-  const field = event?.formFields?.find((f) => f.id === body.fieldId);
+  const [formRow] = await db
+    .select({
+      fields: forms.fields,
+    })
+    .from(forms)
+    .where(eq(forms.eventId, body.eventId));
+  const field = formRow?.fields?.find((f) => f.id === body.fieldId);
   if (
     !event ||
     event.status !== "published" ||

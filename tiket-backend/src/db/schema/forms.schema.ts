@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   integer,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { users } from "./users.schema";
@@ -59,6 +60,17 @@ export interface TicketFormResponseItem {
   fieldId: string;
   responseValue: string;
 }
+
+export const forms = pgTable("forms", {
+  id: uuid("id").primaryKey().$defaultFn(uuidv7),
+  eventId: uuid("event_id")
+    .references(() => events.id, { onDelete: "cascade" })
+    .unique()
+    .notNull(),
+  fields: jsonb("fields").$type<FormFieldDefinition[]>().notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 // Backward-compatibility type & value placeholders for existing test suites
 export const formFields = {} as unknown as {

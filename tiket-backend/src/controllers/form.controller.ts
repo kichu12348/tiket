@@ -2,7 +2,7 @@ import { verifyEventPermission } from "../utils/permissions";
 import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
-import { events } from "@db/schema";
+import { forms } from "@db/schema";
 import type {
   FormFieldDefinition,
   FormFieldType,
@@ -65,17 +65,28 @@ export const createField = async (
     };
 
     await db.transaction(async (tx) => {
-      const event = await lockEvent(tx, eventId);
-      const currentFields = event.formFields || [];
-      const updatedFields = [...currentFields, createdField];
+      await lockEvent(tx, eventId);
+      const [existingForm] = await tx
+        .select()
+        .from(forms)
+        .where(eq(forms.eventId, eventId))
+        .for("update");
 
-      await tx
-        .update(events)
-        .set({
-          formFields: updatedFields,
-          updatedAt: new Date(),
-        })
-        .where(eq(events.id, eventId));
+      if (existingForm) {
+        const updatedFields = [...(existingForm.fields || []), createdField];
+        await tx
+          .update(forms)
+          .set({
+            fields: updatedFields,
+            updatedAt: new Date(),
+          })
+          .where(eq(forms.id, existingForm.id));
+      } else {
+        await tx.insert(forms).values({
+          eventId,
+          fields: [createdField],
+        });
+      }
     });
 
     return reply.status(201).send(createdField);
@@ -91,16 +102,12 @@ export const getFields = async (
   try {
     const { eventId } = request.params;
 
-    const [event] = await db
-      .select({ formFields: events.formFields })
-      .from(events)
-      .where(eq(events.id, eventId));
+    const [formRow] = await db
+      .select({ fields: forms.fields })
+      .from(forms)
+      .where(eq(forms.eventId, eventId));
 
-    if (!event) {
-      return reply.status(404).send({ error: "Event not found" });
-    }
-
-    const fieldsList = [...(event.formFields || [])].sort((a, b) => {
+    const fieldsList = [...(formRow?.fields || [])].sort((a, b) => {
       const pageDiff = (a.page ?? 1) - (b.page ?? 1);
       if (pageDiff !== 0) return pageDiff;
       return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
@@ -140,8 +147,18 @@ export const updateField = async (
     let updatedField: FormFieldDefinition | null = null;
 
     await db.transaction(async (tx) => {
-      const event = await lockEvent(tx, eventId);
-      const currentFields = event.formFields || [];
+      await lockEvent(tx, eventId);
+      const [existingForm] = await tx
+        .select()
+        .from(forms)
+        .where(eq(forms.eventId, eventId))
+        .for("update");
+
+      if (!existingForm) {
+        return;
+      }
+
+      const currentFields = existingForm.fields || [];
       const fieldIndex = currentFields.findIndex((f) => f.id === fieldId);
       if (fieldIndex === -1) {
         return;
@@ -164,12 +181,12 @@ export const updateField = async (
       updatedFields[fieldIndex] = updatedField;
 
       await tx
-        .update(events)
+        .update(forms)
         .set({
-          formFields: updatedFields,
+          fields: updatedFields,
           updatedAt: new Date(),
         })
-        .where(eq(events.id, eventId));
+        .where(eq(forms.id, existingForm.id));
     });
 
     if (!updatedField) {
@@ -202,8 +219,18 @@ export const deleteField = async (
 
     let found = false;
     await db.transaction(async (tx) => {
-      const event = await lockEvent(tx, eventId);
-      const currentFields = event.formFields || [];
+      await lockEvent(tx, eventId);
+      const [existingForm] = await tx
+        .select()
+        .from(forms)
+        .where(eq(forms.eventId, eventId))
+        .for("update");
+
+      if (!existingForm) {
+        return;
+      }
+
+      const currentFields = existingForm.fields || [];
       const fieldIndex = currentFields.findIndex((f) => f.id === fieldId);
       if (fieldIndex === -1) {
         return;
@@ -212,12 +239,12 @@ export const deleteField = async (
       const updatedFields = currentFields.filter((f) => f.id !== fieldId);
 
       await tx
-        .update(events)
+        .update(forms)
         .set({
-          formFields: updatedFields,
+          fields: updatedFields,
           updatedAt: new Date(),
         })
-        .where(eq(events.id, eventId));
+        .where(eq(forms.id, existingForm.id));
     });
 
     if (!found) {
@@ -251,21 +278,29 @@ export const deletePage = async (
     const pageInt = Number(pageNum);
 
     await db.transaction(async (tx) => {
-      const event = await lockEvent(tx, eventId);
-      const currentFields = event.formFields || [];
+      await lockEvent(tx, eventId);
+      const [existingForm] = await tx
+        .select()
+        .from(forms)
+        .where(eq(forms.eventId, eventId))
+        .for("update");
 
-      // 1. Delete all fields on this page, and 2. shift subsequent pages down by 1
+      if (!existingForm) {
+        return;
+      }
+
+      const currentFields = existingForm.fields || [];
       const updatedFields = currentFields
         .filter((f) => f.page !== pageInt)
         .map((f) => (f.page > pageInt ? { ...f, page: f.page - 1 } : f));
 
       await tx
-        .update(events)
+        .update(forms)
         .set({
-          formFields: updatedFields,
+          fields: updatedFields,
           updatedAt: new Date(),
         })
-        .where(eq(events.id, eventId));
+        .where(eq(forms.id, existingForm.id));
     });
 
     return reply.send({
@@ -317,13 +352,26 @@ export const replaceFormFields = async (
 
     await db.transaction(async (tx) => {
       await lockEvent(tx, eventId);
-      await tx
-        .update(events)
-        .set({
-          formFields: normalizedFields,
-          updatedAt: new Date(),
-        })
-        .where(eq(events.id, eventId));
+      const [existingForm] = await tx
+        .select()
+        .from(forms)
+        .where(eq(forms.eventId, eventId))
+        .for("update");
+
+      if (existingForm) {
+        await tx
+          .update(forms)
+          .set({
+            fields: normalizedFields,
+            updatedAt: new Date(),
+          })
+          .where(eq(forms.id, existingForm.id));
+      } else {
+        await tx.insert(forms).values({
+          eventId,
+          fields: normalizedFields,
+        });
+      }
     });
 
     return reply.send(normalizedFields);

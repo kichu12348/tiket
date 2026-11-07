@@ -19,7 +19,7 @@ import {
   users,
   orders,
   checkIns,
-  eventTeamMembers,
+  forms,
 } from "@db/schema";
 import {
   eq,
@@ -32,7 +32,6 @@ import {
   inArray,
   isNotNull,
 } from "drizzle-orm";
-import { verifyEventOwner } from "@utils";
 
 export const getAttendees = async (
   request: FastifyRequest<{
@@ -470,12 +469,12 @@ export const getAttendeeFormResponses = async (
     if (!boundTicket)
       return reply.status(404).send({ error: "Ticket not found." });
 
-    const [eventRow] = await db
-      .select({ formFields: events.formFields })
-      .from(events)
-      .where(eq(events.id, eventId));
+    const [formRow] = await db
+      .select({ fields: forms.fields })
+      .from(forms)
+      .where(eq(forms.eventId, eventId));
 
-    const formFieldsList = [...(eventRow?.formFields || [])].sort(
+    const formFieldsList = [...(formRow?.fields || [])].sort(
       (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
     );
 
@@ -765,7 +764,6 @@ export const getEventInsights = async (
       .select({
         capacity: events.capacity,
         customInsightsConfig: events.customInsightsConfig,
-        formFields: events.formFields,
       })
       .from(events)
       .where(eq(events.id, eventId));
@@ -1037,7 +1035,12 @@ export const getEventInsights = async (
     }));
 
     // 7. Form Field Analytics & Response Aggregation
-    const eventFormFields = [...(event?.formFields || [])]
+    const [formRow] = await db
+      .select({ fields: forms.fields })
+      .from(forms)
+      .where(eq(forms.eventId, eventId));
+
+    const eventFormFields = [...(formRow?.fields || [])]
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .map((f) => ({
         id: f.id,

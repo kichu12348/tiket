@@ -5,6 +5,7 @@ import { ticketTypes, tickets, ticketTransfers, checkIns } from "./tickets.schem
 import { orders, refundRequests, payoutRequests } from "./commerce.schema";
 import { emailTemplates, emailLogs } from "./emails.schema";
 import { documentTemplates, certificates, workflows } from "./documents.schema";
+import { forms } from "./forms.schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
   events: many(events),
@@ -26,6 +27,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   documentTemplates: many(documentTemplates),
   checkIns: many(checkIns),
   workflows: many(workflows),
+  form: one(forms),
   emailTemplates: many(emailTemplates),
   emailLogs: many(emailLogs),
 }));
@@ -207,6 +209,13 @@ export const payoutRequestsRelations = relations(payoutRequests, ({ one }) => ({
   requester: one(users, {
     fields: [payoutRequests.requestedBy],
     references: [users.id],
+  }),
+}));
+
+export const formsRelations = relations(forms, ({ one }) => ({
+  event: one(events, {
+    fields: [forms.eventId],
+    references: [events.id],
   }),
 }));
 

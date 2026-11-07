@@ -7,6 +7,7 @@ import {
   tickets,
   ticketTypes,
   uploads,
+  forms,
   users,
 } from "@db/schema";
 import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
@@ -161,7 +162,11 @@ async function cart(
     .where(eq(ticketTypes.eventId, event.id));
   const requested = new Map<string, number>();
   const coupon = await validateCoupon(tx, event.id, body.code);
-  const fields = event.formFields || [];
+  const [formRow] = await tx
+    .select({ fields: forms.fields })
+    .from(forms)
+    .where(eq(forms.eventId, event.id));
+  const fields = formRow?.fields ?? [];
   const now = new Date();
   for (const purchase of body.purchases) {
     const tier = tiers.find((t) => t.id === purchase.ticketTypeId);

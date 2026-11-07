@@ -13,7 +13,6 @@ import {
 import { v7 as uuidv7 } from "uuid";
 import { eventStatusEnum, locationTypeEnum } from "./enums.schema";
 import { users } from "./users.schema";
-import type { FormFieldDefinition } from "./forms.schema";
 
 export interface EventSocialLinks {
   website?: string | null;
@@ -60,10 +59,6 @@ export const events = pgTable("events", {
   status: eventStatusEnum("status").notNull().default("draft"),
   customInsightsConfig: jsonb("custom_insights_config")
     .$type<CustomInsightWidget[]>()
-    .default([]),
-  formFields: jsonb("form_fields")
-    .$type<FormFieldDefinition[]>()
-    .notNull()
     .default([]),
   organizationId: uuid("organization_id")
     .references(() => users.id)

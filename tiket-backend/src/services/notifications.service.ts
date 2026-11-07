@@ -7,6 +7,7 @@ import {
   orders,
   tickets,
   ticketTypes,
+  forms,
   users,
 } from "@db/schema";
 import { and, eq } from "drizzle-orm";
@@ -44,8 +45,13 @@ export async function enqueueOrderEmail(
     .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
     .where(eq(tickets.orderId, orderId));
 
+  const [formRow] = await tx
+    .select({ fields: forms.fields })
+    .from(forms)
+    .where(eq(forms.eventId, data.event.id));
+
   const formFieldsMap = new Map(
-    (data.event.formFields || []).map((f) => [f.id, f.label]),
+    (formRow?.fields || []).map((f) => [f.id, f.label]),
   );
   const formMap: Record<string, string> = {};
   for (const t of orderTickets) {
@@ -195,8 +201,13 @@ export async function enqueueCheckInEmail(
 
   if (!data) return;
 
+  const [formRow] = await tx
+    .select({ fields: forms.fields })
+    .from(forms)
+    .where(eq(forms.eventId, data.event.id));
+
   const formFieldsMap = new Map(
-    (data.event.formFields || []).map((f) => [f.id, f.label]),
+    (formRow?.fields || []).map((f) => [f.id, f.label]),
   );
   const formMap: Record<string, string> = {};
   for (const resp of data.ticket.formResponses || []) {

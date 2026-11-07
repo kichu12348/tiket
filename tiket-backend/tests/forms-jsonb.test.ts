@@ -3,7 +3,7 @@ import {
   validateFormResponses,
   type FormResponse,
 } from "../src/utils/registration-validation";
-import type { FormFieldDefinition } from "../src/db/schema";
+import { forms, type FormFieldDefinition } from "../src/db/schema";
 
 describe("Forms JSONB Schema & Validation", () => {
   const sampleFields: FormFieldDefinition[] = [
@@ -295,6 +295,15 @@ describe("Forms JSONB Schema & Validation", () => {
     // Delete
     fields = fields.filter((f) => f.id !== "field-8");
     expect(fields.find((f) => f.id === "field-8")).toBeUndefined();
+  });
+
+  test("forms table has correct columns and JSONB structure", () => {
+    expect(forms).toBeDefined();
+    expect(forms.id).toBeDefined();
+    expect(forms.eventId).toBeDefined();
+    expect(forms.fields).toBeDefined();
+    expect(forms.createdAt).toBeDefined();
+    expect(forms.updatedAt).toBeDefined();
   });
 });
 

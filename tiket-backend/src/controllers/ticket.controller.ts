@@ -12,6 +12,7 @@ import {
   orders,
   documentTemplates,
   ticketTransfers,
+  forms,
 } from "@db/schema";
 import { eq, and, desc, ne } from "drizzle-orm";
 import { emitEvent, lockEvent } from "../services/inventory.service";
@@ -80,8 +81,13 @@ export const getTicketPass = async (
     }
 
     // 4. Fetch optional registration form responses
+    const [formRow] = await db
+      .select({ fields: forms.fields })
+      .from(forms)
+      .where(eq(forms.eventId, row.event.id));
+
     const formFieldsMap = new Map(
-      (row.event.formFields || []).map((f) => [f.id, f.label]),
+      (formRow?.fields || []).map((f) => [f.id, f.label]),
     );
     const responses = (row.ticket.formResponses || [])
       .filter((r) => formFieldsMap.has(r.fieldId))

@@ -1,6 +1,5 @@
 import "@/happydom";
 import { describe, expect, test, beforeEach, afterEach, jest } from "bun:test";
-import React from "react";
 
 // Bridge duplicate React instances between root @testing-library/react and frontend node_modules/react
 try {
