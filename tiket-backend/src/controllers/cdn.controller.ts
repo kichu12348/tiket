@@ -76,23 +76,3 @@ export async function getSignedUrl(
     return reply.status(500).send({ error: "Internal Server Error" });
   }
 }
-
-export async function serveImage(
-  request: FastifyRequest<{ Params: { "*": string } }>,
-  reply: FastifyReply,
-) {
-  try {
-    const rawKey = request.params["*"] || "";
-    const key = decodeURIComponent(rawKey).replace(/^\/+/, "");
-
-    if (!key) {
-      return reply.status(400).send({ error: "Missing image key" });
-    }
-
-    const destination = buildFullCdnUrl(key);
-    return reply.redirect(destination, 301);
-  } catch (err) {
-    request.log.error(err);
-    return reply.status(500).send({ error: "Failed to retrieve image" });
-  }
-}

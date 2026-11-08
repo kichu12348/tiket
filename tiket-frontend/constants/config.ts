@@ -166,7 +166,12 @@ export interface ImageSrcOptions {
 
 export const getImageUrl = (filename: string, options?: ImageSrcOptions) => {
   if (!filename) return "";
-  if (filename.startsWith("http://") || filename.startsWith("https://")) {
+  if (
+    filename.startsWith("http://") ||
+    filename.startsWith("https://") ||
+    filename.startsWith("blob:") ||
+    filename.startsWith("data:")
+  ) {
     return filename;
   }
   const base = (
@@ -175,13 +180,15 @@ export const getImageUrl = (filename: string, options?: ImageSrcOptions) => {
     "http://localhost:5000"
   ).replace(/\/$/, "");
 
+  const cleanFilename = filename.replace(/^\/+/, "");
+
   if (options?.width || options?.height || options?.ext || options?.filter) {
     const params: string[] = [];
     if (options?.width) params.push(`w=${options.width}`);
     if (options?.height) params.push(`h=${options.height}`);
     if (options?.ext) params.push(`ext=${options.ext}`);
     if (options?.filter) params.push(`filter=${options.filter}`);
-    return `${base}/image/${filename}?${params.join("&")}`;
+    return `${base}/${cleanFilename}?${params.join("&")}`;
   }
-  return `${base}/image/${filename}`;
+  return `${base}/${cleanFilename}`;
 };

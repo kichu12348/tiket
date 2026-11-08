@@ -18,7 +18,6 @@ import templateRoutes from "./routes/template.routes";
 import paymentRoutes from "./routes/payment.routes";
 import attendeeRoutes from "./routes/attendee.routes";
 import emailRoutes from "./routes/email.routes";
-import { serveImage } from "./controllers/cdn.controller";
 
 export function buildApp() {
   const __dev__ = process.env.DEBUG === "true";
@@ -49,8 +48,6 @@ export function buildApp() {
   fastify.get("/", async () => {
     return { message: "Hellow tiket" };
   });
-
-  fastify.get("/image/*", serveImage);
 
   fastify.register(websocket, { options: { maxPayload: 2048 } });
   fastify.register(commerceRoutes, { prefix: "/api/commerce" });

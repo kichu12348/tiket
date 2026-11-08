@@ -46,6 +46,7 @@ export const uploadToCDN = async (
       method: "PUT",
       headers: {
         "Content-Type": file.type,
+        "Cache-Control": "public, max-age=31536000, immutable",
       },
       body: file,
     });

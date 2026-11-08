@@ -92,19 +92,10 @@ export async function presignUpload(
       Bucket: bucket,
       Key: key,
       ContentType: contentType,
+      CacheControl: "public, max-age=31536000, immutable",
       ...(size !== undefined ? { ContentLength: size } : {}),
     }),
     { expiresIn: 300, signableHeaders: new Set(["content-type"]) },
-  );
-}
-
-export async function getImageObject(key: string) {
-  const { client, bucket } = storage();
-  return client.send(
-    new GetObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    }),
   );
 }
 
