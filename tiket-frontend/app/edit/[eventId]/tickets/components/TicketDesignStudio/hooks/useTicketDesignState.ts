@@ -92,6 +92,21 @@ function normalizeLayer(
   };
 }
 
+function sanitizeLayers(
+  rawLayers: (TicketLayoutLayer | TicketDesignerLayer)[],
+): TicketDesignerLayer[] {
+  let qrSeen = false;
+  const filtered: TicketDesignerLayer[] = [];
+  for (const l of rawLayers) {
+    if (l.type === "qr") {
+      if (qrSeen) continue;
+      qrSeen = true;
+    }
+    filtered.push(normalizeLayer(l));
+  }
+  return filtered;
+}
+
 interface UseTicketDesignStateParams {
   initialTicket?: TicketType | null;
 }
@@ -112,7 +127,7 @@ export function useTicketDesignState({
   );
   const [layers, setLayers] = useState<TicketDesignerLayer[]>(() => {
     const rawLayers = initialTicket?.templateConfig?.layers ?? [];
-    return rawLayers.map(normalizeLayer);
+    return sanitizeLayers(rawLayers);
   });
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(
     initialTicket?.templateConfig?.layers?.[0]?.id ?? null,
@@ -216,7 +231,15 @@ export function useTicketDesignState({
   }, [canvasWidth, canvasHeight]);
 
   // "+ QR" adds a square placeholder QR layer (size 300) at the artboard center
+  // Restricted to at most one QR layer per ticket design
   const addQrLayer = useCallback(() => {
+    const existingQr = layers.find((l) => l.type === "qr");
+    if (existingQr) {
+      setSelectedLayerId(existingQr.id);
+      toast.info("Only one QR code layer is allowed.");
+      return;
+    }
+
     const id = `qr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const size = 300; // width = height = 300 in artboard px
     const x = Math.max(0, Math.round((canvasWidth - size) / 2));
@@ -241,9 +264,14 @@ export function useTicketDesignState({
       lineSpacing: 0,
     };
 
-    setLayers((prev) => [...prev, newLayer]);
+    setLayers((prev) => {
+      if (prev.some((l) => l.type === "qr")) {
+        return prev;
+      }
+      return [...prev, newLayer];
+    });
     setSelectedLayerId(id);
-  }, [canvasWidth, canvasHeight]);
+  }, [canvasWidth, canvasHeight, layers]);
 
   const deleteLayer = useCallback(
     (id: string, e?: React.MouseEvent) => {
@@ -336,8 +364,9 @@ export function useTicketDesignState({
     setCanvasWidth(t?.templateConfig?.canvasWidth ?? DEFAULT_ARTBOARD_WIDTH);
     setCanvasHeight(t?.templateConfig?.canvasHeight ?? DEFAULT_ARTBOARD_HEIGHT);
     const rawLayers = t?.templateConfig?.layers ?? [];
-    setLayers(rawLayers.map(normalizeLayer));
-    setSelectedLayerId(rawLayers[0]?.id ?? null);
+    const sanitized = sanitizeLayers(rawLayers);
+    setLayers(sanitized);
+    setSelectedLayerId(sanitized[0]?.id ?? null);
     setZoom("Fit");
   }, []);
 

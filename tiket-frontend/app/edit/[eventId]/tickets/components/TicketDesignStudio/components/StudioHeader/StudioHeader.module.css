@@ -1,131 +1,299 @@
-.topHeader {
+.headerContainer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1.25rem;
-  background: var(--surface-base, #16171b);
-  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-  gap: 1rem;
-  z-index: 20;
+  flex-direction: column;
+  width: 100%;
+  background: var(--surface-base);
+  box-sizing: border-box;
   flex-shrink: 0;
-  min-width: 0;
-  max-width: 100%;
+  z-index: 20;
 }
 
-.topLeftControls {
+/* ==========================================================================
+   ROW 1 (height 56px, flex, justify-between, align-center, px-16)
+   ========================================================================== */
+
+.row1 {
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  width: 100%;
+  box-sizing: border-box;
+  gap: 16px;
+  min-width: 0;
+}
+
+.breadcrumb {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 6px;
   min-width: 0;
-  flex-wrap: wrap;
+  overflow: hidden;
+  flex: 1;
 }
 
-.headerTitle {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text-primary, #ffffff);
-  margin: 0;
-  white-space: nowrap;
-}
-
-.backBtn {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
-  border-radius: var(--radius-sm, 8px);
-  padding: 0.4rem 0.75rem;
-  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-  border: none;
-}
-
-.backBtn:hover {
-  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
-  color: var(--text-primary, #ffffff);
-}
-
-.modeSwitcher {
-  display: flex;
-  background: var(--color-soft-bg, rgba(255, 255, 255, 0.06));
-  padding: 3px;
-  border-radius: 9999px;
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-}
-
-.modeBtn {
+.ghostBackBtn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.85rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border-radius: 9999px;
-  border: none;
+  gap: 4px;
+  height: 36px;
+  padding: 0 6px;
   background: transparent;
-  color: var(--text-muted, #a1a1aa);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.modeBtn:hover {
-  color: var(--text-primary, #ffffff);
-}
-
-.modeBtnActive {
-  background: var(--btn-primary-bg, #ffffff);
-  color: var(--btn-primary-text, #000000);
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.tierSelectWrapper {
-  min-width: 150px;
-  height: 34px;
-}
-
-.topRightControls {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  flex-shrink: 0;
-}
-
-.artboardInfo {
-  font-size: 0.8rem;
-  color: var(--text-muted, #a1a1aa);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
   font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 150ms ease;
+  outline: none;
+}
+
+.ghostBackBtn:hover {
+  color: var(--text-primary);
+  background: var(--color-soft-bg);
+}
+
+.ghostBackBtn:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--surface-base),
+    0 0 0 4px var(--border-strong);
+}
+
+.backBtnText {
   white-space: nowrap;
 }
 
-.headerSaveBtn {
-  background: var(--btn-primary-bg, #ffffff);
-  color: var(--btn-primary-text, #000000);
-  height: 34px;
-  padding: 0 1.15rem;
-  border-radius: var(--radius-sm, 8px);
-  font-size: 0.84rem;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+.breadcrumbSeparator {
+  color: var(--text-muted);
+  font-size: 14px;
+  user-select: none;
+  flex-shrink: 0;
 }
 
-.headerSaveBtn:hover {
-  opacity: 0.9;
+.tierTextTrigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 0.3rem 0.85rem !important;
+  background: var(--color-soft-bg);
+  border: none !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  box-shadow: none !important;
+  width: max-content !important;
+  height: min-content !important;
+  transition: all 150ms ease !important;
+}
+
+.tierTextTrigger:hover {
+  background: var(--color-soft-bg-hover) !important;
+}
+
+.tierTextTrigger:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--surface-base),
+    0 0 0 4px var(--border-strong) !important;
+}
+
+.tierName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 170px;
+}
+
+.tierStaticName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  min-width: 0;
+  padding: 0 4px;
+}
+
+.row1Right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.saveBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.4rem 0.6rem;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 150ms ease;
+  box-shadow: 0 2px 8px var(--color-overlay-secondary);
+  outline: none;
+}
+
+.saveBtn:hover:not(:disabled) {
+  opacity: 0.92;
   transform: translateY(-1px);
 }
 
-.headerSaveBtn:disabled {
-  opacity: 0.5;
+.saveBtn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
   transform: none;
 }
 
+.saveBtn:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--surface-base),
+    0 0 0 4px var(--border-strong);
+}
+
+/* ==========================================================================
+   ROW 2 (height 44px, bottom border, underline tabs, horizontal scroll)
+   ========================================================================== */
+
+.row2 {
+  height: 44px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    black calc(100% - 24px),
+    transparent
+  );
+}
+
+.tabsScrollContainer {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 100%;
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  box-sizing: border-box;
+}
+
+.tabsScrollContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.underlineTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 2px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  outline: none;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease;
+  box-sizing: border-box;
+}
+
+.underlineTab:hover {
+  color: var(--text-primary);
+}
+
+.underlineTabActive {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom: 2px solid var(--text-primary);
+}
+
+.underlineTab:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--surface-base),
+    0 0 0 4px var(--border-strong);
+  border-radius: 4px;
+}
+
+.tabIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tabLabel {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   RESPONSIVENESS (<= 640px)
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .row1 {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .backBtnText {
+    display: none;
+  }
+
+  .ghostBackBtn {
+    padding: 0 4px;
+  }
+
+  .tierTextTrigger {
+    max-width: 140px !important;
+  }
+
+  .tierStaticName {
+    max-width: 140px;
+  }
+
+  .row2 {
+    padding: 0 12px;
+  }
+
+  .tabsScrollContainer {
+    gap: 16px;
+  }
+
+  .tabLabelInactive {
+    display: none;
+  }
+}

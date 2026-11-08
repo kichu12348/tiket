@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { Globe, CalendarIcon, Clock, Copy, Check, Palette } from "lucide-react";
+import {
+  Globe,
+  CalendarIcon,
+  Clock,
+  Copy,
+  Check,
+  Palette,
+  Sparkles,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -23,6 +31,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import type { FormField, VisibilityConditionRule } from "@/types/form";
 import styles from "./TicketSettingsPanel.module.css";
+import { cn } from "@/lib/utils";
 
 const TIME_OPTIONS = Array.from({ length: 48 }).map((_, i) => {
   const hours = Math.floor(i / 2);
@@ -197,20 +206,25 @@ export default function TicketSettingsPanel({
 
   return (
     <div className={`${styles.settingsContainer} scrollbar`}>
-      <div className={styles.settingsGrid}>
-        {/* Left Column: General & Pricing */}
-        <div className={styles.settingsCol}>
-          {/* Card 1: Basic Information */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Basic Information</span>
+      <div className={styles.settingsContent}>
+        {/* Card 1: Basic Information */}
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardTitleGroup}>
+              <h3 className={styles.cardTitle}>Basic Information</h3>
+              <p className={styles.cardSubtitle}>
+                Set the public title and details for this ticket tier.
+              </p>
             </div>
+          </div>
 
+          <div className={styles.cardBody}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Ticket Title</label>
               <Input
                 type="text"
                 placeholder="e.g. General Admission"
+                className={styles.input}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 data-testid="ticket-name-input"
@@ -232,110 +246,121 @@ export default function TicketSettingsPanel({
               />
             </div>
           </div>
+        </section>
 
-          {/* Card 2: Pricing & Capacity */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Pricing & Capacity</span>
+        {/* Card 2: Pricing & Platform Fees */}
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardTitleGroup}>
+              <h3 className={styles.cardTitle}>Pricing & Fees</h3>
+              <p className={styles.cardSubtitle}>
+                Configure attendee pricing, taxes, and platform fee
+                distribution.
+              </p>
             </div>
+          </div>
 
-            {/* Paid Ticket Switch */}
-            <div className={styles.formGroup}>
-              <div className={styles.switchRow}>
-                <div className={styles.switchLabelBlock}>
-                  <span className={styles.switchTitle}>Paid Ticket</span>
-                  <span className={styles.switchSubtext}>
-                    Charge attendees for registration
-                  </span>
-                </div>
-                <Switch
-                  id="ticket-is-paid-switch"
-                  checked={isPaid}
-                  onChange={(checked) => {
-                    setIsPaid(checked);
-                    if (!checked) setPrice("0");
-                  }}
-                />
+          <div className={styles.cardBody}>
+            <div className={styles.switchRow}>
+              <div className={styles.switchLabelBlock}>
+                <span className={styles.switchTitle}>Paid Ticket</span>
+                <span className={styles.switchSubtext}>
+                  Charge attendees for registration
+                </span>
               </div>
-
-              {isPaid && (
-                <div className={styles.nestedSection}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Ticket Price</label>
-                    <div className={styles.priceInputWrapper}>
-                      <span className={styles.currencyPrefix}>₹</span>
-                      <Input
-                        type="number"
-                        className={styles.priceInput}
-                        placeholder="0.00"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                        min="0"
-                        step="0.01"
-                        data-testid="ticket-price-input"
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.switchRow}>
-                    <div className={styles.switchLabelBlock}>
-                      <span className={styles.switchTitle}>Collect GST</span>
-                      <span className={styles.switchSubtext}>
-                        Apply GST calculation on checkout
-                      </span>
-                    </div>
-                    <Switch
-                      checked={collectGst}
-                      onChange={setCollectGst}
-                    />
-                  </div>
-
-                  <div className={styles.switchRow}>
-                    <div className={styles.switchLabelBlock}>
-                      <span className={styles.switchTitle}>
-                        Include Platform Fee ( ₹{formatRupees(feeRupees)} )
-                      </span>
-                      <span className={styles.switchSubtext}>
-                        Pass platform processing fees to the attendee
-                      </span>
-                    </div>
-                    <Switch
-                      id="ticket-pass-fee-switch"
-                      checked={passFeeToCustomer}
-                      onChange={setPassFeeToCustomer}
-                    />
-                  </div>
-
-                  {/* Live Fee Breakdown Preview */}
-                  <div
-                    className={styles.feeBreakdownBox}
-                    data-testid="fee-breakdown-preview"
-                  >
-                    <div className={styles.feeBreakdownRow}>
-                      <span>Platform Fee: {feePercent}%</span>
-                      <span>Gateway Fee: {gatewayFeePercent}%</span>
-                    </div>
-                    <div className={styles.greenTotal}>
-                      {passFeeToCustomer
-                        ? `Total Price for User: ₹${formatRupees(totalPriceForUser)}`
-                        : `Total Price for User: ₹${formatRupees(parsedPrice)} (fee deducted from earnings)`}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "0.75rem",
-                        opacity: 0.7,
-                        marginTop: "2px",
-                      }}
-                    >
-                      {passFeeToCustomer
-                        ? `Customer pays ₹${formatRupees(parsedPrice + feeRupees)} (+${feePercent}% fee) • You receive ₹${formatRupees(parsedPrice)}`
-                        : `Customer pays ₹${formatRupees(parsedPrice)} (Fee included) • You receive ₹${formatRupees(parsedPrice - feeRupees)} (${feePercent}% fee deducted)`}
-                    </div>
-                  </div>
-                </div>
-              )}
+              <Switch
+                id="ticket-is-paid-switch"
+                checked={isPaid}
+                onChange={(checked) => {
+                  setIsPaid(checked);
+                  if (!checked) setPrice("0");
+                }}
+              />
             </div>
 
+            {isPaid && (
+              <div className={styles.nestedSection}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Ticket Price</label>
+                  <div className={styles.priceInputWrapper}>
+                    <span className={styles.currencyPrefix}>₹</span>
+                    <Input
+                      type="number"
+                      className={cn(styles.priceInput, styles.input)}
+                      placeholder="0.00"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      min="0"
+                      step="0.01"
+                      data-testid="ticket-price-input"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.switchRow}>
+                  <div className={styles.switchLabelBlock}>
+                    <span className={styles.switchTitle}>Collect GST</span>
+                    <span className={styles.switchSubtext}>
+                      Apply GST calculation on checkout
+                    </span>
+                  </div>
+                  <Switch checked={collectGst} onChange={setCollectGst} />
+                </div>
+
+                <div className={styles.switchRow}>
+                  <div className={styles.switchLabelBlock}>
+                    <span className={styles.switchTitle}>
+                      Include Platform Fee ( ₹{formatRupees(feeRupees)} )
+                    </span>
+                    <span className={styles.switchSubtext}>
+                      Pass platform processing fees to the attendee
+                    </span>
+                  </div>
+                  <Switch
+                    id="ticket-pass-fee-switch"
+                    checked={passFeeToCustomer}
+                    onChange={setPassFeeToCustomer}
+                  />
+                </div>
+
+                {/* Live Fee Breakdown Preview */}
+                <div
+                  className={styles.feeBreakdownBox}
+                  data-testid="fee-breakdown-preview"
+                >
+                  <div className={styles.feeBreakdownRow}>
+                    <span>Platform Fee: {feePercent}%</span>
+                    <span>Gateway Fee: {gatewayFeePercent}%</span>
+                  </div>
+                  <div className={styles.greenTotal}>
+                    {passFeeToCustomer
+                      ? `Total Price for User: ₹${formatRupees(totalPriceForUser)}`
+                      : `Total Price for User: ₹${formatRupees(parsedPrice)} (fee deducted from earnings)`}
+                  </div>
+                  <div className={styles.feeBreakdownDetail}>
+                    {passFeeToCustomer
+                      ? `Customer pays ₹${formatRupees(parsedPrice + feeRupees)} (+${feePercent}% fee) • You receive ₹${formatRupees(parsedPrice)}`
+                      : `Customer pays ₹${formatRupees(parsedPrice)} (Fee included) • You receive ₹${formatRupees(parsedPrice - feeRupees)} (${feePercent}% fee deducted)`}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Card 3: Capacity & Limits */}
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardTitleGroup}>
+              <h3 className={styles.cardTitle}>Capacity & Limits</h3>
+              <p className={styles.cardSubtitle}>
+                Manage ticket inventory and booking constraints. (Total Event
+                Capacity: {eventCapacityDisplay})
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.cardBody}>
             {/* Limit Capacity Switch & Input */}
             <div className={styles.formGroup}>
               <div className={styles.switchRow}>
@@ -357,16 +382,21 @@ export default function TicketSettingsPanel({
                 />
               </div>
               {hasLimitCapacity && (
-                <Input
-                  type="number"
-                  placeholder="Total capacity for this tier"
-                  value={quantityLimit}
-                  onChange={(e) => setQuantityLimit(e.target.value)}
-                  min="1"
-                  data-testid="ticket-quantity-input"
-                />
+                <div className={styles.conditionalInputWrapper}>
+                  <Input
+                    type="number"
+                    placeholder="Total capacity for this tier"
+                    className={styles.input}
+                    value={quantityLimit}
+                    onChange={(e) => setQuantityLimit(e.target.value)}
+                    min="1"
+                    data-testid="ticket-quantity-input"
+                  />
+                </div>
               )}
             </div>
+
+            <div className={styles.divider} />
 
             {/* Limit Per User */}
             <div className={styles.formGroup}>
@@ -388,16 +418,21 @@ export default function TicketSettingsPanel({
                 />
               </div>
               {hasMaxPerUser && (
-                <Input
-                  type="number"
-                  placeholder="e.g. 2"
-                  value={maxPerUser}
-                  onChange={(e) => setMaxPerUser(e.target.value)}
-                  min="1"
-                  data-testid="ticket-max-per-user-input"
-                />
+                <div className={styles.conditionalInputWrapper}>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 2"
+                    value={maxPerUser}
+                    className={styles.input}
+                    onChange={(e) => setMaxPerUser(e.target.value)}
+                    min="1"
+                    data-testid="ticket-max-per-user-input"
+                  />
+                </div>
               )}
             </div>
+
+            <div className={styles.divider} />
 
             {/* Fixed As My Ticket */}
             <div className={styles.switchRow}>
@@ -407,11 +442,10 @@ export default function TicketSettingsPanel({
                   Pre-selects this ticket by default on the registration form
                 </span>
               </div>
-              <Switch
-                checked={isFixedDefault}
-                onChange={setIsFixedDefault}
-              />
+              <Switch checked={isFixedDefault} onChange={setIsFixedDefault} />
             </div>
+
+            <div className={styles.divider} />
 
             {/* Waitlisting */}
             <div className={styles.switchRow}>
@@ -421,11 +455,10 @@ export default function TicketSettingsPanel({
                   Allow attendees to join a waitlist when this tier is full
                 </span>
               </div>
-              <Switch
-                checked={enableWaitlist}
-                onChange={setEnableWaitlist}
-              />
+              <Switch checked={enableWaitlist} onChange={setEnableWaitlist} />
             </div>
+
+            <div className={styles.divider} />
 
             {/* Multi-Day CheckIn */}
             <div className={styles.switchRow}>
@@ -435,87 +468,62 @@ export default function TicketSettingsPanel({
                   Allow attendees to check in across multiple days of the event
                 </span>
               </div>
-              <Switch
-                checked={multiDayCheckIn}
-                onChange={setMultiDayCheckIn}
-              />
+              <Switch checked={multiDayCheckIn} onChange={setMultiDayCheckIn} />
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Right Column: Sales Period, Policies, Advanced */}
-        <div className={styles.settingsCol}>
-          {/* Card 3: Sales Period & Availability */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Sales Period</span>
-              <span
-                style={{
-                  fontSize: "0.8rem",
-                  color: "var(--text-muted, #a1a1aa)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.25rem",
-                }}
-              >
-                <Globe size={12} /> {timezone}
-              </span>
+        {/* Card 4: Sales Schedule & Visibility */}
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardTitleGroup}>
+              <h3 className={styles.cardTitle}>Sales Schedule & Visibility</h3>
+              <p className={styles.cardSubtitle}>
+                Control when ticket sales open and who can view this tier.
+              </p>
             </div>
+            <div className={styles.timezoneBadge}>
+              <Globe size={13} />
+              <span>{timezone}</span>
+            </div>
+          </div>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "1rem",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.85rem",
-                    width: "40px",
-                    color: "rgba(255, 255, 255, 0.7)",
-                  }}
-                >
-                  Start
+          <div className={styles.cardBody}>
+            {/* Start Date & Time */}
+            <div className={styles.scheduleRow}>
+              <div className={styles.scheduleLabel}>
+                <span className={styles.scheduleHeading}>Sales Start</span>
+                <span className={styles.scheduleSubheading}>
+                  First date tickets can be booked
                 </span>
-                <div className={styles.pickersBox}>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button type="button" className={styles.datePickerBtn}>
-                        <CalendarIcon size={14} />
-                        {saleStart ? (
-                          format(new Date(saleStart), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 z-[9999]"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={saleStart ? new Date(saleStart) : undefined}
-                        onSelect={(date) =>
-                          updateDate(saleStart, date, setSaleStart)
-                        }
-                      />
-                    </PopoverContent>
-                  </Popover>
+              </div>
+              <div className={styles.pickersBox}>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" className={styles.datePickerBtn}>
+                      <CalendarIcon size={14} />
+                      {saleStart ? (
+                        format(new Date(saleStart), "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={saleStart ? new Date(saleStart) : undefined}
+                      onSelect={(date) =>
+                        updateDate(saleStart, date, setSaleStart)
+                      }
+                    />
+                  </PopoverContent>
+                </Popover>
+                <div className={styles.timeDropdownWrapper}>
                   <Dropdown
                     options={TIME_OPTIONS}
                     value={
-                      saleStart
-                        ? format(new Date(saleStart), "HH:mm")
-                        : "00:00"
+                      saleStart ? format(new Date(saleStart), "HH:mm") : "00:00"
                     }
                     onChange={(val) =>
                       updateTime(saleStart, val as string, setSaleStart)
@@ -525,48 +533,39 @@ export default function TicketSettingsPanel({
                   />
                 </div>
               </div>
+            </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "1rem",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.85rem",
-                    width: "40px",
-                    color: "rgba(255, 255, 255, 0.7)",
-                  }}
-                >
-                  End
+            <div className={styles.divider} />
+
+            {/* End Date & Time */}
+            <div className={styles.scheduleRow}>
+              <div className={styles.scheduleLabel}>
+                <span className={styles.scheduleHeading}>Sales End</span>
+                <span className={styles.scheduleSubheading}>
+                  Cut-off date when ticket sales close
                 </span>
-                <div className={styles.pickersBox}>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button type="button" className={styles.datePickerBtn}>
-                        <CalendarIcon size={14} />
-                        {saleEnd ? (
-                          format(new Date(saleEnd), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 z-[9999]"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={saleEnd ? new Date(saleEnd) : undefined}
-                        onSelect={(date) =>
-                          updateDate(saleEnd, date, setSaleEnd)
-                        }
-                      />
-                    </PopoverContent>
-                  </Popover>
+              </div>
+              <div className={styles.pickersBox}>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" className={styles.datePickerBtn}>
+                      <CalendarIcon size={14} />
+                      {saleEnd ? (
+                        format(new Date(saleEnd), "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={saleEnd ? new Date(saleEnd) : undefined}
+                      onSelect={(date) => updateDate(saleEnd, date, setSaleEnd)}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <div className={styles.timeDropdownWrapper}>
                   <Dropdown
                     options={TIME_OPTIONS}
                     value={
@@ -582,6 +581,8 @@ export default function TicketSettingsPanel({
               </div>
             </div>
 
+            <div className={styles.divider} />
+
             {/* Close Ticket Switch */}
             <div className={styles.switchRow}>
               <div className={styles.switchLabelBlock}>
@@ -592,6 +593,8 @@ export default function TicketSettingsPanel({
               </div>
               <Switch checked={isClosed} onChange={setIsClosed} />
             </div>
+
+            <div className={styles.divider} />
 
             {/* Invite Only Switch */}
             <div className={styles.switchRow}>
@@ -627,43 +630,57 @@ export default function TicketSettingsPanel({
                     onClick={handleCopyUrl}
                   >
                     {copiedUrl ? <Check size={13} /> : <Copy size={13} />}
-                    <span>{copiedUrl ? "Copied" : "Copy"}</span>
+                    <span>{copiedUrl ? "Copied" : "Copy Link"}</span>
                   </button>
                 </div>
               </div>
             )}
           </div>
+        </section>
 
-          {/* Card 4: Policies */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={styles.cardTitle}>Policies</span>
+        {/* Card 5: Policies & Transfers */}
+        <section className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardTitleGroup}>
+              <h3 className={styles.cardTitle}>Policies & Transfers</h3>
+              <p className={styles.cardSubtitle}>
+                Attendee cancellation, refund, and transfer permissions.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.cardBody}>
+            <div className={styles.switchRow}>
+              <div className={styles.switchLabelBlock}>
+                <span className={styles.switchTitle}>Allow Refunds</span>
+                <span className={styles.switchSubtext}>
+                  Allow attendees to request refunds for this ticket
+                </span>
+              </div>
+              <Switch checked={isRefundable} onChange={setIsRefundable} />
             </div>
 
-            <div className={styles.switchRow}>
-              <span className={styles.switchTitle}>Allow Refunds</span>
-              <Switch
-                checked={isRefundable}
-                onChange={setIsRefundable}
-              />
-            </div>
+            <div className={styles.divider} />
 
             <div className={styles.switchRow}>
-              <span className={styles.switchTitle}>Allow Transfers</span>
-              <Switch
-                checked={isTransferable}
-                onChange={setIsTransferable}
-              />
+              <div className={styles.switchLabelBlock}>
+                <span className={styles.switchTitle}>Allow Transfers</span>
+                <span className={styles.switchSubtext}>
+                  Allow attendees to transfer tickets to another person
+                </span>
+              </div>
+              <Switch checked={isTransferable} onChange={setIsTransferable} />
             </div>
 
             {isTransferable && (
-              <div className={styles.formGroup}>
+              <div className={styles.conditionalInputWrapper}>
                 <label className={styles.label}>
                   Maximum Transfers Allowed
                 </label>
                 <Input
                   type="number"
                   placeholder="e.g. 1"
+                  className={styles.input}
                   value={maxTransfers}
                   onChange={(e) => setMaxTransfers(e.target.value)}
                   min="1"
@@ -672,24 +689,28 @@ export default function TicketSettingsPanel({
               </div>
             )}
           </div>
+        </section>
 
-          {/* Card 5: Advanced Settings Accordion */}
+        {/* Card 6: Advanced Settings Accordion */}
+        <section className={styles.card}>
           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem
-              value="advanced"
-              className="border-none rounded-xl bg-white/[0.02]"
-            >
-              <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                <div className="flex flex-col text-left">
-                  <span className="text-sm font-semibold text-white">
-                    Advanced Settings
-                  </span>
-                  <span className="text-xs text-white/50">
-                    Category pool, tags, conditions and visibility rules
-                  </span>
+            <AccordionItem value="advanced" className="border-none">
+              <AccordionTrigger className="p-0 hover:no-underline">
+                <div className={styles.accordionHeader}>
+                  <div className={styles.accordionTitleGroup}>
+                    <div className={styles.accordionTitleRow}>
+                      <Sparkles size={16} className={styles.sparkleIcon} />
+                      <span className={styles.cardTitle}>
+                        Advanced Settings
+                      </span>
+                    </div>
+                    <p className={styles.cardSubtitle}>
+                      Category pool, tags, and custom question visibility rules
+                    </p>
+                  </div>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4 pt-2">
+              <AccordionContent className="pt-5 pb-0">
                 <div className={styles.advancedContainer}>
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Category / Pool Name</label>
@@ -700,12 +721,7 @@ export default function TicketSettingsPanel({
                       onChange={(e) => setCategory(e.target.value)}
                       data-testid="ticket-pool-name-input"
                     />
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "var(--text-muted, #a1a1aa)",
-                      }}
-                    >
+                    <span className={styles.helperText}>
                       Share capacity across multiple tiers (e.g. Early Bird +
                       Regular).
                     </span>
@@ -719,6 +735,7 @@ export default function TicketSettingsPanel({
                       <Input
                         type="number"
                         placeholder="Total capacity for this category pool"
+                        className={styles.input}
                         value={poolCapacity}
                         onChange={(e) => setPoolCapacity(e.target.value)}
                         min="1"
@@ -728,10 +745,13 @@ export default function TicketSettingsPanel({
                   )}
 
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>Tags (Comma-separated)</label>
+                    <label className={styles.label}>
+                      Tags (Comma-separated)
+                    </label>
                     <Input
                       type="text"
                       placeholder="e.g. speaker, sponsor, early-access"
+                      className={styles.input}
                       value={tagsInput}
                       onChange={(e) => setTagsInput(e.target.value)}
                     />
@@ -741,27 +761,25 @@ export default function TicketSettingsPanel({
                     <label className={styles.label}>
                       Conditions & Visibility Rules
                     </label>
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "var(--text-muted, #a1a1aa)",
-                        marginBottom: "0.25rem",
-                      }}
-                    >
+                    <span className={styles.helperText}>
                       Only attendees with matching answers can select this tier.
                     </span>
-                    <ConditionBuilder
-                      conditions={conditions}
-                      onChange={setConditions}
-                      availableFields={formFields}
-                    />
+                    <div className={styles.conditionBuilderWrapper}>
+                      <ConditionBuilder
+                        conditions={conditions}
+                        onChange={setConditions}
+                        availableFields={formFields}
+                      />
+                    </div>
                   </div>
                 </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+        </section>
 
-          {/* Jump to Pass Designer button */}
+        {/* Footer Quick Action: Jump to Pass Designer */}
+        <div className={styles.footerActionBox}>
           <button
             type="button"
             className={styles.designLayoutBannerBtn}
@@ -776,4 +794,3 @@ export default function TicketSettingsPanel({
     </div>
   );
 }
-

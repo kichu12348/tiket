@@ -205,7 +205,7 @@ describe("TicketDesignStudio (MakeMyPass Caliber)", () => {
     });
   });
 
-  test("3. Adds a QR Layer and another Text Layer", async () => {
+  test("3. Adds a QR Layer and restricts to exactly one QR layer", async () => {
     render(
       <TicketDesignStudio
         eventId="evt-test-101"
@@ -215,6 +215,7 @@ describe("TicketDesignStudio (MakeMyPass Caliber)", () => {
 
     // Add QR Layer
     const addQrBtn = screen.getByTestId("add-qr-layer-btn");
+    expect((addQrBtn as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(addQrBtn);
 
     // Verify QR placeholder on canvas
@@ -222,11 +223,18 @@ describe("TicketDesignStudio (MakeMyPass Caliber)", () => {
       expect(screen.getByTestId("qr-placeholder")).toBeDefined();
     });
 
+    // Verify QR button is now disabled because exactly one QR layer is allowed
+    expect((addQrBtn as HTMLButtonElement).disabled).toBe(true);
+
+    // Clicking again should not add a second QR code layer
+    fireEvent.click(addQrBtn);
+    expect(screen.getAllByTestId("qr-placeholder").length).toBe(1);
+
     // Add another Text Layer
     const addTextBtn = screen.getByTestId("add-text-layer-btn");
     fireEvent.click(addTextBtn);
 
-    // Should now list 3 layers in inspector
+    // Should now list layers in inspector
     expect(screen.getByTestId("inspector-card")).toBeDefined();
   });
 

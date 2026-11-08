@@ -37,6 +37,7 @@ import {
 import { priceCart, pricingPolicy } from "./pricing.service";
 import { enqueueOrderEmail } from "./notifications.service";
 import { gateway } from "./gateway.service";
+import { withRedisLock } from "./redis-lock.service";
 
 export interface CheckoutBody {
   eventId: string;
@@ -344,8 +345,19 @@ export async function createCheckout(
   key: string,
   complimentary = false,
 ) {
-  const hash = fingerprint({ ...body, complimentary });
-  return db.transaction(async (tx) => {
+  const userLockKey = `lock:checkout:user:${userId}:${body.eventId}`;
+  const eventLockKey = `lock:checkout:event:${body.eventId}`;
+
+  return withRedisLock(
+    userLockKey,
+    10000,
+    async () => {
+      return withRedisLock(
+        eventLockKey,
+        5000,
+        async () => {
+          const hash = fingerprint({ ...body, complimentary });
+          return db.transaction(async (tx) => {
     await tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${userId + ":" + key}, 0))`,
     );
@@ -465,7 +477,21 @@ export async function createCheckout(
       isFree ? "registration.changed" : "availability.changed",
     );
     return order;
-  });
+          });
+        },
+        {
+          waitTimeoutMs: 3000,
+          conflictMessage:
+            "High checkout traffic for this event. Please try again in a few moments.",
+        },
+      );
+    },
+    {
+      waitTimeoutMs: 0,
+      conflictMessage:
+        "Another checkout request is currently in progress for your account. Please wait.",
+    },
+  );
 }
 export async function initializeGatewayOrder(orderId: string) {
   const [claimed] = await db

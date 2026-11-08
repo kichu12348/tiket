@@ -33,9 +33,6 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-  border-radius: var(--radius-sm, 8px);
   padding: 0.2rem 0.4rem;
 }
 
@@ -51,8 +48,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  height: 32px;
-  padding: 0 0.85rem;
+  padding: 0.3rem 0.75rem;
   border-radius: var(--radius-sm, 8px);
   font-size: 0.78rem;
   font-weight: 600;
@@ -60,7 +56,9 @@
   color: var(--btn-primary-text, #000000);
   border: none;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.1s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.1s ease;
 }
 
 .uploadBtn:hover {
@@ -76,16 +74,17 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  height: 32px;
-  padding: 0 0.75rem;
+  padding: 0.3rem 0.75rem;
   border-radius: var(--radius-sm, 8px);
   font-size: 0.78rem;
   font-weight: 500;
   background: var(--color-soft-bg, rgba(255, 255, 255, 0.06));
   color: var(--color-text-soft, rgba(255, 255, 255, 0.75));
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border: none;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .resetBtn:hover {
@@ -108,16 +107,37 @@
     linear-gradient(45deg, transparent 75%, #14151b 75%),
     linear-gradient(-45deg, transparent 75%, #14151b 75%);
   background-size: 24px 24px;
-  background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+  background-position:
+    0 0,
+    0 12px,
+    12px -12px,
+    -12px 0px;
   position: relative;
   padding: 1.5rem;
+}
+
+.selectTrigger {
+  background: var(--color-soft-bg);
+  color: var(--text-primary);
+  border: none;
+  box-shadow: none;
+  width: max-content;
+  height: min-content;
+  padding: 0.4rem 1rem;
+  justify-content: space-between;
+}
+
+.selectTrigger:hover {
+  background-color: var(--color-soft-bg-hover);
 }
 
 .artboardContainer {
   position: relative;
   margin: auto;
   flex-shrink: 0;
-  transition: width 0.1s ease-out, height 0.1s ease-out;
+  transition:
+    width 0.1s ease-out,
+    height 0.1s ease-out;
 }
 
 .artboard {

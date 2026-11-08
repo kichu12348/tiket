@@ -53,9 +53,11 @@
   gap: var(--spacing-gap);
 }
 
-@media (max-width: 800px) {
+@media screen and (max-width: 800px) {
   .contentContainer {
     grid-template-columns: 1fr;
+    align-items: center;
+    justify-content: center;
   }
 }
 

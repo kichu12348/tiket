@@ -22,6 +22,8 @@ export default function LayersList({
   onAddQrLayer,
   onDeleteLayer,
 }: LayersListProps) {
+  const hasQrLayer = layers.some((l) => l.type === "qr");
+
   return (
     <div className={styles.card} data-testid="layers-card">
       <div className={styles.cardHeader}>
@@ -40,6 +42,8 @@ export default function LayersList({
             type="button"
             className={styles.cardActionBtn}
             onClick={onAddQrLayer}
+            disabled={hasQrLayer}
+            title={hasQrLayer ? "Only one QR code layer allowed" : "Add QR"}
             data-testid="add-qr-layer-btn"
           >
             <Plus size={13} />

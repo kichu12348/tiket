@@ -18,6 +18,7 @@ import templateRoutes from "./routes/template.routes";
 import paymentRoutes from "./routes/payment.routes";
 import attendeeRoutes from "./routes/attendee.routes";
 import emailRoutes from "./routes/email.routes";
+import { closeRedisClient } from "./services/redis-lock.service";
 
 export function buildApp() {
   const __dev__ = process.env.DEBUG === "true";
@@ -73,5 +74,10 @@ export function buildApp() {
       error: statusCode >= 500 ? "Internal Server Error" : error.message,
     });
   });
+
+  fastify.addHook("onClose", async () => {
+    await closeRedisClient();
+  });
+
   return fastify;
 }

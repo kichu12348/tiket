@@ -15,6 +15,7 @@ import type { StudioMode } from "../../types";
 import type { ResizeHandle } from "../../hooks/useLayerInteraction";
 import CanvasLayer from "../CanvasLayer";
 import styles from "./CanvasViewport.module.css";
+import { cn } from "@/lib/utils";
 
 interface CanvasViewportProps {
   mode: StudioMode;
@@ -154,7 +155,10 @@ export default function CanvasViewport({
             <span className={styles.zoomLabel}>ZOOM</span>
             <Select value={zoom} onValueChange={onZoomChange}>
               <SelectTrigger
-                className="w-[85px] h-[30px] text-xs bg-transparent border-0 text-white"
+                className={cn(
+                  "w-[85px] h-[30px] text-xs",
+                  styles.selectTrigger,
+                )}
                 data-testid="zoom-select-trigger"
               >
                 <SelectValue />

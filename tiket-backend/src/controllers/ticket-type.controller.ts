@@ -87,6 +87,15 @@ export const createTicketType = async (
     )
       throw new HttpError(400, "Sale end must follow start.");
 
+    if (body.templateConfig?.layers) {
+      const qrCount = body.templateConfig.layers.filter(
+        (l) => l.type === "qr",
+      ).length;
+      if (qrCount > 1) {
+        throw new HttpError(400, "Only one QR code layer is allowed.");
+      }
+    }
+
     const newTicketTypeList = await db.transaction(async (tx) => {
       await lockEvent(tx, eventId);
       const maxCountResult = await tx
@@ -223,8 +232,17 @@ export const updateTicketType = async (
       payload.price = fromPaise(toPaise(String(body.price)));
     if (body.templateImageUrl !== undefined)
       payload.templateImageUrl = body.templateImageUrl;
-    if (body.templateConfig !== undefined)
+    if (body.templateConfig !== undefined) {
+      if (body.templateConfig?.layers) {
+        const qrCount = body.templateConfig.layers.filter(
+          (l) => l.type === "qr",
+        ).length;
+        if (qrCount > 1) {
+          throw new HttpError(400, "Only one QR code layer is allowed.");
+        }
+      }
       payload.templateConfig = body.templateConfig;
+    }
     if (body.passFeeToCustomer !== undefined)
       payload.passFeeToCustomer = body.passFeeToCustomer;
     if (body.quantityLimit !== undefined)
