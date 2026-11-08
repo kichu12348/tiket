@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from "react";
 import { ImageOff } from "lucide-react";
+import { getFullImageUrl } from "@/constants/util";
 import styles from "./Image.module.css";
 
 interface ImageProps extends ImgHTMLAttributes<HTMLImageElement> {
@@ -17,6 +18,7 @@ function ImageContent({
   ref,
   loading = "lazy",
   alt = "",
+  src,
   onLoad,
   onError,
   ...props
@@ -24,6 +26,8 @@ function ImageContent({
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     "loading",
   );
+  const resolvedSrc = typeof src === "string" ? getFullImageUrl(src) : src;
+
   const attach = useCallback(
     (node: HTMLImageElement | null) => {
       if (ref) ref.current = node;
@@ -44,6 +48,7 @@ function ImageContent({
   return (
     <img
       {...props}
+      src={resolvedSrc}
       alt={alt}
       ref={attach}
       loading={loading}

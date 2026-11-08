@@ -143,10 +143,14 @@ export default function CreateEventPage() {
         toast.info("Uploading cover image...");
         try {
           const contentType = coverImageFile.type || "image/jpeg";
-          const { url: signedUrl, max_size } = await getSignedUrl(
-            coverImageFile.name,
-            contentType,
-          );
+          const {
+            url: signedUrl,
+            max_size,
+            filename: cdnUrl,
+            fileUrl,
+          } = await getSignedUrl(coverImageFile.name, contentType, {
+            objType: "banner",
+          });
 
           if (coverImageFile.size / 1024 / 1024 > max_size) {
             toast.error(`Image size must be less than ${max_size}MB`);
@@ -154,7 +158,11 @@ export default function CreateEventPage() {
             return;
           }
 
-          const { filename } = await uploadToCDN(signedUrl, coverImageFile);
+          const { filename } = await uploadToCDN(
+            signedUrl,
+            coverImageFile,
+            fileUrl || cdnUrl,
+          );
           finalCoverImage = filename;
         } catch (err) {
           console.error("Failed to upload image to CDN:", err);

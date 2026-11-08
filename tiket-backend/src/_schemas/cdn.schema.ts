@@ -23,6 +23,11 @@ export const cdnGenerateUrlSchema = {
             "image/avif",
           ],
         },
+        eventId: { type: "string" },
+        objType: {
+          type: "string",
+          enum: ["banner", "ticket-template", "email", "form-file"],
+        },
       },
     },
     response: {
@@ -32,6 +37,8 @@ export const cdnGenerateUrlSchema = {
           url: { type: "string" },
           max_size: { type: "number" },
           filename: { type: "string" },
+          fileUrl: { type: "string" },
+          key: { type: "string" },
         },
       },
       400: {

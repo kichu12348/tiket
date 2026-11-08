@@ -83,8 +83,10 @@ export async function beginUpload(
     field.fieldType !== "file"
   )
     throw new HttpError(404, "Registration upload field not found.");
+  const match = (body.filename || "").match(/\.([a-zA-Z0-9]+)$/);
+  const ext = match?.[1] ? match[1].toLowerCase() : "bin";
   const id = crypto.randomUUID();
-  const objectKey = `staging/${body.eventId}/${userId}/${id}`;
+  const objectKey = `staging/${body.eventId}/form-file/${id}.${ext}`;
   const url = await presignUpload(objectKey, body.contentType, body.size);
   await db.insert(uploads).values({ ...body, id, userId, objectKey });
   return { id, url, expiresIn: 300 };

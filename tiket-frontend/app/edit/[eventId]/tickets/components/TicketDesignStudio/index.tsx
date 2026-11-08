@@ -183,11 +183,20 @@ export default function TicketDesignStudio({
       // Upload local image file to CDN only upon Update/Save click
       if (design.pendingImageFile) {
         try {
-          const { url } = await getSignedUrl(
+          const {
+            url,
+            filename: cdnUrl,
+            fileUrl,
+          } = await getSignedUrl(
             design.pendingImageFile.name,
             design.pendingImageFile.type,
+            { eventId, objType: "ticket-template" },
           );
-          const { filename } = await uploadToCDN(url, design.pendingImageFile);
+          const { filename } = await uploadToCDN(
+            url,
+            design.pendingImageFile,
+            fileUrl || cdnUrl,
+          );
           finalImageUrl = getImageUrl(filename || "");
           design.setPendingImageFile(null);
           design.setTemplateImageUrl(finalImageUrl);

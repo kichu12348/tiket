@@ -6,13 +6,54 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v7 as uuidv7 } from "uuid";
 import { HttpError } from "../utils/errors";
+
 export const ALLOWED_FILES = [
   "application/pdf",
   "image/jpeg",
   "image/png",
   "text/plain",
 ];
+
+export type StorageObjectType =
+  | "banner"
+  | "ticket-template"
+  | "email"
+  | "form-file";
+
+export interface BuildStorageKeyParams {
+  eventId?: string;
+  objType: StorageObjectType;
+  filename: string;
+  objectId?: string;
+}
+
+export function buildStorageKey(params: {
+  eventId?: string;
+  objType: StorageObjectType;
+  filename: string;
+  objectId?: string;
+}): string {
+  const cleanFilename = params.filename || "";
+  const match = cleanFilename.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = match?.[1] ? match[1].toLowerCase() : "jpg";
+  const safeEventId = params.eventId?.trim()
+    ? params.eventId.trim().replace(/[^a-zA-Z0-9_-]/g, "_")
+    : "drafts";
+  const id = params.objectId ?? uuidv7();
+  return `${safeEventId}/${params.objType}/${id}.${ext}`;
+}
+
+export function buildFullCdnUrl(key: string): string {
+  const baseCdnUrl = (
+    process.env.R2_PUBLIC_URL ||
+    process.env.CDN_URL ||
+    "http://localhost:3001"
+  ).replace(/\/+$/, "");
+  return `${baseCdnUrl}/${key.replace(/^\/+/, "")}`;
+}
+
 function storage() {
   const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET } =
     process.env;
@@ -38,6 +79,7 @@ function storage() {
     bucket: R2_BUCKET,
   };
 }
+
 export async function presignUpload(
   key: string,
   contentType: string,
@@ -55,6 +97,7 @@ export async function presignUpload(
     { expiresIn: 300, signableHeaders: new Set(["content-type"]) },
   );
 }
+
 export async function getImageObject(key: string) {
   const { client, bucket } = storage();
   return client.send(
@@ -64,6 +107,7 @@ export async function getImageObject(key: string) {
     }),
   );
 }
+
 export async function finalizeUpload(
   key: string,
   contentType: string,
@@ -79,7 +123,7 @@ export async function finalizeUpload(
     !object.ETag
   )
     throw new HttpError(400, "Uploaded file does not match the declared file.");
-  const target = key.replace(/^staging\//, "registrations/");
+  const target = key.replace(/^staging\//, "");
   // Copy out of the writable presigned key so an old URL cannot change a submitted answer.
   await client.send(
     new CopyObjectCommand({
@@ -94,6 +138,7 @@ export async function finalizeUpload(
   );
   return target;
 }
+
 export async function downloadUpload(key: string) {
   const { client, bucket } = storage();
   return getSignedUrl(
