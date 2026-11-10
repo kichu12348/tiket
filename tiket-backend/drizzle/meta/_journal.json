@@ -29,6 +29,20 @@
       "when": 1794056367636,
       "tag": "0003_lazy_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794316782015,
+      "tag": "0004_premium_madripoor",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794318454659,
+      "tag": "0005_lovely_fixer",
+      "breakpoints": true
     }
   ]
 }

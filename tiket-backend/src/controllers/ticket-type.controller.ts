@@ -37,6 +37,9 @@ interface CreateTicketTypeBody {
   tags?: string[];
   enableWaitlist?: boolean;
   multiDayCheckIn?: boolean;
+  maxCheckInsPerDay?: number | null;
+  codePrefix?: string;
+  codeLength?: number;
   maxPerUser?: number | null;
   isFixedDefault?: boolean;
   collectGst?: boolean;
@@ -125,6 +128,10 @@ export const createTicketType = async (
           tags: body.tags ?? [],
           enableWaitlist: body.enableWaitlist ?? false,
           multiDayCheckIn: body.multiDayCheckIn ?? false,
+          maxCheckInsPerDay:
+            body.maxCheckInsPerDay !== undefined ? body.maxCheckInsPerDay : 1,
+          codePrefix: (body.codePrefix ?? "").trim().toUpperCase(),
+          codeLength: body.codeLength ?? 6,
           maxPerUser: body.maxPerUser ?? null,
           isFixedDefault: body.isFixedDefault ?? false,
           collectGst: body.collectGst ?? false,
@@ -256,6 +263,12 @@ export const updateTicketType = async (
       payload.enableWaitlist = body.enableWaitlist;
     if (body.multiDayCheckIn !== undefined)
       payload.multiDayCheckIn = body.multiDayCheckIn;
+    if (body.maxCheckInsPerDay !== undefined)
+      payload.maxCheckInsPerDay = body.maxCheckInsPerDay;
+    if (body.codePrefix !== undefined)
+      payload.codePrefix = body.codePrefix.trim().toUpperCase();
+    if (body.codeLength !== undefined)
+      payload.codeLength = body.codeLength;
     if (body.maxPerUser !== undefined) payload.maxPerUser = body.maxPerUser;
     if (body.isFixedDefault !== undefined)
       payload.isFixedDefault = body.isFixedDefault;

@@ -136,6 +136,7 @@ export const getAttendeeByIdSchema = {
               type: "object",
               properties: {
                 id: { type: "string" },
+                checkInDate: { type: "string" },
                 checkedInAt: { type: "string" },
                 loggedBy: {
                   type: "object",
@@ -210,6 +211,11 @@ export const toggleCheckInSchema = {
           message: { type: "string" },
           status: { type: "string" },
           checkedInAt: { type: ["string", "null"] },
+          checkInDate: { type: "string" },
+          todayCheckInCount: { type: "number" },
+          totalCheckIns: { type: "number" },
+          ticket: { type: "object" },
+          checkIn: { type: "object" },
         },
       },
       400: errorResponseSchema,

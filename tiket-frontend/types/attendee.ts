@@ -14,7 +14,11 @@ export interface AttendeeOrder {
   id: string;
   totalAmount: string;
   paymentStatus:
-    "pending" | "success" | "failed" | "refunded" | "partially_refunded";
+    | "pending"
+    | "success"
+    | "failed"
+    | "refunded"
+    | "partially_refunded";
   createdAt: string;
 }
 
@@ -61,6 +65,7 @@ export interface FormResponseItem {
 
 export interface CheckInLog {
   id: string;
+  checkInDate?: string;
   checkedInAt: string;
   loggedBy: {
     id: string;

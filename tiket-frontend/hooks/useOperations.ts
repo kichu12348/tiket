@@ -156,6 +156,9 @@ export function useOperations(eventId: string) {
           ticket?: { id: string };
           ticketId?: string;
           status?: string;
+          todayCheckInCount?: number;
+          totalCheckIns?: number;
+          checkInDate?: string;
         };
         toast.success(res?.message || "Attendee checked in.");
         await refresh();
@@ -164,6 +167,9 @@ export function useOperations(eventId: string) {
           ticketId: res?.ticket?.id || res?.ticketId || "",
           message: res?.message || "Attendee checked in.",
           status: res?.status || "used",
+          todayCheckInCount: res?.todayCheckInCount,
+          totalCheckIns: res?.totalCheckIns,
+          checkInDate: res?.checkInDate,
         };
       } catch (err) {
         const msg = getErrorMessage(err);

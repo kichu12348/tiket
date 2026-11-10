@@ -8,6 +8,7 @@ import {
   integer,
   numeric,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import type {
@@ -72,6 +73,9 @@ export const ticketTypes = pgTable("ticket_types", {
   tags: jsonb("tags").$type<string[]>().default([]),
   enableWaitlist: boolean("enable_waitlist").notNull().default(false),
   multiDayCheckIn: boolean("multi_day_check_in").notNull().default(false),
+  maxCheckInsPerDay: integer("max_check_ins_per_day").default(1),
+  codePrefix: varchar("code_prefix", { length: 20 }).notNull().default(""),
+  codeLength: integer("code_length").notNull().default(6),
   maxPerUser: integer("max_per_user"),
   isFixedDefault: boolean("is_fixed_default").notNull().default(false),
   collectGst: boolean("collect_gst").notNull().default(false),
@@ -130,18 +134,24 @@ export const ticketTransfers = pgTable("ticket_transfers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const checkIns = pgTable("check_ins", {
-  id: uuid("id").primaryKey().$defaultFn(uuidv7),
-  eventId: uuid("event_id")
-    .references(() => events.id, { onDelete: "cascade" })
-    .notNull(),
-  ticketId: uuid("ticket_id")
-    .references(() => tickets.id, { onDelete: "cascade" })
-    .unique()
-    .notNull(),
-  loggedByUserId: uuid("logged_by_user_id").references(() => users.id), // The team member validating the scan
-  checkedInAt: timestamp("checked_in_at").defaultNow().notNull(),
-});
+export const checkIns = pgTable(
+  "check_ins",
+  {
+    id: uuid("id").primaryKey().$defaultFn(uuidv7),
+    eventId: uuid("event_id")
+      .references(() => events.id, { onDelete: "cascade" })
+      .notNull(),
+    ticketId: uuid("ticket_id")
+      .references(() => tickets.id, { onDelete: "cascade" })
+      .notNull(),
+    checkInDate: varchar("check_in_date", { length: 10 }).notNull(),
+    loggedByUserId: uuid("logged_by_user_id").references(() => users.id), // The team member validating the scan
+    checkedInAt: timestamp("checked_in_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("checkin_ticket_date_idx").on(table.ticketId, table.checkInDate),
+  ],
+);
 
 export const admissionAudits = pgTable("admission_audits", {
   id: uuid("id").primaryKey().$defaultFn(uuidv7),

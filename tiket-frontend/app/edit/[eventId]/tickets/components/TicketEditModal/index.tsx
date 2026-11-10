@@ -18,6 +18,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -107,6 +114,26 @@ function TicketEditModalContent({
   const [multiDayCheckIn, setMultiDayCheckIn] = useState(
     ticket?.multiDayCheckIn ?? false,
   );
+  const [maxCheckInsPerDayType, setMaxCheckInsPerDayType] = useState<
+    "1" | "unlimited" | "custom"
+  >(() => {
+    if (ticket?.multiDayCheckIn) {
+      if (ticket.maxCheckInsPerDay === null) return "unlimited";
+      if (
+        typeof ticket.maxCheckInsPerDay === "number" &&
+        ticket.maxCheckInsPerDay > 1
+      ) {
+        return "custom";
+      }
+    }
+    return "1";
+  });
+  const [customMaxCheckIns, setCustomMaxCheckIns] = useState<string>(() => {
+    if (ticket?.maxCheckInsPerDay && ticket.maxCheckInsPerDay > 1) {
+      return ticket.maxCheckInsPerDay.toString();
+    }
+    return "2";
+  });
 
   // Limit Capacity Toggle & Input (defaults to true for new ticket creation)
   const [hasLimitCapacity, setHasLimitCapacity] = useState(
@@ -167,6 +194,12 @@ function TicketEditModalContent({
   );
 
   // Advanced Settings: Category / Pool & Tags
+  const [codePrefix, setCodePrefix] = useState<string>(
+    ticket?.codePrefix ?? "",
+  );
+  const [codeLength, setCodeLength] = useState<number>(
+    ticket?.codeLength ?? 6,
+  );
   const [category, setCategory] = useState(
     ticket?.category ?? ticket?.poolName ?? "",
   );
@@ -184,14 +217,16 @@ function TicketEditModalContent({
       ticket?.eligibilityRules?.rules &&
       Array.isArray(ticket.eligibilityRules.rules)
     ) {
-      return ticket.eligibilityRules.rules.map((r: { sourceId?: string; value?: unknown }) => ({
-        fieldId: r.sourceId || "",
-        allowedValues: Array.isArray(r.value)
-          ? (r.value as string[])
-          : r.value
-            ? [String(r.value)]
-            : [],
-      }));
+      return ticket.eligibilityRules.rules.map(
+        (r: { sourceId?: string; value?: unknown }) => ({
+          fieldId: r.sourceId || "",
+          allowedValues: Array.isArray(r.value)
+            ? (r.value as string[])
+            : r.value
+              ? [String(r.value)]
+              : [],
+        }),
+      );
     }
     return [];
   })();
@@ -268,17 +303,33 @@ function TicketEditModalContent({
         (c) => c.fieldId && c.allowedValues.length > 0,
       );
 
+      let computedMaxCheckInsPerDay: number | null = 1;
+      if (multiDayCheckIn) {
+        if (maxCheckInsPerDayType === "unlimited") {
+          computedMaxCheckInsPerDay = null;
+        } else if (maxCheckInsPerDayType === "custom") {
+          computedMaxCheckInsPerDay = parseInt(customMaxCheckIns, 10) || 1;
+        } else {
+          computedMaxCheckInsPerDay = 1;
+        }
+      } else {
+        computedMaxCheckInsPerDay = 1;
+      }
+
       const payload = {
         name: name.trim(),
         description: description.trim() || undefined,
         price: isPaid ? Number(price) : 0,
         passFeeToCustomer: isPaid ? passFeeToCustomer : false,
         quantityLimit:
-          hasLimitCapacity && quantityLimit ? parseInt(quantityLimit, 10) : null,
+          hasLimitCapacity && quantityLimit
+            ? parseInt(quantityLimit, 10)
+            : null,
         maxPerUser:
           hasMaxPerUser && maxPerUser ? parseInt(maxPerUser, 10) : null,
         enableWaitlist,
         multiDayCheckIn,
+        maxCheckInsPerDay: computedMaxCheckInsPerDay,
         isFixedDefault,
         collectGst: isPaid ? collectGst : false,
         isClosed,
@@ -286,6 +337,8 @@ function TicketEditModalContent({
         category: category.trim() || null,
         poolName: category.trim() || null,
         poolCapacity: poolCapacity ? parseInt(poolCapacity, 10) : null,
+        codePrefix: codePrefix.trim().toUpperCase(),
+        codeLength: codeLength || 6,
         tags: parsedTags,
         conditions: validConditions.length > 0 ? validConditions : null,
         saleStart,
@@ -365,10 +418,7 @@ function TicketEditModalContent({
                 Allow attendees to join a waitlist when this tier is full
               </span>
             </div>
-            <Switch
-              checked={enableWaitlist}
-              onChange={setEnableWaitlist}
-            />
+            <Switch checked={enableWaitlist} onChange={setEnableWaitlist} />
           </div>
 
           {/* Multi-Day CheckIn Switch */}
@@ -379,10 +429,7 @@ function TicketEditModalContent({
                 Allow attendees to check in across multiple days of the event
               </span>
             </div>
-            <Switch
-              checked={multiDayCheckIn}
-              onChange={setMultiDayCheckIn}
-            />
+            <Switch checked={multiDayCheckIn} onChange={setMultiDayCheckIn} />
           </div>
 
           {/* Limit Capacity Switch & Input */}
@@ -421,7 +468,9 @@ function TicketEditModalContent({
           <div className={styles.formGroup}>
             <div className={styles.switchRow}>
               <div className={styles.switchLabelBlock}>
-                <span className={styles.switchTitle}>Limit Tickets Per User</span>
+                <span className={styles.switchTitle}>
+                  Limit Tickets Per User
+                </span>
                 <span className={styles.switchSubtext}>
                   Cap the quantity a single attendee can purchase
                 </span>
@@ -454,10 +503,7 @@ function TicketEditModalContent({
                 Pre-selects this ticket by default on the registration form
               </span>
             </div>
-            <Switch
-              checked={isFixedDefault}
-              onChange={setIsFixedDefault}
-            />
+            <Switch checked={isFixedDefault} onChange={setIsFixedDefault} />
           </div>
 
           {/* Paid Ticket Switch & Nested Section */}
@@ -539,7 +585,13 @@ function TicketEditModalContent({
                       : `Total Price for User: ₹${formatRupees(parsedPrice)} (fee deducted from earnings)`}
                   </div>
                   {/* Preserves compatibility with existing test 6 regex assertions */}
-                  <div style={{ fontSize: "0.75rem", opacity: 0.7, marginTop: "2px" }}>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      opacity: 0.7,
+                      marginTop: "2px",
+                    }}
+                  >
                     {passFeeToCustomer
                       ? `Customer pays ₹${formatRupees(parsedPrice + feeRupees)} (+${feePercent}% fee) • You receive ₹${formatRupees(parsedPrice)}`
                       : `Customer pays ₹${formatRupees(parsedPrice)} (Fee included) • You receive ₹${formatRupees(parsedPrice - feeRupees)} (${feePercent}% fee deducted)`}
@@ -575,10 +627,80 @@ function TicketEditModalContent({
             />
           </div>
 
+          {/* Multi-Day Check-In Switch */}
+          <div className={styles.switchRow}>
+            <div className={styles.switchLabelBlock}>
+              <span className={styles.switchTitle}>Multi-Day Check-In</span>
+              <span className={styles.switchSubtext}>
+                Allow ticket admission across multiple event days
+              </span>
+            </div>
+            <Switch
+              id="ticket-multi-day-checkin-switch"
+              checked={multiDayCheckIn}
+              onChange={(checked) => {
+                setMultiDayCheckIn(checked);
+                if (!checked) {
+                  setMaxCheckInsPerDayType("1");
+                  setCustomMaxCheckIns("1");
+                }
+              }}
+            />
+          </div>
+
+          {multiDayCheckIn && (
+            <div className={styles.nestedSection}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>
+                  Check-ins Allowed Per Day
+                </label>
+                <Select
+                  value={maxCheckInsPerDayType}
+                  onValueChange={(val) =>
+                    setMaxCheckInsPerDayType(
+                      val as "1" | "unlimited" | "custom",
+                    )
+                  }
+                >
+                  <SelectTrigger
+                    className="w-full"
+                    data-testid="select-daily-checkin-limit"
+                  >
+                    <SelectValue placeholder="Select daily limit" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1c1c1e] border-white/10 text-white z-[9999]">
+                    <SelectItem value="1">1 per day (Default)</SelectItem>
+                    <SelectItem value="unlimited">
+                      Unlimited re-entry
+                    </SelectItem>
+                    <SelectItem value="custom">Custom limit per day</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {maxCheckInsPerDayType === "custom" && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Max Scans Per Day</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="100"
+                    placeholder="e.g. 2, 3"
+                    value={customMaxCheckIns}
+                    onChange={(e) => setCustomMaxCheckIns(e.target.value)}
+                    data-testid="ticket-max-checkins-input"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Show This Ticket Only (Direct Readonly Link) */}
           {ticket?.id && (
             <div className={styles.formGroup}>
-              <label className={styles.label}>Show This Ticket Only (Direct Link)</label>
+              <label className={styles.label}>
+                Show This Ticket Only (Direct Link)
+              </label>
               <div className={styles.urlBox}>
                 <input
                   type="text"
@@ -621,9 +743,23 @@ function TicketEditModalContent({
               </span>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <span style={{ fontSize: "0.85rem", width: "40px", color: "rgba(255, 255, 255, 0.7)" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+              }}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.85rem",
+                    width: "40px",
+                    color: "rgba(255, 255, 255, 0.7)",
+                  }}
+                >
                   Start
                 </span>
                 <div className={styles.pickersBox}>
@@ -638,26 +774,43 @@ function TicketEditModalContent({
                         )}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+                    <PopoverContent
+                      className="w-auto p-0 z-[9999]"
+                      align="start"
+                    >
                       <Calendar
                         mode="single"
                         selected={saleStart ? new Date(saleStart) : undefined}
-                        onSelect={(date) => updateDate(saleStart, date, setSaleStart)}
+                        onSelect={(date) =>
+                          updateDate(saleStart, date, setSaleStart)
+                        }
                       />
                     </PopoverContent>
                   </Popover>
                   <Dropdown
                     options={TIME_OPTIONS}
-                    value={saleStart ? format(new Date(saleStart), "HH:mm") : "00:00"}
-                    onChange={(val) => updateTime(saleStart, val as string, setSaleStart)}
+                    value={
+                      saleStart ? format(new Date(saleStart), "HH:mm") : "00:00"
+                    }
+                    onChange={(val) =>
+                      updateTime(saleStart, val as string, setSaleStart)
+                    }
                     btnColor="transparent"
                     maxHeight="250px"
                   />
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <span style={{ fontSize: "0.85rem", width: "40px", color: "rgba(255, 255, 255, 0.7)" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.85rem",
+                    width: "40px",
+                    color: "rgba(255, 255, 255, 0.7)",
+                  }}
+                >
                   End
                 </span>
                 <div className={styles.pickersBox}>
@@ -672,18 +825,27 @@ function TicketEditModalContent({
                         )}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+                    <PopoverContent
+                      className="w-auto p-0 z-[9999]"
+                      align="start"
+                    >
                       <Calendar
                         mode="single"
                         selected={saleEnd ? new Date(saleEnd) : undefined}
-                        onSelect={(date) => updateDate(saleEnd, date, setSaleEnd)}
+                        onSelect={(date) =>
+                          updateDate(saleEnd, date, setSaleEnd)
+                        }
                       />
                     </PopoverContent>
                   </Popover>
                   <Dropdown
                     options={TIME_OPTIONS}
-                    value={saleEnd ? format(new Date(saleEnd), "HH:mm") : "00:00"}
-                    onChange={(val) => updateTime(saleEnd, val as string, setSaleEnd)}
+                    value={
+                      saleEnd ? format(new Date(saleEnd), "HH:mm") : "00:00"
+                    }
+                    onChange={(val) =>
+                      updateTime(saleEnd, val as string, setSaleEnd)
+                    }
                     btnColor="transparent"
                     maxHeight="250px"
                   />
@@ -719,7 +881,10 @@ function TicketEditModalContent({
 
           {/* Advanced Settings Collapsible Card */}
           <Accordion type="single" collapsible className="w-full mt-2">
-            <AccordionItem value="advanced" className="border border-white/10 rounded-xl bg-white/[0.02]">
+            <AccordionItem
+              value="advanced"
+              className="border border-white/10 rounded-xl bg-white/[0.02]"
+            >
               <AccordionTrigger className="px-4 py-3 hover:no-underline">
                 <div className="flex flex-col text-left">
                   <span className="text-sm font-semibold text-white">
@@ -732,6 +897,61 @@ function TicketEditModalContent({
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4 pt-2">
                 <div className={styles.advancedContainer}>
+                  {/* Ticket Code Format */}
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Ticket Code Format</label>
+                    <div className={styles.codeFormatGrid}>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-white/60">
+                          Code Prefix (optional)
+                        </span>
+                        <Input
+                          type="text"
+                          placeholder="e.g. EXO-, VIP-"
+                          maxLength={20}
+                          value={codePrefix}
+                          onChange={(e) => {
+                            const val = e.target.value
+                              .toUpperCase()
+                              .replace(/[^A-Z0-9_-]/g, "");
+                            setCodePrefix(val);
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-white/60">
+                          Number of Digits
+                        </span>
+                        <Select
+                          value={codeLength.toString()}
+                          onValueChange={(val) =>
+                            setCodeLength(parseInt(val, 10))
+                          }
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Digits" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                              <SelectItem key={num} value={num.toString()}>
+                                {num} digits
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-white/40">Preview:</span>
+                      <div className={styles.sampleCodeBadge}>
+                        <span className="text-white/60">Sample Code:</span>
+                        <span className="font-semibold text-white tracking-wider">
+                          {`${codePrefix.trim().toUpperCase()}${"482910735194".slice(0, Math.min(12, Math.max(4, codeLength)))}`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Category / Pool */}
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Category / Pool Name</label>
@@ -742,14 +962,22 @@ function TicketEditModalContent({
                       onChange={(e) => setCategory(e.target.value)}
                       data-testid="ticket-pool-name-input"
                     />
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted, #a1a1aa)" }}>
-                      Share pool capacity across multiple tiers (e.g. Early Bird + Regular).
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--text-muted, #a1a1aa)",
+                      }}
+                    >
+                      Share pool capacity across multiple tiers (e.g. Early Bird
+                      + Regular).
                     </span>
                   </div>
 
                   {category.trim() && (
                     <div className={styles.formGroup}>
-                      <label className={styles.label}>Shared Pool Capacity</label>
+                      <label className={styles.label}>
+                        Shared Pool Capacity
+                      </label>
                       <Input
                         type="number"
                         placeholder="Total capacity for this category pool"
@@ -763,7 +991,9 @@ function TicketEditModalContent({
 
                   {/* Tags */}
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>Tags (Comma-separated)</label>
+                    <label className={styles.label}>
+                      Tags (Comma-separated)
+                    </label>
                     <Input
                       type="text"
                       placeholder="e.g. speaker, sponsor, early-access"
@@ -774,9 +1004,18 @@ function TicketEditModalContent({
 
                   {/* Conditions & Visibility Rules */}
                   <div className={styles.formGroup}>
-                    <label className={styles.label}>Conditions & Visibility Rules</label>
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted, #a1a1aa)", marginBottom: "0.25rem" }}>
-                      Only attendees with matching answers can select and purchase this ticket.
+                    <label className={styles.label}>
+                      Conditions & Visibility Rules
+                    </label>
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--text-muted, #a1a1aa)",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      Only attendees with matching answers can select and
+                      purchase this ticket.
                     </span>
                     <ConditionBuilder
                       conditions={conditions}

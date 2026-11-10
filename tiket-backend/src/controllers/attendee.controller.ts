@@ -390,6 +390,7 @@ export const getAttendeeById = async (
     const checkInLogs = await db
       .select({
         id: checkIns.id,
+        checkInDate: checkIns.checkInDate,
         checkedInAt: checkIns.checkedInAt,
         loggedBy: {
           id: users.id,
@@ -429,6 +430,7 @@ export const getAttendeeById = async (
       attendee,
       checkIns: checkInLogs.map((c) => ({
         id: c.id,
+        checkInDate: c.checkInDate,
         checkedInAt: c.checkedInAt.toISOString(),
         loggedBy: c.loggedBy
           ? { id: c.loggedBy.id, name: c.loggedBy.name }
@@ -621,12 +623,10 @@ export const manualRegister = async (
       commandKey(request.headers["idempotency-key"]),
       true,
     );
-    return reply
-      .status(201)
-      .send({
-        message: "Complimentary registration created.",
-        ticket: (await checkoutStatus(order.id, user!.id)).tickets[0],
-      });
+    return reply.status(201).send({
+      message: "Complimentary registration created.",
+      ticket: (await checkoutStatus(order.id, user!.id)).tickets[0],
+    });
   } catch (error) {
     return handleControllerError(request, reply, error);
   }
@@ -813,7 +813,9 @@ export const getEventInsights = async (
         .where(and(eq(orders.eventId, eventId), isNotNull(orders.paymentId)));
 
       const [returned] = await db
-        .select({ value: sql<string>`coalesce(sum(${refunds.amountPaise}), 0)` })
+        .select({
+          value: sql<string>`coalesce(sum(${refunds.amountPaise}), 0)`,
+        })
         .from(refunds)
         .innerJoin(
           orders,
@@ -822,7 +824,9 @@ export const getEventInsights = async (
             eq(refunds.paymentId, orders.paymentId),
           ),
         )
-        .where(and(eq(orders.eventId, eventId), eq(refunds.status, "processed")));
+        .where(
+          and(eq(orders.eventId, eventId), eq(refunds.status, "processed")),
+        );
 
       const grossPaise = Number(gross?.value || 0);
       const refundedPaise = Number(returned?.value || 0);
@@ -1186,9 +1190,7 @@ export const getEventInsights = async (
           value,
           count,
           percentage:
-            totalResponses > 0
-              ? Math.round((count / totalResponses) * 100)
-              : 0,
+            totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0,
         }))
         .sort((a, b) => b.count - a.count);
 

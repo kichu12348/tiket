@@ -17,6 +17,9 @@ interface ScanResponse {
   ticketId?: string;
   message?: string;
   error?: string;
+  todayCheckInCount?: number;
+  totalCheckIns?: number;
+  checkInDate?: string;
 }
 
 interface DoorScannerProps {
@@ -72,6 +75,8 @@ export default function DoorScanner({
     message: string;
     ticketId?: string;
     code?: string;
+    todayCheckInCount?: number;
+    totalCheckIns?: number;
   } | null>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -89,11 +94,17 @@ export default function DoorScanner({
         const msg =
           (typeof res === "object" && res.message) ||
           "Attendee checked in successfully.";
+        const todayCheckInCount =
+          typeof res === "object" ? res.todayCheckInCount : undefined;
+        const totalCheckIns =
+          typeof res === "object" ? res.totalCheckIns : undefined;
         setLastResult({
           type: "success",
           message: msg,
           ticketId,
           code: trimmed,
+          todayCheckInCount,
+          totalCheckIns,
         });
         playAudioFeedback("success");
         setCode("");
@@ -210,6 +221,11 @@ export default function DoorScanner({
               <AlertCircle size={18} className="shrink-0 text-red-400" />
             )}
             <span>{lastResult.message}</span>
+            {lastResult.todayCheckInCount !== undefined && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-medium">
+                Scan #{lastResult.todayCheckInCount} today ({lastResult.totalCheckIns} total)
+              </span>
+            )}
             {lastResult.code && (
               <span className="font-mono text-xs opacity-75">
                 ({lastResult.code})

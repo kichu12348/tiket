@@ -11,7 +11,7 @@ import {
   users,
 } from "@db/schema";
 import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import type { Transaction } from "../db/types";
 import { HttpError } from "../utils/errors";
 import {
@@ -62,6 +62,47 @@ export function commandKey(value: unknown): string {
   if (typeof value !== "string" || !/^[A-Za-z0-9:_-]{8,128}$/.test(value))
     throw new HttpError(400, "A valid Idempotency-Key header is required.");
   return value;
+}
+
+export async function generateUniqueTicketCode(
+  tx?: Transaction | null,
+  options?: { prefix?: string | null; digits?: number | null },
+  reservedInBatch: Set<string> = new Set(),
+): Promise<string> {
+  const prefix = (options?.prefix ?? "").trim().toUpperCase();
+  let digits = Math.min(12, Math.max(4, options?.digits ?? 6));
+
+  for (let attempt = 1; attempt <= 15; attempt++) {
+    if (attempt > 10) {
+      digits += 2;
+    }
+    const maxVal = 10 ** digits;
+    const num = randomInt(0, maxVal);
+    const randomDigits = num.toString().padStart(digits, "0");
+    const candidate = `${prefix}${randomDigits}`;
+
+    if (reservedInBatch.has(candidate)) {
+      continue;
+    }
+
+    if (tx) {
+      const existing = await tx
+        .select({ id: tickets.id })
+        .from(tickets)
+        .where(eq(tickets.qrCode, candidate))
+        .limit(1);
+      if (existing.length > 0) {
+        continue;
+      }
+    }
+
+    reservedInBatch.add(candidate);
+    return candidate;
+  }
+
+  const fallback = `${prefix}${randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+  reservedInBatch.add(fallback);
+  return fallback;
 }
 function registrationOpen(event: typeof events.$inferSelect) {
   const now = new Date();
@@ -432,9 +473,15 @@ export async function createCheckout(
       })
       .returning();
     if (!order) throw new Error("Order creation failed.");
+    const reservedCodesInOrder = new Set<string>();
     for (const [index, purchase] of body.purchases.entries()) {
       const tier = result.tiers.find((t) => t.id === purchase.ticketTypeId)!;
       const line = result.lines[index]!;
+      const qrCode = await generateUniqueTicketCode(
+        tx,
+        { prefix: tier.codePrefix, digits: tier.codeLength },
+        reservedCodesInOrder,
+      );
       const [ticket] = await tx
         .insert(tickets)
         .values({
@@ -442,7 +489,7 @@ export async function createCheckout(
           eventId: order.eventId,
           ticketTypeId: tier.id,
           userId,
-          qrCode: randomUUID(),
+          qrCode,
           status: isFree
             ? requireApproval
               ? "pending_approval"

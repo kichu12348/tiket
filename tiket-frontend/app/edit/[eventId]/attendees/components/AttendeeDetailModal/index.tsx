@@ -165,18 +165,26 @@ export default function AttendeeDetailModal({
                 </span>
               </div>
 
-              <span
-                className={styles.statusBadge}
-                data-status={detail.attendee.status}
-              >
-                {detail.attendee.status === "used" ? (
-                  <>
-                    <CheckCircle2 size={12} /> Checked In
-                  </>
-                ) : (
-                  detail.attendee.status.toUpperCase()
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span
+                  className={styles.statusBadge}
+                  data-status={detail.attendee.status}
+                >
+                  {detail.attendee.status === "used" ? (
+                    <>
+                      <CheckCircle2 size={12} /> Checked In
+                    </>
+                  ) : (
+                    detail.attendee.status.toUpperCase()
+                  )}
+                </span>
+                {detail.checkIns && detail.checkIns.length > 0 && (
+                  <span className={styles.scanCountBadge}>
+                    {detail.checkIns.length} scan
+                    {detail.checkIns.length > 1 ? "s" : ""}
+                  </span>
                 )}
-              </span>
+              </div>
             </div>
 
             {/* Ticket Metadata Grid */}
@@ -285,17 +293,22 @@ export default function AttendeeDetailModal({
               <div className={styles.section}>
                 <div className={styles.sectionHeader}>
                   <Clock size={15} />
-                  <h4>Check-In Log</h4>
+                  <h4>Check-In Log ({detail.checkIns.length})</h4>
                 </div>
                 <div className={styles.checkInList}>
-                  {detail.checkIns.map((ci) => (
+                  {detail.checkIns.map((ci, idx) => (
                     <div key={ci.id} className={styles.checkInItem}>
-                      <span>
-                        {new Date(ci.checkedInAt).toLocaleString(undefined, {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={styles.checkInIndex}>
+                          #{detail.checkIns.length - idx}
+                        </span>
+                        <span>
+                          {new Date(ci.checkedInAt).toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </span>
+                      </div>
                       {ci.loggedBy && <span>by {ci.loggedBy.name}</span>}
                     </div>
                   ))}
@@ -320,9 +333,7 @@ export default function AttendeeDetailModal({
                     className={styles.blockInput}
                     value={blockScope}
                     onChange={(e) =>
-                      setBlockScope(
-                        e.target.value as "event" | "organization",
-                      )
+                      setBlockScope(e.target.value as "event" | "organization")
                     }
                   >
                     <option value="event">This Event Only</option>

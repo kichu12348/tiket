@@ -45,6 +45,9 @@ export interface TicketType {
   tags?: string[];
   enableWaitlist?: boolean;
   multiDayCheckIn?: boolean;
+  maxCheckInsPerDay?: number | null;
+  codePrefix?: string;
+  codeLength?: number;
   maxPerUser?: number | null;
   isFixedDefault?: boolean;
   collectGst?: boolean;
@@ -77,6 +80,9 @@ export interface CreateTicketTypePayload {
   tags?: string[];
   enableWaitlist?: boolean;
   multiDayCheckIn?: boolean;
+  maxCheckInsPerDay?: number | null;
+  codePrefix?: string;
+  codeLength?: number;
   maxPerUser?: number | null;
   isFixedDefault?: boolean;
   collectGst?: boolean;
