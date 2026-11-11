@@ -1,13 +1,48 @@
 import db from "@db";
-import { connectionTickets, events } from "@db/schema";
-import { and, eq, gt, inArray, lt } from "drizzle-orm";
-import { createHash, randomBytes } from "node:crypto";
+import { events } from "@db/schema";
+import { eq, inArray } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "ws";
 import { verifyEventPermission } from "../utils/permissions";
 import { HttpError } from "../utils/errors";
+import { getRedisClient, isRedisConfigured } from "../utils/redis";
 
-export async function canSubscribe(eventId: string, userId: string) {
+const MAX_FALLBACK_ENTRIES = 500;
+const memoryTickets = new Map<
+  string,
+  { userId: string; eventId: string; expiresAt: number }
+>();
+
+export function getRealtimeMemoryTicketsCount(): number {
+  return memoryTickets.size;
+}
+
+export function clearRealtimeMemoryTickets(): void {
+  memoryTickets.clear();
+}
+
+function pruneMemoryTickets(): void {
+  const now = Date.now();
+  for (const [key, entry] of memoryTickets) {
+    if (entry.expiresAt <= now) {
+      memoryTickets.delete(key);
+    }
+  }
+  while (memoryTickets.size >= MAX_FALLBACK_ENTRIES) {
+    const oldestKey = memoryTickets.keys().next().value;
+    if (oldestKey) {
+      memoryTickets.delete(oldestKey);
+    } else {
+      break;
+    }
+  }
+}
+
+export async function canSubscribe(
+  eventId: string,
+  userId: string,
+): Promise<boolean> {
   for (const permission of [
     "view_guests",
     "manage_guests",
@@ -19,20 +54,69 @@ export async function canSubscribe(eventId: string, userId: string) {
     if (await verifyEventPermission(eventId, userId, permission)) return true;
   return false;
 }
-export async function issueConnectionTicket(eventId: string, userId: string) {
+
+export async function issueConnectionTicket(
+  userId: string,
+  eventId: string,
+): Promise<{ ticket: string; expiresIn: number }> {
   if (!(await canSubscribe(eventId, userId)))
     throw new HttpError(403, "Dashboard permission is required.");
-  const value = randomBytes(32).toString("base64url");
-  await db.insert(connectionTickets).values({
-    hash: hash(value),
-    eventId,
-    userId,
-    expiresAt: new Date(Date.now() + 30000),
-  });
-  return { ticket: value, expiresIn: 30 };
+
+  const ticket = randomBytes(32).toString("hex");
+  const payload = JSON.stringify({ userId, eventId });
+
+  if (isRedisConfigured()) {
+    const redis = getRedisClient();
+    await redis.set(`ws_ticket:${ticket}`, payload, "EX", 30);
+  } else {
+    pruneMemoryTickets();
+    memoryTickets.set(`ws_ticket:${ticket}`, {
+      userId,
+      eventId,
+      expiresAt: Date.now() + 30000,
+    });
+  }
+
+  console.log(memoryTickets);
+
+  return { ticket, expiresIn: 30 };
 }
-const hash = (value: string) =>
-  createHash("sha256").update(value).digest("hex");
+
+export async function consumeConnectionTicket(
+  ticket: string,
+): Promise<{ userId: string; eventId: string } | null> {
+  if (!ticket || typeof ticket !== "string") {
+    return null;
+  }
+
+  const key = `ws_ticket:${ticket}`;
+
+  if (isRedisConfigured()) {
+    const redis = getRedisClient();
+    try {
+      const val = await redis.getdel(key);
+      if (!val) return null;
+      return JSON.parse(val) as { userId: string; eventId: string };
+    } catch {
+      const lua =
+        'local v = redis.call("GET", KEYS[1]); if v then redis.call("DEL", KEYS[1]); end; return v;';
+      const val = (await redis.send("EVAL", [lua, "1", key])) as string | null;
+      if (!val) return null;
+      return JSON.parse(val) as { userId: string; eventId: string };
+    }
+  }
+
+  const entry = memoryTickets.get(key);
+  if (!entry) {
+    return null;
+  }
+  memoryTickets.delete(key);
+  if (Date.now() >= entry.expiresAt) {
+    return null;
+  }
+  return { userId: entry.userId, eventId: entry.eventId };
+}
+
 interface Subscription {
   eventId: string;
   userId: string;
@@ -40,6 +124,7 @@ interface Subscription {
   pong: boolean;
   authenticatedAt: number;
 }
+
 export function realtimeHandler(app: FastifyInstance) {
   const subscriptions = new Map<WebSocket, Subscription>();
   const unauthenticated = new Set<WebSocket>();
@@ -137,15 +222,7 @@ export function realtimeHandler(app: FastifyInstance) {
           typeof payload.ticket !== "string"
         )
           throw new Error("Invalid connection ticket");
-        const [ticket] = await db
-          .delete(connectionTickets)
-          .where(
-            and(
-              eq(connectionTickets.hash, hash(payload.ticket)),
-              gt(connectionTickets.expiresAt, new Date()),
-            ),
-          )
-          .returning();
+        const ticket = await consumeConnectionTicket(payload.ticket);
         if (!ticket || !(await canSubscribe(ticket.eventId, ticket.userId)))
           throw new Error("Invalid connection ticket");
         if (socket.readyState !== 1) return;
@@ -180,9 +257,4 @@ export function realtimeHandler(app: FastifyInstance) {
       socket.terminate();
     });
   };
-}
-export async function cleanupConnectionTickets() {
-  await db
-    .delete(connectionTickets)
-    .where(lt(connectionTickets.expiresAt, new Date()));
 }

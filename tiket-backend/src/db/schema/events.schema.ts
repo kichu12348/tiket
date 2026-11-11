@@ -109,16 +109,6 @@ export const domainEvents = pgTable(
   ],
 );
 
-export const connectionTickets = pgTable("connection_tickets", {
-  hash: varchar("hash", { length: 64 }).primaryKey(),
-  userId: uuid("user_id")
-    .references(() => users.id)
-    .notNull(),
-  eventId: uuid("event_id")
-    .references(() => events.id)
-    .notNull(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-});
 
 export const eventBlacklist = pgTable("event_blacklist", {
   id: uuid("id").primaryKey().$defaultFn(uuidv7),

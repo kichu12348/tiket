@@ -105,6 +105,33 @@
   line-height: 1.4;
 }
 
+.codePreviewRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.codePreviewLabel {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.codePreviewBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  background: var(--color-soft-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
 .editorContainer {
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -313,41 +340,6 @@
   background: var(--status-success-bg);
   color: var(--status-success);
   border-color: var(--status-success);
-}
-
-.accordionHeader {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.accordionTitleGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  text-align: left;
-}
-
-.accordionTitleRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.sparkleIcon {
-  color: var(--text-muted);
-}
-
-.advancedContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.conditionBuilderWrapper {
-  margin-top: 0.25rem;
 }
 
 .footerActionBox {

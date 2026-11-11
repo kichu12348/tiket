@@ -5,7 +5,7 @@ export async function connectDashboard(
 ) {
   await request.jwtVerify();
   return issueConnectionTicket(
-    request.params.eventId,
     (request.user as { id: string }).id,
+    request.params.eventId,
   );
 }

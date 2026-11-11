@@ -1,6 +1,6 @@
 .standardCard {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
+  background: var(--color-soft-bg-subtle);
+  border-radius: var(--radius-sm);
   padding: 0.2rem 0.75rem;
   display: flex;
   align-items: center;
@@ -20,4 +20,105 @@
 .standardCardIcon {
   color: var(--text-muted);
   opacity: 0.7;
+}
+
+.cardTextCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fieldName {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.fieldSubtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.inlineLock {
+  opacity: 0.7;
+}
+
+.statusBadge {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-soft-bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  line-height: normal;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.lockIcon {
+  opacity: 0.6;
+}
+
+.dropdownWrapper {
+  margin-left: auto;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.dropdownTrigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: var(--color-soft-bg) !important;
+  border: none !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.85rem !important;
+  color: var(--color-text-secondary) !important;
+  height: auto !important;
+  min-height: unset !important;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease !important;
+  box-shadow: none !important;
+  line-height: normal !important;
+}
+
+.dropdownTrigger:hover {
+  background: var(--color-soft-bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.dropdownTrigger:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--surface-base),
+    0 0 0 4px var(--border-strong) !important;
+}
+
+.dropdownTrigger svg {
+  width: 12px !important;
+  height: 12px !important;
+  opacity: 0.6;
+}
+
+.statusText {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.statusTextOff {
+  color: var(--color-text-soft);
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: normal;
 }

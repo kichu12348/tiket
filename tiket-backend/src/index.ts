@@ -1,5 +1,6 @@
 import { startJobs } from "./services/jobs.service";
 import { buildApp } from "./app";
+import { connectRedis } from "./utils";
 
 const app = buildApp();
 startJobs(app);
@@ -9,6 +10,7 @@ app.get("/health", () => {
 });
 
 const start = async () => {
+  await connectRedis();
   await app.listen({
     port: Number(process.env.PORT || 3000),
     host: process.env.HOST || "0.0.0.0",

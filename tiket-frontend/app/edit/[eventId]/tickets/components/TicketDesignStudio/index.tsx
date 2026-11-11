@@ -295,6 +295,11 @@ export default function TicketDesignStudio({
         poolCapacity: settings.poolCapacity
           ? parseInt(settings.poolCapacity, 10)
           : null,
+        codePrefix: settings.codePrefix.trim().toUpperCase() || "",
+        codeLength: settings.codeLength || 6,
+        maxCheckInsPerDay: settings.multiDayCheckIn
+          ? settings.maxCheckInsPerDay
+          : 1,
         tags: parsedTags,
         conditions: validConditions.length > 0 ? validConditions : null,
         saleStart: settings.saleStart,
@@ -434,6 +439,10 @@ export default function TicketDesignStudio({
           setCategory={settings.setCategory}
           poolCapacity={settings.poolCapacity}
           setPoolCapacity={settings.setPoolCapacity}
+          codePrefix={settings.codePrefix}
+          setCodePrefix={settings.setCodePrefix}
+          codeLength={settings.codeLength}
+          setCodeLength={settings.setCodeLength}
           tagsInput={settings.tagsInput}
           setTagsInput={settings.setTagsInput}
           conditions={settings.conditions}

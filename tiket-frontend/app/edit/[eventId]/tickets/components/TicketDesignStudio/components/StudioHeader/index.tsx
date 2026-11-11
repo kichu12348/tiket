@@ -180,7 +180,7 @@ export default function StudioHeader({
 
       {/* =====================================================================
           ROW 2 (height 44px, bottom border):
-          Tabs: Pass Designer, Ticket Details, Sample Preview, Artboard.
+          Tabs: Pass Designer, Ticket Details, Sample Preview.
           Underline style with 2px bottom border indicator, horizontal scrollable.
           ===================================================================== */}
       <div className={styles.row2}>

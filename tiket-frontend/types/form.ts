@@ -76,6 +76,7 @@ export interface FormField {
   label: string;
   fieldType: FieldType;
   isRequired: boolean;
+  isLocked?: boolean;
   options: FormFieldOptions;
   conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
   sortOrder: number;
@@ -88,6 +89,7 @@ export interface CreateFormFieldPayload {
   label: string;
   fieldType: FieldType;
   isRequired?: boolean;
+  isLocked?: boolean;
   options?: FormFieldOptions;
   conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
   sortOrder?: number;

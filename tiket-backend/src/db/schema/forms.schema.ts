@@ -49,6 +49,7 @@ export interface FormFieldDefinition {
   label: string;
   fieldType: FormFieldType;
   isRequired: boolean;
+  isLocked?: boolean;
   options: string[] | FormFieldOptionsConfig | null;
   conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
   sortOrder: number;

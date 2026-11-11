@@ -3,7 +3,6 @@ import { cleanupExpiredHolds } from "./inventory.service";
 import { processInbox, reconcilePayments } from "./payment-lifecycle.service";
 import { processRefunds } from "./refund.service";
 import { processDeliveries } from "./notifications.service";
-import { cleanupConnectionTickets } from "./realtime.service";
 
 export function startJobs(app: FastifyInstance) {
   const timers: ReturnType<typeof setInterval>[] = [];
@@ -33,7 +32,6 @@ export function startJobs(app: FastifyInstance) {
   schedule(processRefunds, 5000);
   schedule(processDeliveries, 5000);
   schedule(reconcilePayments, 60000);
-  schedule(cleanupConnectionTickets, 60000);
   app.addHook("onClose", async () => {
     timers.forEach(clearInterval);
   });

@@ -17,12 +17,12 @@ import {
   eventTeamMembers,
   orders,
   domainEvents,
-  connectionTickets,
   uploads,
 } from "@db/schema";
 import type { EventSocialLinks } from "@db/schema";
 import { generateSlug } from "@utils";
 import { seedDefaultTemplatesForEvent } from "../utils/emailService";
+import { seedDefaultFormForEvent } from "./form.controller";
 import { eq, and, ne } from "drizzle-orm";
 
 interface CreateEventBody {
@@ -139,6 +139,9 @@ export const createEvent = async (
 
     // Seed default email templates once at event creation
     await seedDefaultTemplatesForEvent(createdEvent.id);
+
+    // Seed default locked form fields (Full Name, Email) once at event creation
+    await seedDefaultFormForEvent(createdEvent.id);
 
     return reply.status(201).send(createdEvent);
   } catch (error) {
@@ -469,9 +472,6 @@ export const deleteEvent = async (
           409,
           "Events with orders or registration files must be cancelled, not deleted.",
         );
-      await tx
-        .delete(connectionTickets)
-        .where(eq(connectionTickets.eventId, eventId));
       await tx.delete(domainEvents).where(eq(domainEvents.eventId, eventId));
       await tx.delete(events).where(eq(events.id, eventId));
     });

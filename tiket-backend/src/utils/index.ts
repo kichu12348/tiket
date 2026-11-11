@@ -10,3 +10,4 @@ export const generateSlug = (len: number = 5): string => {
 
 export * from "./verifyOwner";
 export * from "./emailService";
+export * from "./redis";

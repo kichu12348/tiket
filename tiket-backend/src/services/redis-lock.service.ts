@@ -1,40 +1,15 @@
-import { RedisClient } from "bun";
 import { randomUUID } from "node:crypto";
 import { HttpError } from "../utils/errors";
+import {
+  getRedisClient,
+  setTestRedisClient,
+  closeRedisClient,
+} from "../utils/redis";
+
+export { getRedisClient, setTestRedisClient, closeRedisClient };
 
 const RELEASE_LUA =
   "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
-
-let persistentClient: RedisClient | null = null;
-
-export function getRedisClient(): RedisClient {
-  if (!persistentClient) {
-    persistentClient = new RedisClient(
-      process.env.REDIS_URL || "redis://127.0.0.1:6379",
-      {
-        autoReconnect: true,
-        enableOfflineQueue: true,
-      },
-    );
-  }
-  return persistentClient;
-}
-
-export function setTestRedisClient(client: RedisClient | null): void {
-  persistentClient = client;
-}
-
-export async function closeRedisClient(): Promise<void> {
-  if (persistentClient) {
-    const client = persistentClient;
-    persistentClient = null;
-    try {
-      await client.close();
-    } catch {
-      // Ignore errors on close
-    }
-  }
-}
 
 export interface LockHandle {
   acquired: boolean;

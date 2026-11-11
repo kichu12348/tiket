@@ -8,7 +8,6 @@ import {
   Copy,
   Check,
   Palette,
-  Sparkles,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,12 +16,6 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import Switch from "@/components/Switch";
 import Dropdown from "@/components/Dropdown";
 import ConditionBuilder from "@/components/ConditionBuilder";
@@ -112,6 +105,10 @@ interface TicketSettingsPanelProps {
   setCategory: (v: string) => void;
   poolCapacity: string;
   setPoolCapacity: (v: string) => void;
+  codePrefix: string;
+  setCodePrefix: (v: string) => void;
+  codeLength: number;
+  setCodeLength: (v: number) => void;
   tagsInput: string;
   setTagsInput: (v: string) => void;
   conditions: VisibilityConditionRule[];
@@ -174,6 +171,10 @@ export default function TicketSettingsPanel({
   setCategory,
   poolCapacity,
   setPoolCapacity,
+  codePrefix,
+  setCodePrefix,
+  codeLength,
+  setCodeLength,
   tagsInput,
   setTagsInput,
   conditions,
@@ -691,91 +692,137 @@ export default function TicketSettingsPanel({
           </div>
         </section>
 
-        {/* Card 6: Advanced Settings Accordion */}
+        {/* Card 6: Advanced Settings */}
         <section className={styles.card}>
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="advanced" className="border-none">
-              <AccordionTrigger className="p-0 hover:no-underline">
-                <div className={styles.accordionHeader}>
-                  <div className={styles.accordionTitleGroup}>
-                    <div className={styles.accordionTitleRow}>
-                      <Sparkles size={16} className={styles.sparkleIcon} />
-                      <span className={styles.cardTitle}>
-                        Advanced Settings
-                      </span>
-                    </div>
-                    <p className={styles.cardSubtitle}>
-                      Category pool, tags, and custom question visibility rules
-                    </p>
-                  </div>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardTitleGroup}>
+              <h3 className={styles.cardTitle}>Advanced Settings</h3>
+              <p className={styles.cardSubtitle}>
+                Category pool, tags, ticket code format, and visibility rules.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.cardBody}>
+            {/* Ticket Code Prefix */}
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Ticket Code Prefix</label>
+              <Input
+                type="text"
+                placeholder="e.g. VIP, EXO"
+                className={styles.input}
+                maxLength={20}
+                value={codePrefix}
+                onChange={(e) => {
+                  const val = e.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9_-]/g, "");
+                  setCodePrefix(val);
+                }}
+              />
+              <span className={styles.helperText}>
+                Optional prefix added to generated pass codes (e.g. &quot;VIP-&quot;).
+              </span>
+              {codePrefix && codePrefix.trim().length > 0 && (
+                <div className={styles.codePreviewRow}>
+                  <span className={styles.codePreviewLabel}>Preview:</span>
+                  <span className={styles.codePreviewBadge}>
+                    {`${codePrefix.trim().toUpperCase()}${"482910735194".slice(0, Math.min(12, Math.max(4, codeLength || 6)))}`}
+                  </span>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="pt-5 pb-0">
-                <div className={styles.advancedContainer}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Category / Pool Name</label>
-                    <Input
-                      type="text"
-                      placeholder="e.g. VIP, Track A, or Student Pool"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      data-testid="ticket-pool-name-input"
-                    />
-                    <span className={styles.helperText}>
-                      Share capacity across multiple tiers (e.g. Early Bird +
-                      Regular).
-                    </span>
-                  </div>
+              )}
+            </div>
 
-                  {category.trim() && (
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>
-                        Shared Pool Capacity
-                      </label>
-                      <Input
-                        type="number"
-                        placeholder="Total capacity for this category pool"
-                        className={styles.input}
-                        value={poolCapacity}
-                        onChange={(e) => setPoolCapacity(e.target.value)}
-                        min="1"
-                        data-testid="ticket-pool-capacity-input"
-                      />
-                    </div>
-                  )}
+            {/* Ticket Code Digits */}
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Ticket Code Digits</label>
+              <Input
+                type="number"
+                placeholder="6"
+                className={styles.input}
+                min="4"
+                max="12"
+                value={codeLength}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) setCodeLength(val);
+                }}
+              />
+              <span className={styles.helperText}>
+                Length of the random number sequence (4 to 12 digits, default is 6).
+              </span>
+            </div>
 
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>
-                      Tags (Comma-separated)
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="e.g. speaker, sponsor, early-access"
-                      className={styles.input}
-                      value={tagsInput}
-                      onChange={(e) => setTagsInput(e.target.value)}
-                    />
-                  </div>
+            <div className={styles.divider} />
 
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>
-                      Conditions & Visibility Rules
-                    </label>
-                    <span className={styles.helperText}>
-                      Only attendees with matching answers can select this tier.
-                    </span>
-                    <div className={styles.conditionBuilderWrapper}>
-                      <ConditionBuilder
-                        conditions={conditions}
-                        onChange={setConditions}
-                        availableFields={formFields}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+            {/* Category / Pool Name */}
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Category / Pool Name</label>
+              <Input
+                type="text"
+                placeholder="e.g. VIP, Track A, or Student Pool"
+                className={styles.input}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                data-testid="ticket-pool-name-input"
+              />
+              <span className={styles.helperText}>
+                Share capacity across multiple tiers (e.g. Early Bird + Regular).
+              </span>
+            </div>
+
+            {category.trim() && (
+              <div className={styles.conditionalInputWrapper}>
+                <label className={styles.label}>Shared Pool Capacity</label>
+                <Input
+                  type="number"
+                  placeholder="Total capacity for this category pool"
+                  className={styles.input}
+                  value={poolCapacity}
+                  onChange={(e) => setPoolCapacity(e.target.value)}
+                  min="1"
+                  data-testid="ticket-pool-capacity-input"
+                />
+                <span className={styles.helperText}>
+                  Caps total registrations across all tiers in this pool.
+                </span>
+              </div>
+            )}
+
+            <div className={styles.divider} />
+
+            {/* Organizer Tags */}
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Tags (Comma-separated)</label>
+              <Input
+                type="text"
+                placeholder="e.g. speaker, sponsor, early-access"
+                className={styles.input}
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+              />
+              <span className={styles.helperText}>
+                Internal tags for attendee filtering and categorization.
+              </span>
+            </div>
+
+            <div className={styles.divider} />
+
+            {/* Form Question Visibility Rules */}
+            <div className={styles.formGroup}>
+              <label className={styles.label}>
+                Conditions & Visibility Rules
+              </label>
+              <span className={styles.helperText}>
+                Only attendees who submit matching answers on the registration form can view and select this tier.
+              </span>
+              <ConditionBuilder
+                conditions={conditions}
+                onChange={setConditions}
+                availableFields={formFields}
+              />
+            </div>
+          </div>
         </section>
 
         {/* Footer Quick Action: Jump to Pass Designer */}

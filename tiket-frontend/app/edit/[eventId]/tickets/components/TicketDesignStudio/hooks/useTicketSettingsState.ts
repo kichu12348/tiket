@@ -29,6 +29,15 @@ export function useTicketSettingsState({
   const [multiDayCheckIn, setMultiDayCheckIn] = useState(
     initialTicket?.multiDayCheckIn ?? false,
   );
+  const [maxCheckInsPerDay, setMaxCheckInsPerDay] = useState<number | null>(
+    initialTicket?.maxCheckInsPerDay ?? 1,
+  );
+  const [codePrefix, setCodePrefix] = useState(
+    initialTicket?.codePrefix ?? "",
+  );
+  const [codeLength, setCodeLength] = useState<number>(
+    initialTicket?.codeLength ?? 6,
+  );
 
   const [hasLimitCapacity, setHasLimitCapacity] = useState(
     initialTicket
@@ -191,6 +200,9 @@ export function useTicketSettingsState({
         setPoolCapacity("");
         setTagsInput("");
         setConditions([]);
+        setCodePrefix("");
+        setCodeLength(6);
+        setMaxCheckInsPerDay(1);
       } else {
         setName(t.name);
         setDescription(t.description ?? "");
@@ -223,6 +235,9 @@ export function useTicketSettingsState({
         setConditions(
           t.conditions && Array.isArray(t.conditions) ? t.conditions : [],
         );
+        setCodePrefix(t.codePrefix ?? "");
+        setCodeLength(t.codeLength ?? 6);
+        setMaxCheckInsPerDay(t.maxCheckInsPerDay ?? 1);
       }
     },
     [registrationStart, registrationEnd, eventEndDate],
@@ -237,6 +252,12 @@ export function useTicketSettingsState({
     setEnableWaitlist,
     multiDayCheckIn,
     setMultiDayCheckIn,
+    maxCheckInsPerDay,
+    setMaxCheckInsPerDay,
+    codePrefix,
+    setCodePrefix,
+    codeLength,
+    setCodeLength,
     hasLimitCapacity,
     setHasLimitCapacity,
     quantityLimit,

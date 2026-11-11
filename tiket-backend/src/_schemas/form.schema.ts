@@ -74,6 +74,7 @@ const formFieldObj = {
       enum: fieldTypes,
     },
     isRequired: { type: "boolean" },
+    isLocked: { type: "boolean" },
     options: {
       anyOf: [
         { type: "array", items: { type: "string" } },
@@ -131,6 +132,7 @@ export const createFieldSchema = {
           enum: fieldTypes,
         },
         isRequired: { type: "boolean" },
+    isLocked: { type: "boolean" },
         options: {
           anyOf: [
             { type: "array", items: { type: "string" } },
@@ -210,6 +212,7 @@ export const updateFieldSchema = {
           enum: fieldTypes,
         },
         isRequired: { type: "boolean" },
+    isLocked: { type: "boolean" },
         options: {
           anyOf: [
             { type: "array", items: { type: "string" } },

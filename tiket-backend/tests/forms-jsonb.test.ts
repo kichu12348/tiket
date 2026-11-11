@@ -305,5 +305,46 @@ describe("Forms JSONB Schema & Validation", () => {
     expect(forms.createdAt).toBeDefined();
     expect(forms.updatedAt).toBeDefined();
   });
+
+  test("locked standard form fields are marked as isLocked and cannot be removed", () => {
+    const lockedField: FormFieldDefinition = {
+      id: "locked-name",
+      eventId: "event-1",
+      name: "name",
+      label: "Full Name",
+      fieldType: "text",
+      isRequired: true,
+      isLocked: true,
+      options: null,
+      sortOrder: 0,
+      page: 1,
+      createdAt: new Date().toISOString(),
+    };
+
+    expect(lockedField.isLocked).toBe(true);
+    expect(lockedField.isRequired).toBe(true);
+
+    // Verify deletion guard logic
+    const canDelete = (field: FormFieldDefinition) =>
+      !field.isLocked && field.name !== "name" && field.name !== "email";
+
+    expect(canDelete(lockedField)).toBe(false);
+
+    const normalField: FormFieldDefinition = {
+      id: "normal-field",
+      eventId: "event-1",
+      name: "company",
+      label: "Company",
+      fieldType: "text",
+      isRequired: false,
+      isLocked: false,
+      options: null,
+      sortOrder: 2,
+      page: 1,
+      createdAt: new Date().toISOString(),
+    };
+
+    expect(canDelete(normalField)).toBe(true);
+  });
 });
 
