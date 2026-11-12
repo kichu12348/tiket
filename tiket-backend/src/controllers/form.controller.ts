@@ -12,7 +12,6 @@ import type {
 } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { lockEvent } from "../services/inventory.service";
 
 interface CreateFieldBody {
   name: string;
@@ -173,7 +172,6 @@ export const createField = async (
     };
 
     await db.transaction(async (tx) => {
-      await lockEvent(tx, eventId);
       const [existingForm] = await tx
         .select()
         .from(forms)
@@ -266,7 +264,6 @@ export const updateField = async (
     let updatedField: FormFieldDefinition | null = null;
 
     await db.transaction(async (tx) => {
-      await lockEvent(tx, eventId);
       const [existingForm] = await tx
         .select()
         .from(forms)
@@ -356,7 +353,6 @@ export const deleteField = async (
     let found = false;
     let isLocked = false;
     await db.transaction(async (tx) => {
-      await lockEvent(tx, eventId);
       const [existingForm] = await tx
         .select()
         .from(forms)
@@ -431,7 +427,6 @@ export const deletePage = async (
     let isLockedPage = false;
 
     await db.transaction(async (tx) => {
-      await lockEvent(tx, eventId);
       const [existingForm] = await tx
         .select()
         .from(forms)
@@ -521,46 +516,39 @@ export const replaceFormFields = async (
       createdAt: f.createdAt || new Date().toISOString(),
     }));
 
-    let finalFields: FormFieldDefinition[] = [];
+    const [existingForm] = await db
+      .select({ fields: forms.fields })
+      .from(forms)
+      .where(eq(forms.eventId, eventId));
 
-    await db.transaction(async (tx) => {
-      await lockEvent(tx, eventId);
-      const [existingForm] = await tx
-        .select()
-        .from(forms)
-        .where(eq(forms.eventId, eventId))
-        .for("update");
+    const currentFields = existingForm?.fields || [];
+    const lockedFields = currentFields.filter(
+      (f) => f.isLocked || f.name === "name" || f.name === "email",
+    );
 
-      const currentFields = existingForm?.fields || [];
-      const lockedFields = currentFields.filter(
-        (f) => f.isLocked || f.name === "name" || f.name === "email",
+    const finalFields = [...normalizedFields];
+    for (const lf of lockedFields) {
+      const alreadyExists = finalFields.some(
+        (f) => f.id === lf.id || f.name === lf.name,
       );
-
-      finalFields = [...normalizedFields];
-      for (const lf of lockedFields) {
-        const alreadyExists = finalFields.some(
-          (f) => f.id === lf.id || f.name === lf.name,
-        );
-        if (!alreadyExists) {
-          finalFields.unshift({ ...lf, isLocked: true, isRequired: true });
-        }
+      if (!alreadyExists) {
+        finalFields.unshift({ ...lf, isLocked: true, isRequired: true });
       }
+    }
 
-      if (existingForm) {
-        await tx
-          .update(forms)
-          .set({
-            fields: finalFields,
-            updatedAt: new Date(),
-          })
-          .where(eq(forms.id, existingForm.id));
-      } else {
-        await tx.insert(forms).values({
-          eventId,
+    await db
+      .insert(forms)
+      .values({
+        eventId,
+        fields: finalFields,
+      })
+      .onConflictDoUpdate({
+        target: forms.eventId,
+        set: {
           fields: finalFields,
-        });
-      }
-    });
+          updatedAt: new Date(),
+        },
+      });
 
     return reply.send(finalFields);
   } catch (error) {
