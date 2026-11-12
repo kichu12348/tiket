@@ -1,7 +1,17 @@
-import type { FieldType, FormFieldOptions } from "@/types/form";
+import type {
+  FieldType,
+  FormFieldOptions,
+  VisibilityConditions,
+  FieldConditionConfig,
+} from "@/types/form";
 
 export { FIELD_TYPES } from "@/types/form";
-export type { FieldType, FormFieldOptions };
+export type {
+  FieldType,
+  FormFieldOptions,
+  VisibilityConditions,
+  FieldConditionConfig,
+};
 
 export interface LocalField {
   localId: string;
@@ -15,6 +25,7 @@ export interface LocalField {
   isMulti?: boolean;
   minOptions?: number | null;
   maxOptions?: number | null;
+  conditions?: VisibilityConditions | FieldConditionConfig | null;
   sortOrder: number;
   page: number;
   isEditing?: boolean;

@@ -73,6 +73,7 @@ export const API_ENDPOINTS = {
   FORMS: {
     CREATE: (eventId: string) => `/api/forms/${eventId}`,
     GET_ALL: (eventId: string) => `/api/forms/${eventId}`,
+    REPLACE: (eventId: string) => `/api/forms/${eventId}`,
     UPDATE: (eventId: string, fieldId: string) =>
       `/api/forms/${eventId}/${fieldId}`,
     DELETE: (eventId: string, fieldId: string) =>

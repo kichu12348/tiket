@@ -7,11 +7,13 @@ import {
   updateFormField,
   deleteFormField,
   deleteFormPage,
+  replaceFormFields,
 } from "@/api/forms";
 import type { FormField } from "@/types/form";
 import type { LocalField, StandardField, StandardFieldStatus } from "../types";
 import {
   serverToLocal,
+  localToFormFields,
   getPagesFromFields,
   buildOptionsPayload,
   isChoiceField,
@@ -198,6 +200,7 @@ export function useFormData(eventId?: string) {
         isMulti: fieldData.fieldType === "multi_select" ? fieldData.isMulti : undefined,
         minOptions: isMulti ? (fieldData.minOptions ?? null) : null,
         maxOptions: isMulti ? (fieldData.maxOptions ?? null) : null,
+        conditions: fieldData.conditions ?? null,
       };
 
       setCustomFields((prev) => [...prev, newField]);
@@ -209,6 +212,7 @@ export function useFormData(eventId?: string) {
           fieldType: newField.fieldType,
           isRequired: newField.isRequired,
           options: finalOptions,
+          conditions: newField.conditions,
           sortOrder: newField.sortOrder,
           page: newField.page,
         });
@@ -234,6 +238,10 @@ export function useFormData(eventId?: string) {
         isMulti: fieldData.fieldType === "multi_select" ? fieldData.isMulti : undefined,
         minOptions: isMulti ? (fieldData.minOptions ?? null) : null,
         maxOptions: isMulti ? (fieldData.maxOptions ?? null) : null,
+        conditions:
+          fieldData.conditions !== undefined
+            ? fieldData.conditions
+            : (originalField.conditions ?? null),
       };
 
       setCustomFields((prev) =>
@@ -248,6 +256,7 @@ export function useFormData(eventId?: string) {
             fieldType: updatedField.fieldType,
             isRequired: updatedField.isRequired,
             options: finalOptions,
+            conditions: updatedField.conditions,
             sortOrder: updatedField.sortOrder,
             page: updatedField.page,
           });
@@ -290,29 +299,20 @@ export function useFormData(eventId?: string) {
 
   const reorderCustomFields = async (
     updatedFields: LocalField[],
-    originalFields: LocalField[],
+    _originalFields: LocalField[],
     activePage: number,
   ) => {
     if (!eventId) return;
 
-    setCustomFields((prev) => {
-      const otherPages = prev.filter((f) => f.page !== activePage);
-      return [...otherPages, ...updatedFields];
-    });
+    const merged = customFields
+      .filter((f) => f.page !== activePage)
+      .concat(updatedFields);
+
+    setCustomFields(merged);
 
     try {
-      for (const item of updatedFields) {
-        const original = originalFields.find((f) => f.localId === item.localId);
-        if (
-          original &&
-          original.sortOrder !== item.sortOrder &&
-          item.serverId
-        ) {
-          await updateFormField(eventId, item.serverId, {
-            sortOrder: item.sortOrder,
-          });
-        }
-      }
+      const fullPayload = localToFormFields(merged, standardFields, eventId);
+      await replaceFormFields(eventId, fullPayload);
     } catch {
       toast.error("Failed to save reorder. Reverting.");
       await refreshFields();

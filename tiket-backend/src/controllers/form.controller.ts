@@ -7,7 +7,8 @@ import type {
   FormFieldDefinition,
   FormFieldType,
   FormFieldOptionsConfig,
-  VisibilityConditionRule,
+  VisibilityConditions,
+  FieldConditionConfig,
 } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
@@ -20,7 +21,7 @@ interface CreateFieldBody {
   isRequired?: boolean;
   isLocked?: boolean;
   options?: string[] | FormFieldOptionsConfig | null;
-  conditions?: VisibilityConditionRule[];
+  conditions?: VisibilityConditions | FieldConditionConfig | null;
   sortOrder?: number;
   page?: number;
 }
@@ -165,7 +166,7 @@ export const createField = async (
       isRequired: body.isRequired ?? true,
       isLocked: body.isLocked ?? false,
       options: body.options ?? null,
-      conditions: body.conditions,
+      conditions: body.conditions ?? null,
       sortOrder: body.sortOrder ?? 0,
       page: body.page ?? 1,
       createdAt: new Date().toISOString(),
@@ -514,11 +515,13 @@ export const replaceFormFields = async (
       isRequired: f.isRequired ?? true,
       isLocked: f.isLocked ?? false,
       options: f.options ?? null,
-      conditions: f.conditions,
+      conditions: f.conditions ?? null,
       sortOrder: f.sortOrder ?? idx,
       page: f.page ?? 1,
       createdAt: f.createdAt || new Date().toISOString(),
     }));
+
+    let finalFields: FormFieldDefinition[] = [];
 
     await db.transaction(async (tx) => {
       await lockEvent(tx, eventId);
@@ -533,7 +536,7 @@ export const replaceFormFields = async (
         (f) => f.isLocked || f.name === "name" || f.name === "email",
       );
 
-      const finalFields = [...normalizedFields];
+      finalFields = [...normalizedFields];
       for (const lf of lockedFields) {
         const alreadyExists = finalFields.some(
           (f) => f.id === lf.id || f.name === lf.name,
@@ -559,7 +562,7 @@ export const replaceFormFields = async (
       }
     });
 
-    return reply.send(normalizedFields);
+    return reply.send(finalFields);
   } catch (error) {
     return handleControllerError(request, reply, error);
   }

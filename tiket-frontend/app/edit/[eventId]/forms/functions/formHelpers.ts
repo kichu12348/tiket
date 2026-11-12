@@ -1,5 +1,5 @@
 import type { FormField, FormFieldOptions, FieldType } from "@/types/form";
-import type { LocalField } from "../types";
+import type { LocalField, StandardField } from "../types";
 
 export const CHOICE_BASED_FIELD_TYPES: FieldType[] = [
   "single_select",
@@ -101,9 +101,67 @@ export function serverToLocal(field: FormField): LocalField {
     isMulti,
     minOptions,
     maxOptions,
+    conditions: field.conditions ?? null,
     sortOrder: field.sortOrder ?? 0,
     page: field.page ?? 1,
   };
+}
+
+export function localToFormFields(
+  customFields: LocalField[],
+  standardFields: StandardField[],
+  eventId: string,
+): FormField[] {
+  const result: FormField[] = [];
+  const now = new Date().toISOString();
+
+  // Standard fields
+  for (const std of standardFields) {
+    if (std.status === "Off") continue;
+    const isLocked = std.name === "name" || std.name === "email";
+    result.push({
+      id: std.serverId || crypto.randomUUID(),
+      eventId,
+      name: std.name,
+      label: std.label,
+      fieldType:
+        std.name === "email" ? "email" : std.name === "phone" ? "phone" : "text",
+      isRequired: isLocked ? true : std.status === "Required",
+      isLocked,
+      options: null,
+      conditions: null,
+      sortOrder: std.name === "name" ? 0 : std.name === "email" ? 1 : 2,
+      page: 1,
+      createdAt: now,
+    });
+  }
+
+  // Custom fields
+  for (const f of customFields) {
+    result.push({
+      id: f.serverId || f.localId,
+      eventId,
+      name: f.name,
+      label: f.label,
+      fieldType: f.fieldType,
+      isRequired: f.isRequired,
+      isLocked: false,
+      options: buildOptionsPayload(
+        f.fieldType,
+        f.options,
+        f.minOptions,
+        f.maxOptions,
+        f.allowCustom,
+        f.isMulti,
+      ),
+      conditions: f.conditions ?? null,
+      sortOrder: f.sortOrder,
+      page: f.page,
+      createdAt: now,
+    });
+  }
+
+  return result;
 }
 
 export function getPagesFromFields(

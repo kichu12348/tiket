@@ -11,6 +11,17 @@ export const getFormFields = async (eventId: string): Promise<FormField[]> => {
   return response.data;
 };
 
+export const replaceFormFields = async (
+  eventId: string,
+  fields: FormField[],
+): Promise<FormField[]> => {
+  const response = await api.put(
+    API_ENDPOINTS.FORMS.REPLACE(eventId),
+    fields,
+  );
+  return response.data;
+};
+
 export const createFormField = async (
   eventId: string,
   payload: CreateFormFieldPayload,

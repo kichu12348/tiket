@@ -41,6 +41,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { FormField } from "@/types/form";
 import {
   serverToLocal,
+  localToFormFields,
   getPagesFromFields,
   getActivePageFields,
   isChoiceField,
@@ -128,6 +129,81 @@ describe("formHelpers unit tests", () => {
     expect(local.options).toBeNull();
     expect(local.minOptions).toBeNull();
     expect(local.maxOptions).toBeNull();
+  });
+
+  test("serverToLocal preserves conditions configuration", () => {
+    const raw: FormField = {
+      id: "f4",
+      eventId: "evt-123",
+      name: "veganDetails",
+      label: "Vegan Details",
+      fieldType: "text",
+      isRequired: true,
+      options: null,
+      conditions: {
+        match: "all",
+        rules: [
+          {
+            fieldId: "f1",
+            operator: "equals",
+            allowedValues: ["Vegan"],
+          },
+        ],
+      },
+      sortOrder: 1,
+      page: 1,
+      createdAt: "2026-01-01T00:00:00Z",
+    };
+
+    const local = serverToLocal(raw);
+    expect(local.conditions).toEqual({
+      match: "all",
+      rules: [
+        {
+          fieldId: "f1",
+          operator: "equals",
+          allowedValues: ["Vegan"],
+        },
+      ],
+    });
+  });
+
+  test("localToFormFields correctly constructs FormField array with standard and custom fields", () => {
+    const custom = [
+      {
+        localId: "c1",
+        serverId: "c1-server",
+        name: "custom_q",
+        label: "Custom Q",
+        fieldType: "text" as const,
+        isRequired: true,
+        options: null,
+        conditions: {
+          match: "all" as const,
+          rules: [{ fieldId: "f1", allowedValues: ["Yes"] }],
+        },
+        sortOrder: 0,
+        page: 1,
+      },
+    ];
+
+    const standard = [
+      { name: "name", label: "Full Name", icon: null, status: "Required" as const, serverId: "std-name" },
+      { name: "email", label: "Email", icon: null, status: "Required" as const, serverId: "std-email" },
+      { name: "phone", label: "Phone", icon: null, status: "Off" as const },
+    ];
+
+    const fields = localToFormFields(custom, standard, "evt-123");
+    expect(fields).toHaveLength(3); // name, email, and custom_q (phone is Off)
+    expect(fields[0].name).toBe("name");
+    expect(fields[0].isLocked).toBe(true);
+    expect(fields[1].name).toBe("email");
+    expect(fields[1].isLocked).toBe(true);
+    expect(fields[2].name).toBe("custom_q");
+    expect(fields[2].conditions).toEqual({
+      match: "all",
+      rules: [{ fieldId: "f1", allowedValues: ["Yes"] }],
+    });
   });
 
   test("getPagesFromFields returns [1] by default and sorted distinct pages", () => {
@@ -279,9 +355,17 @@ const fnDeleteFormPage = mock(async (_eventId: string, pageNum: number) => {
   return { message: `Page ${pageNum} deleted.` };
 });
 
+const fnReplaceFormFields = mock(
+  async (_eventId: string, fields: FormField[]) => {
+    mockDbFields = [...fields];
+    return fields;
+  },
+);
+
 // Mock api modules
 mock.module("@/api/forms", () => ({
   getFormFields: fnGetFormFields,
+  replaceFormFields: fnReplaceFormFields,
   createFormField: fnCreateFormField,
   updateFormField: fnUpdateFormField,
   deleteFormField: fnDeleteFormField,
@@ -357,6 +441,7 @@ describe("EditFormsPage Component Integration", () => {
     ];
 
     fnGetFormFields.mockClear();
+    fnReplaceFormFields.mockClear();
     fnCreateFormField.mockClear();
     fnUpdateFormField.mockClear();
     fnDeleteFormField.mockClear();
