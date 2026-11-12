@@ -6,6 +6,7 @@ import { HttpError } from "../utils/errors";
 import { fingerprint } from "./checkout.service";
 import { emitEvent, lockEvent } from "./inventory.service";
 import { gateway, type GatewayRefund } from "./gateway.service";
+import { publishEventChange } from "./realtime.service";
 
 export interface RefundCommand {
   amountPaise: number;
@@ -116,7 +117,7 @@ export async function requestRefund(
 ) {
   const [known] = await db.select().from(orders).where(eq(orders.id, orderId));
   if (!known) throw new HttpError(404, "Order not found.");
-  return db.transaction(async (tx) => {
+  const refund = await db.transaction(async (tx) => {
     await lockEvent(tx, known.eventId);
     const [order] = await tx
       .select()
@@ -124,6 +125,8 @@ export async function requestRefund(
       .where(eq(orders.id, orderId));
     return queueRefund(tx, order!, key, command, actor);
   });
+  void publishEventChange(known.eventId);
+  return refund;
 }
 export async function applyRefund(tx: Transaction, remote: GatewayRefund) {
   let [refund] = await tx
@@ -283,9 +286,11 @@ export async function processRefunds() {
 }
 async function applyRemote(orderId: string, remote: GatewayRefund) {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
-  if (order)
+  if (order) {
     await db.transaction(async (tx) => {
       await lockEvent(tx, order.eventId);
       await applyRefund(tx, remote);
     });
+    void publishEventChange(order.eventId);
+  }
 }

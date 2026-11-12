@@ -216,9 +216,16 @@ export default function TicketDesignStudio({
         .map((t) => t.trim())
         .filter(Boolean);
 
-      const validConditions = settings.conditions.filter(
+      const validRules = settings.conditions.rules.filter(
         (c) => c.fieldId && c.allowedValues.length > 0,
       );
+      const validConditions =
+        validRules.length > 0
+          ? {
+              match: settings.conditions.match || "all",
+              rules: validRules,
+            }
+          : null;
 
       const designOutput = design.getDesign();
 
@@ -301,7 +308,7 @@ export default function TicketDesignStudio({
           ? settings.maxCheckInsPerDay
           : 1,
         tags: parsedTags,
-        conditions: validConditions.length > 0 ? validConditions : null,
+        conditions: validConditions,
         saleStart: settings.saleStart,
         saleEnd: settings.saleEnd,
         isRefundable: settings.isRefundable,

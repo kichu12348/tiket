@@ -84,7 +84,7 @@ export default function RegistrationFormPanel({ eventId }: Props) {
     try {
       setIsSubmitting(true);
       const optionsArray =
-        fieldType === "select" && optionsStr.trim()
+        (fieldType === "single_select" || fieldType === "multi_select") && optionsStr.trim()
           ? optionsStr
               .split(",")
               .map((s) => s.trim())
@@ -165,7 +165,7 @@ export default function RegistrationFormPanel({ eventId }: Props) {
                   Type:{" "}
                   {FIELD_TYPES.find((t) => t.value === field.fieldType)
                     ?.label || field.fieldType}
-                  {field.fieldType === "select" &&
+                  {(field.fieldType === "single_select" || field.fieldType === "multi_select") &&
                     field.options &&
                     ` • Options: ${(Array.isArray(field.options) ? field.options : field.options.choices).length}`}
                 </div>
@@ -230,7 +230,7 @@ export default function RegistrationFormPanel({ eventId }: Props) {
               }
             />
           </div>
-          {fieldType === "select" && (
+          {(fieldType === "single_select" || fieldType === "multi_select") && (
             <div className={styles.formGroup}>
               <label>Options (Comma separated)</label>
               <input

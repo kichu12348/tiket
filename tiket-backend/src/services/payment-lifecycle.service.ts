@@ -21,6 +21,7 @@ import {
 import { applyRefund, queueRefund } from "./refund.service";
 import { fingerprint } from "./checkout.service";
 import { enqueueOrderEmail } from "./notifications.service";
+import { publishEventChange } from "./realtime.service";
 
 export async function applyPayment(tx: Transaction, remote: GatewayPayment) {
   const [order] = await tx
@@ -153,7 +154,8 @@ export async function applyPayment(tx: Transaction, remote: GatewayPayment) {
     current.id,
     current.requireApproval ? "pending" : "confirmation",
   );
-  await emitEvent(tx, current.eventId, "payment.captured");
+  const version = await emitEvent(tx, current.eventId, "payment.captured");
+  return { eventId: current.eventId, version };
 }
 
 function object(value: unknown): Record<string, unknown> {
@@ -216,6 +218,7 @@ export async function processInbox() {
 
   for (const { id } of pending) {
     try {
+      let payRes: { eventId: string; version?: number } | undefined;
       await db.transaction(async (tx) => {
         const [entry] = await tx
           .select()
@@ -255,7 +258,7 @@ export async function processInbox() {
         }
 
         if (normalized.kind === "payment") {
-          await applyPayment(tx, normalized.payment);
+          payRes = await applyPayment(tx, normalized.payment);
         } else if (normalized.kind === "refund") {
           const remote = normalized.refund;
           const [mapped] = await tx
@@ -285,6 +288,10 @@ export async function processInbox() {
           })
           .where(eq(webhookInbox.id, id));
       });
+
+      if (payRes?.version !== undefined) {
+        void publishEventChange(payRes.eventId, payRes.version);
+      }
     } catch (error) {
       await db
         .update(webhookInbox)
@@ -332,8 +339,12 @@ export async function reconcilePayments() {
         }
       }
       if (remoteId)
-        for (const payment of await gateway().orderPayments(remoteId))
-          await db.transaction((tx) => applyPayment(tx, payment));
+        for (const payment of await gateway().orderPayments(remoteId)) {
+          const res = await db.transaction((tx) => applyPayment(tx, payment));
+          if (res?.version !== undefined) {
+            void publishEventChange(res.eventId, res.version);
+          }
+        }
     } catch {
       /* Durable state remains available for the next reconciliation pass. */
     }

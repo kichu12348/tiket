@@ -37,14 +37,16 @@ try {
   // Ignore if already unified
 }
 
+import type { AxiosResponse } from "axios";
 import { renderHook, act } from "@testing-library/react";
-import api from "@/lib/api";
+import api, { setClientToken, clearClientToken } from "@/lib/api";
 import { useLiveEvent } from "../useLiveEvent";
 import { useLiveStore } from "@/store/useLiveStore";
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
   url: string;
+  protocols?: string | string[];
   readyState = 0;
   onopen: (() => void) | null = null;
   onmessage: ((ev: { data: string }) => void) | null = null;
@@ -52,8 +54,9 @@ class MockWebSocket {
   onerror: (() => void) | null = null;
   sent: string[] = [];
 
-  constructor(url: string) {
+  constructor(url: string, protocols?: string | string[]) {
     this.url = url;
+    this.protocols = protocols;
     MockWebSocket.instances.push(this);
     setTimeout(() => {
       this.readyState = 1;
@@ -82,10 +85,9 @@ class MockWebSocket {
   }
 }
 
-describe("useLiveEvent Hook & Realtime Flow", () => {
+describe("useLiveEvent Hook & Realtime Flow (Single-Hop Sec-WebSocket-Protocol)", () => {
   let origWindowWs: typeof WebSocket | undefined;
   let origGlobalWs: typeof WebSocket | undefined;
-  let postSpy: ReturnType<typeof jest.spyOn>;
   let getSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
@@ -95,19 +97,20 @@ describe("useLiveEvent Hook & Realtime Flow", () => {
     // Save originals
     origWindowWs = window.WebSocket;
     origGlobalWs = globalThis.WebSocket;
-    (window as unknown as { WebSocket: typeof MockWebSocket }).WebSocket = MockWebSocket;
-    (globalThis as unknown as { WebSocket: typeof MockWebSocket }).WebSocket = MockWebSocket;
+    (window as unknown as { WebSocket: typeof MockWebSocket }).WebSocket =
+      MockWebSocket;
+    (globalThis as unknown as { WebSocket: typeof MockWebSocket }).WebSocket =
+      MockWebSocket;
 
-    // Spy on api methods without globally replacing @/lib/api module
-    postSpy = jest.spyOn(api, "post").mockImplementation(async () => ({
-      data: { ticket: "ticket-conn-abc" },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any));
+    setClientToken("jwt-auth-token-123");
 
-    getSpy = jest.spyOn(api, "get").mockImplementation(async () => ({
+    getSpy = jest.spyOn(api, "get").mockResolvedValue({
       data: { version: 10, remaining: 80 },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any));
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      config: {} as AxiosResponse["config"],
+    });
 
     useLiveStore.setState({
       connected: false,
@@ -118,14 +121,14 @@ describe("useLiveEvent Hook & Realtime Flow", () => {
   });
 
   afterEach(() => {
-    postSpy.mockRestore();
+    clearClientToken();
     getSpy.mockRestore();
     if (origWindowWs) window.WebSocket = origWindowWs;
     if (origGlobalWs) globalThis.WebSocket = origGlobalWs;
     jest.useRealTimers();
   });
 
-  test("1. When WebSocket connects and emits 'ready', zero fallback HTTP polling requests are fired over time", async () => {
+  test("1. Connects in one hop with Sec-WebSocket-Protocol bearer token and emits 'ready'", async () => {
     const eventId = "evt-test-100";
     const { unmount } = renderHook(() => useLiveEvent(eventId));
 
@@ -134,11 +137,12 @@ describe("useLiveEvent Hook & Realtime Flow", () => {
       jest.advanceTimersByTime(10);
     });
 
-    expect(postSpy).toHaveBeenCalledTimes(1);
-    expect(postSpy.mock.calls[0][0]).toBe(`/api/realtime/events/${eventId}/connect`);
+    // Zero /connect HTTP calls are made!
     expect(MockWebSocket.instances.length).toBe(1);
-
     const ws = MockWebSocket.instances[0];
+
+    expect(ws.url).toContain(`/api/realtime/ws?eventId=${eventId}`);
+    expect(ws.protocols).toEqual(["bearer", "jwt-auth-token-123"]);
 
     // Emit 'ready' from WebSocket
     await act(async () => {
@@ -233,7 +237,9 @@ describe("useLiveEvent Hook & Realtime Flow", () => {
     });
 
     expect(getSpy).toHaveBeenCalledTimes(1);
-    expect(getSpy.mock.calls[0][0]).toBe(`/api/commerce/${eventId}/availability`);
+    expect(getSpy.mock.calls[0][0]).toBe(
+      `/api/commerce/${eventId}/availability`,
+    );
 
     // Another 15s
     await act(async () => {

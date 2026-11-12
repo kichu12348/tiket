@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import api from "@/lib/api";
+import api, { getClientToken } from "@/lib/api";
 import { API_ENDPOINTS, API_URL } from "@/constants/config";
 import { useLiveStore } from "@/store/useLiveStore";
 
@@ -51,10 +51,14 @@ export function useLiveEvent(eventId: string) {
       useLiveStore.getState().setStatus("connecting");
 
       try {
-        const { data } = await api.post<{ ticket: string }>(
-          API_ENDPOINTS.REALTIME_CONNECT(eventId),
-        );
+        const token = await getClientToken();
         if (disposed) return;
+        if (!token) {
+          useLiveStore.getState().setConnected(false);
+          startFallbackPolling();
+          reconnect();
+          return;
+        }
 
         if (typeof WebSocket === "undefined") {
           useLiveStore.getState().setConnected(false);
@@ -72,15 +76,15 @@ export function useLiveEvent(eventId: string) {
               : "http://localhost:3000";
         const url = new URL(API_ENDPOINTS.REALTIME.SOCKET, base);
         url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+        url.searchParams.set("eventId", eventId);
 
-        socket = new WebSocket(url.toString());
+        socket = new WebSocket(url.toString(), ["bearer", token]);
 
         socket.onopen = () => {
           if (disposed) {
             socket?.close();
             return;
           }
-          socket?.send(JSON.stringify({ ticket: data.ticket }));
         };
 
         socket.onmessage = (message) => {

@@ -6,15 +6,11 @@ export type FieldType =
   | "number"
   | "single_select"
   | "multi_select"
-  | "radio"
-  | "checkbox"
   | "date"
   | "datetime"
   | "time"
   | "rating"
-  | "url"
-  | "file"
-  | "select";
+  | "url";
 
 export interface FieldTypeOption {
   label: string;
@@ -27,28 +23,42 @@ export const FIELD_TYPES: FieldTypeOption[] = [
   { label: "Email", value: "email" },
   { label: "Phone", value: "phone" },
   { label: "Number", value: "number" },
-  { label: "Single Select", value: "single_select" },
-  { label: "Multi Select", value: "multi_select" },
-  { label: "Select", value: "select" },
-  { label: "Radio", value: "radio" },
-  { label: "Checkbox", value: "checkbox" },
+  { label: "Dropdown", value: "single_select" },
+  { label: "Select", value: "multi_select" },
   { label: "Date", value: "date" },
   { label: "Date & Time", value: "datetime" },
   { label: "Time", value: "time" },
   { label: "Rating", value: "rating" },
   { label: "URL", value: "url" },
-  { label: "File", value: "file" },
 ];
 
 export type FormFieldOptions =
   | string[]
-  | { choices: string[]; min?: number | null; max?: number | null }
+  | {
+      choices: string[];
+      min?: number | null;
+      max?: number | null;
+      allowCustom?: boolean | null;
+      isMulti?: boolean | null;
+    }
   | null;
+
+export type VisibilityConditionOperator = "equals" | "not_equals" | "in";
 
 export interface VisibilityConditionRule {
   fieldId: string; // Selected via Radix UI Select dropdown (single form question)
-  allowedValues: string[]; // Checked via Radix UI Checkbox list (one or multiple values can be checked)
+  operator?: VisibilityConditionOperator;
+  allowedValues: string[]; // Values matched by the operator
 }
+
+export interface VisibilityConditionsConfig {
+  match: "all" | "any"; // AND vs OR
+  rules: VisibilityConditionRule[];
+}
+
+export type VisibilityConditions =
+  | VisibilityConditionRule[]
+  | VisibilityConditionsConfig;
 
 export interface ConditionRule {
   sourceType: "field" | "ticketType";
@@ -78,7 +88,7 @@ export interface FormField {
   isRequired: boolean;
   isLocked?: boolean;
   options: FormFieldOptions;
-  conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+  conditions?: VisibilityConditions | FieldConditionConfig | null;
   sortOrder: number;
   page: number;
   createdAt: string;
@@ -91,7 +101,7 @@ export interface CreateFormFieldPayload {
   isRequired?: boolean;
   isLocked?: boolean;
   options?: FormFieldOptions;
-  conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+  conditions?: VisibilityConditions | FieldConditionConfig | null;
   sortOrder?: number;
   page?: number;
 }

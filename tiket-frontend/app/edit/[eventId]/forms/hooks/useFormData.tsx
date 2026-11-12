@@ -15,7 +15,6 @@ import {
   getPagesFromFields,
   buildOptionsPayload,
   isChoiceField,
-  isMultiChoiceField,
 } from "../functions/formHelpers";
 import { User, Mail, Phone } from "lucide-react";
 
@@ -160,7 +159,8 @@ export function useFormData(eventId?: string) {
     if (!eventId) return;
 
     const isChoice = isChoiceField(fieldData.fieldType);
-    const isMulti = isMultiChoiceField(fieldData.fieldType);
+    const isMulti =
+      fieldData.fieldType === "multi_select" && fieldData.isMulti !== false;
 
     if (isChoice) {
       const validChoices = (fieldData.options || []).map((o) => o.trim()).filter(Boolean);
@@ -175,6 +175,8 @@ export function useFormData(eventId?: string) {
       fieldData.options,
       fieldData.minOptions,
       fieldData.maxOptions,
+      fieldData.allowCustom,
+      fieldData.isMulti,
     );
 
     if (!isEdit) {
@@ -192,6 +194,8 @@ export function useFormData(eventId?: string) {
         sortOrder: maxSort + 1,
         page: targetPage,
         options: isChoice ? (fieldData.options || []) : null,
+        allowCustom: isChoice ? fieldData.allowCustom : false,
+        isMulti: fieldData.fieldType === "multi_select" ? fieldData.isMulti : undefined,
         minOptions: isMulti ? (fieldData.minOptions ?? null) : null,
         maxOptions: isMulti ? (fieldData.maxOptions ?? null) : null,
       };
@@ -226,6 +230,8 @@ export function useFormData(eventId?: string) {
         ...originalField,
         ...fieldData,
         options: isChoice ? (fieldData.options || []) : null,
+        allowCustom: isChoice ? fieldData.allowCustom : false,
+        isMulti: fieldData.fieldType === "multi_select" ? fieldData.isMulti : undefined,
         minOptions: isMulti ? (fieldData.minOptions ?? null) : null,
         maxOptions: isMulti ? (fieldData.maxOptions ?? null) : null,
       };

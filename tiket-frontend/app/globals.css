@@ -247,6 +247,8 @@
   --surface: rgba(255, 255, 255, 0.03);
   --surface-hover: rgba(255, 255, 255, 0.05);
   --surface-elevated: rgba(255, 255, 255, 0.1);
+  --surface-popover: rgba(22, 23, 27, 0.95);
+  --shadow-popover: 0 10px 40px rgba(0, 0, 0, 0.6);
   --sidebar-bg: rgba(20, 20, 20, 0.4);
 
   --border-subtle: rgba(255, 255, 255, 0.08);

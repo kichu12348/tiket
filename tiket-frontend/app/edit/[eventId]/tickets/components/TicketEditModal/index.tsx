@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { createTicketType, updateTicketType } from "@/api/tickets";
 import { getFormFields } from "@/api/forms";
 import type { TicketType } from "@/types/ticketType";
-import type { FormField, VisibilityConditionRule } from "@/types/form";
+import type {
+  FormField,
+  VisibilityConditionsConfig,
+} from "@/types/form";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { Globe, CalendarIcon, Clock, Copy, Check, Palette } from "lucide-react";
@@ -209,29 +212,28 @@ function TicketEditModalContent({
   const [tagsInput, setTagsInput] = useState(ticket?.tags?.join(", ") ?? "");
 
   // Conditions & Visibility Rules
-  const initialConditions = (() => {
-    if (ticket?.conditions && Array.isArray(ticket.conditions)) {
-      return ticket.conditions;
+  const initialConditions: VisibilityConditionsConfig = (() => {
+    if (ticket?.conditions) {
+      if (Array.isArray(ticket.conditions)) {
+        return {
+          match: "all",
+          rules: ticket.conditions.map((r) => ({
+            fieldId: r.fieldId,
+            operator:
+              r.operator ?? (r.allowedValues.length > 1 ? "in" : "equals"),
+            allowedValues: r.allowedValues,
+          })),
+        };
+      }
+      return {
+        match: ticket.conditions.match || "all",
+        rules: ticket.conditions.rules || [],
+      };
     }
-    if (
-      ticket?.eligibilityRules?.rules &&
-      Array.isArray(ticket.eligibilityRules.rules)
-    ) {
-      return ticket.eligibilityRules.rules.map(
-        (r: { sourceId?: string; value?: unknown }) => ({
-          fieldId: r.sourceId || "",
-          allowedValues: Array.isArray(r.value)
-            ? (r.value as string[])
-            : r.value
-              ? [String(r.value)]
-              : [],
-        }),
-      );
-    }
-    return [];
+    return { match: "all", rules: [] };
   })();
   const [conditions, setConditions] =
-    useState<VisibilityConditionRule[]>(initialConditions);
+    useState<VisibilityConditionsConfig>(initialConditions);
 
   const [availableFields, setAvailableFields] = useState<FormField[]>([]);
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -299,9 +301,16 @@ function TicketEditModalContent({
         .map((t) => t.trim())
         .filter(Boolean);
 
-      const validConditions = conditions.filter(
+      const validRules = conditions.rules.filter(
         (c) => c.fieldId && c.allowedValues.length > 0,
       );
+      const validConditions =
+        validRules.length > 0
+          ? {
+              match: conditions.match || "all",
+              rules: validRules,
+            }
+          : null;
 
       let computedMaxCheckInsPerDay: number | null = 1;
       if (multiDayCheckIn) {
@@ -340,7 +349,7 @@ function TicketEditModalContent({
         codePrefix: codePrefix.trim().toUpperCase(),
         codeLength: codeLength || 6,
         tags: parsedTags,
-        conditions: validConditions.length > 0 ? validConditions : null,
+        conditions: validConditions,
         saleStart,
         saleEnd,
         isRefundable,

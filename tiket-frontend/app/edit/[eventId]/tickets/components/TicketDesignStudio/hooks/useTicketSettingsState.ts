@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import type { TicketType } from "@/types/ticketType";
-import type { VisibilityConditionRule } from "@/types/form";
+import type { VisibilityConditionsConfig } from "@/types/form";
 
 interface UseTicketSettingsStateParams {
   initialTicket?: TicketType | null;
@@ -110,29 +110,27 @@ export function useTicketSettingsState({
     initialTicket?.tags?.join(", ") ?? "",
   );
 
-  const initialConditions = (() => {
-    if (initialTicket?.conditions && Array.isArray(initialTicket.conditions)) {
-      return initialTicket.conditions;
+  const initialConditions: VisibilityConditionsConfig = (() => {
+    if (initialTicket?.conditions) {
+      if (Array.isArray(initialTicket.conditions)) {
+        return {
+          match: "all",
+          rules: initialTicket.conditions.map((r) => ({
+            fieldId: r.fieldId,
+            operator: r.operator ?? (r.allowedValues.length > 1 ? "in" : "equals"),
+            allowedValues: r.allowedValues,
+          })),
+        };
+      }
+      return {
+        match: initialTicket.conditions.match || "all",
+        rules: initialTicket.conditions.rules || [],
+      };
     }
-    if (
-      initialTicket?.eligibilityRules?.rules &&
-      Array.isArray(initialTicket.eligibilityRules.rules)
-    ) {
-      return initialTicket.eligibilityRules.rules.map(
-        (r: { sourceId?: string; value?: unknown }) => ({
-          fieldId: r.sourceId || "",
-          allowedValues: Array.isArray(r.value)
-            ? (r.value as string[])
-            : r.value
-              ? [String(r.value)]
-              : [],
-        }),
-      );
-    }
-    return [];
+    return { match: "all", rules: [] };
   })();
   const [conditions, setConditions] =
-    useState<VisibilityConditionRule[]>(initialConditions);
+    useState<VisibilityConditionsConfig>(initialConditions);
 
   // Live pricing calculations
   const feePercent = platformFeeBps / 100;
@@ -199,7 +197,7 @@ export function useTicketSettingsState({
         setCategory("");
         setPoolCapacity("");
         setTagsInput("");
-        setConditions([]);
+        setConditions({ match: "all", rules: [] });
         setCodePrefix("");
         setCodeLength(6);
         setMaxCheckInsPerDay(1);
@@ -232,9 +230,26 @@ export function useTicketSettingsState({
         setCategory(t.category ?? t.poolName ?? "");
         setPoolCapacity(t.poolCapacity?.toString() ?? "");
         setTagsInput(t.tags?.join(", ") ?? "");
-        setConditions(
-          t.conditions && Array.isArray(t.conditions) ? t.conditions : [],
-        );
+        if (t.conditions) {
+          if (Array.isArray(t.conditions)) {
+            setConditions({
+              match: "all",
+              rules: t.conditions.map((r) => ({
+                fieldId: r.fieldId,
+                operator:
+                  r.operator ?? (r.allowedValues.length > 1 ? "in" : "equals"),
+                allowedValues: r.allowedValues,
+              })),
+            });
+          } else {
+            setConditions({
+              match: t.conditions.match || "all",
+              rules: t.conditions.rules || [],
+            });
+          }
+        } else {
+          setConditions({ match: "all", rules: [] });
+        }
         setCodePrefix(t.codePrefix ?? "");
         setCodeLength(t.codeLength ?? 6);
         setMaxCheckInsPerDay(t.maxCheckInsPerDay ?? 1);

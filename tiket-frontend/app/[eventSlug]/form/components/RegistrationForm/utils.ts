@@ -6,20 +6,35 @@ import type {
   ConditionGroup,
   FieldConditionConfig,
   VisibilityConditionRule,
+  VisibilityConditions,
 } from "@/types/form";
 
 export function evaluateVisibilityConditions(
-  conditions: VisibilityConditionRule[] | null | undefined,
+  conditions: VisibilityConditions | null | undefined,
   answers: Map<string, string>,
 ): boolean {
-  if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
+  if (!conditions) {
     return true;
   }
-  return conditions.every((rule) => {
+
+  const match: "all" | "any" = Array.isArray(conditions)
+    ? "all"
+    : conditions.match ?? "all";
+
+  const rules: VisibilityConditionRule[] = Array.isArray(conditions)
+    ? conditions
+    : conditions.rules ?? [];
+
+  if (rules.length === 0) {
+    return true;
+  }
+
+  const evaluateRule = (rule: VisibilityConditionRule): boolean => {
     if (!rule.fieldId || !rule.allowedValues || rule.allowedValues.length === 0) {
       return true;
     }
     const rawAnswer = answers.get(rule.fieldId) ?? "";
+    // Option A: Hidden until answered!
     if (!rawAnswer) return false;
 
     let userAnswers: string[] = [];
@@ -41,10 +56,26 @@ export function evaluateVisibilityConditions(
     const compareEq = (a: string, b: string) =>
       a.trim().toLowerCase() === b.trim().toLowerCase();
 
-    return userAnswers.some((ua) =>
-      rule.allowedValues.some((av) => compareEq(ua, av)),
-    );
-  });
+    const op = rule.operator ?? (rule.allowedValues.length > 1 ? "in" : "equals");
+
+    switch (op) {
+      case "not_equals":
+        return !userAnswers.some((ua) =>
+          rule.allowedValues.some((av) => compareEq(ua, av)),
+        );
+      case "equals":
+      case "in":
+      default:
+        return userAnswers.some((ua) =>
+          rule.allowedValues.some((av) => compareEq(ua, av)),
+        );
+    }
+  };
+
+  if (match === "any") {
+    return rules.some(evaluateRule);
+  }
+  return rules.every(evaluateRule);
 }
 
 export function evaluateConditionRule(
@@ -177,27 +208,33 @@ export function getFieldAction(
     return field.isRequired ? "require" : "optional";
   }
 
-  // Pure VisibilityConditionRule[] array
-  if (Array.isArray(rawConditions)) {
-    if (rawConditions.length === 0) {
-      return field.isRequired ? "require" : "optional";
-    }
-    const isVisible = evaluateVisibilityConditions(rawConditions, answers);
+  // VisibilityConditions (array or { match, rules })
+  if (
+    Array.isArray(rawConditions) ||
+    ("rules" in rawConditions &&
+      Array.isArray(rawConditions.rules) &&
+      !("thenAction" in rawConditions))
+  ) {
+    const isVisible = evaluateVisibilityConditions(
+      rawConditions as VisibilityConditions,
+      answers,
+    );
     if (!isVisible) return "hide";
     return field.isRequired ? "require" : "show";
   }
 
   // Legacy FieldConditionConfig
-  if ("rules" in rawConditions && Array.isArray(rawConditions.rules)) {
-    if (rawConditions.rules.length === 0) {
+  if ("rules" in rawConditions && "thenAction" in rawConditions) {
+    const legacyConfig = rawConditions as FieldConditionConfig;
+    if (legacyConfig.rules.length === 0) {
       return field.isRequired ? "require" : "optional";
     }
     const isMatch = evaluateConditionGroup(
-      rawConditions,
+      legacyConfig,
       answers,
       ticketTypeId,
     );
-    return isMatch ? rawConditions.thenAction : rawConditions.elseAction;
+    return isMatch ? legacyConfig.thenAction : legacyConfig.elseAction;
   }
 
   return field.isRequired ? "require" : "optional";
@@ -291,8 +328,7 @@ export function buildZodSchema(
   const shape: z.ZodRawShape = {};
 
   for (const field of fields) {
-    const multiple =
-      field.fieldType === "multi_select" || field.fieldType === "checkbox";
+    const multiple = field.fieldType === "multi_select";
     shape[field.id] = multiple
       ? z.array(z.string()).default([])
       : z.string().default("");
@@ -317,13 +353,20 @@ export function buildZodSchema(
       }
 
       const val = data[field.id];
-      const multiple =
-        field.fieldType === "multi_select" || field.fieldType === "checkbox";
+      const multiple = field.fieldType === "multi_select";
       const items: string[] = Array.isArray(val) ? (val as string[]) : [];
       const trimmed = typeof val === "string" ? val.trim() : "";
 
       const isReq =
         action === "require" || (action === "show" && field.isRequired);
+
+      const opts =
+        field.options &&
+        typeof field.options === "object" &&
+        !Array.isArray(field.options)
+          ? field.options
+          : null;
+      const allowCustom = Boolean(opts?.allowCustom);
 
       if (multiple) {
         if (isReq && items.length === 0) {
@@ -345,6 +388,7 @@ export function buildZodSchema(
         }
         const choices = extractChoices(field.options);
         if (
+          !allowCustom &&
           choices.length > 0 &&
           items.some((item) => !choices.includes(item))
         ) {
@@ -354,12 +398,6 @@ export function buildZodSchema(
             message: `Invalid answer for ${field.label}`,
           });
         }
-        const opts =
-          field.options &&
-          typeof field.options === "object" &&
-          !Array.isArray(field.options)
-            ? field.options
-            : null;
         const minChoices = typeof opts?.min === "number" ? opts.min : null;
         const maxChoices = typeof opts?.max === "number" ? opts.max : null;
         if (minChoices !== null && items.length < minChoices) {
@@ -453,17 +491,6 @@ export function buildZodSchema(
       }
 
       if (
-        field.fieldType === "file" &&
-        !/^file:[0-9a-f-]{36}$/i.test(trimmed)
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [field.id],
-          message: "Please upload a valid file",
-        });
-      }
-
-      if (
         ["date", "datetime"].includes(field.fieldType) &&
         Number.isNaN(Date.parse(trimmed))
       ) {
@@ -487,8 +514,9 @@ export function buildZodSchema(
 
       const choices = extractChoices(field.options);
       if (
-        ["select", "single_select", "radio"].includes(field.fieldType) &&
+        field.fieldType === "single_select" &&
         choices.length > 0 &&
+        !allowCustom &&
         !choices.includes(trimmed)
       ) {
         ctx.addIssue({

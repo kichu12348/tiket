@@ -6,15 +6,11 @@ const fieldTypes = [
   "number",
   "single_select",
   "multi_select",
-  "radio",
-  "checkbox",
   "date",
   "datetime",
   "time",
   "rating",
   "url",
-  "file",
-  "select",
 ] as const;
 
 const visibilityConditionRuleSchema = {
@@ -22,9 +18,25 @@ const visibilityConditionRuleSchema = {
   required: ["fieldId", "allowedValues"],
   properties: {
     fieldId: { type: "string" },
+    operator: {
+      type: "string",
+      enum: ["equals", "not_equals", "in"],
+    },
     allowedValues: {
       type: "array",
       items: { type: "string" },
+    },
+  },
+};
+
+const visibilityConditionsConfigSchema = {
+  type: "object",
+  required: ["rules"],
+  properties: {
+    match: { type: "string", enum: ["all", "any"] },
+    rules: {
+      type: "array",
+      items: visibilityConditionRuleSchema,
     },
   },
 };
@@ -62,6 +74,15 @@ const fieldConditionConfigSchema = {
   },
 };
 
+const visibilityConditionsSchema = {
+  anyOf: [
+    { type: "array", items: visibilityConditionRuleSchema },
+    visibilityConditionsConfigSchema,
+    fieldConditionConfigSchema,
+    { type: "null" },
+  ],
+};
+
 const formFieldObj = {
   type: "object",
   properties: {
@@ -84,25 +105,15 @@ const formFieldObj = {
             choices: { type: "array", items: { type: "string" } },
             min: { type: ["integer", "null"] },
             max: { type: ["integer", "null"] },
-            conditions: {
-              anyOf: [
-                { type: "array", items: visibilityConditionRuleSchema },
-                fieldConditionConfigSchema,
-                { type: "null" },
-              ],
-            },
+            allowCustom: { type: ["boolean", "null"] },
+            isMulti: { type: ["boolean", "null"] },
+            conditions: visibilityConditionsSchema,
           },
         },
         { type: "null" },
       ],
     },
-    conditions: {
-      anyOf: [
-        { type: "array", items: visibilityConditionRuleSchema },
-        fieldConditionConfigSchema,
-        { type: "null" },
-      ],
-    },
+    conditions: visibilityConditionsSchema,
     sortOrder: { type: "integer" },
     page: { type: "integer" },
     createdAt: { type: "string", format: "date-time" },
@@ -142,25 +153,15 @@ export const createFieldSchema = {
                 choices: { type: "array", items: { type: "string" } },
                 min: { type: ["integer", "null"] },
                 max: { type: ["integer", "null"] },
-                conditions: {
-                  anyOf: [
-                    { type: "array", items: visibilityConditionRuleSchema },
-                    fieldConditionConfigSchema,
-                    { type: "null" },
-                  ],
-                },
+                allowCustom: { type: ["boolean", "null"] },
+                isMulti: { type: ["boolean", "null"] },
+                conditions: visibilityConditionsSchema,
               },
             },
             { type: "null" },
           ],
         },
-        conditions: {
-          anyOf: [
-            { type: "array", items: visibilityConditionRuleSchema },
-            fieldConditionConfigSchema,
-            { type: "null" },
-          ],
-        },
+        conditions: visibilityConditionsSchema,
         sortOrder: { type: "integer" },
         page: { type: "integer" },
       },
@@ -222,25 +223,15 @@ export const updateFieldSchema = {
                 choices: { type: "array", items: { type: "string" } },
                 min: { type: ["integer", "null"] },
                 max: { type: ["integer", "null"] },
-                conditions: {
-                  anyOf: [
-                    { type: "array", items: visibilityConditionRuleSchema },
-                    fieldConditionConfigSchema,
-                    { type: "null" },
-                  ],
-                },
+                allowCustom: { type: ["boolean", "null"] },
+                isMulti: { type: ["boolean", "null"] },
+                conditions: visibilityConditionsSchema,
               },
             },
             { type: "null" },
           ],
         },
-        conditions: {
-          anyOf: [
-            { type: "array", items: visibilityConditionRuleSchema },
-            fieldConditionConfigSchema,
-            { type: "null" },
-          ],
-        },
+        conditions: visibilityConditionsSchema,
         sortOrder: { type: "integer" },
         page: { type: "integer" },
       },

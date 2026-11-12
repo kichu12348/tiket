@@ -177,3 +177,38 @@
   opacity: 0.45;
   cursor: not-allowed !important;
 }
+
+/* ─── Custom ('Other') Option Inputs ────────────────────────────────────── */
+
+.customInputWrapper {
+  width: 100%;
+  margin-top: 0.35rem;
+}
+
+.customInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm, 8px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.15));
+  color: var(--text-primary, #ffffff);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.customInput:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.customInput::placeholder {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+}
+
+.otherCheckboxBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}

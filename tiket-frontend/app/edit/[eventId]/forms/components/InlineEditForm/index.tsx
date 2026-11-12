@@ -6,19 +6,26 @@ import Switch from "@/components/Switch";
 import Dropdown from "@/components/Dropdown";
 import type { LocalField, FieldType } from "../../types";
 import { FIELD_TYPES } from "../../types";
-import { isChoiceField, isMultiChoiceField } from "../../functions/formHelpers";
+import { isChoiceField } from "../../functions/formHelpers";
 import styles from "./InlineEditForm.module.css";
-import type { FormField, VisibilityConditionRule, FieldConditionConfig } from "@/types/form";
+import type {
+  FormField,
+  VisibilityConditionRule,
+  VisibilityConditionsConfig,
+  VisibilityConditions,
+  VisibilityConditionOperator,
+  FieldConditionConfig,
+} from "@/types/form";
 import ConditionBuilder from "@/components/ConditionBuilder";
 
 interface Props {
   field: LocalField & {
-    conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+    conditions?: VisibilityConditions | FieldConditionConfig | null;
   };
   availableFields?: (LocalField | FormField)[];
   onSave: (
     updated: Omit<LocalField, "isEditing"> & {
-      conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+      conditions?: VisibilityConditions | FieldConditionConfig | null;
     },
   ) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -42,10 +49,18 @@ export default function InlineEditForm({
   const [maxOptions, setMaxOptions] = useState<number | "">(
     typeof field.maxOptions === "number" ? field.maxOptions : "",
   );
+  const [allowCustom, setAllowCustom] = useState<boolean>(
+    Boolean(field.allowCustom),
+  );
+  const [isMulti, setIsMulti] = useState<boolean>(() => {
+    if (typeof field.isMulti === "boolean") return field.isMulti;
+    if (field.fieldType === "multi_select") return true;
+    return false;
+  });
 
   const initialConditions =
     (field as unknown as {
-      conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+      conditions?: VisibilityConditions | FieldConditionConfig | null;
     })?.conditions ?? null;
 
   const [hasConditions, setHasConditions] = useState(() => {
@@ -54,20 +69,45 @@ export default function InlineEditForm({
     return Boolean(initialConditions.rules && initialConditions.rules.length > 0);
   });
 
-  const [conditions, setConditions] = useState<VisibilityConditionRule[]>(() => {
-    if (!initialConditions) return [];
-    if (Array.isArray(initialConditions)) return initialConditions;
-    if ("rules" in initialConditions && Array.isArray(initialConditions.rules)) {
-      return initialConditions.rules.map((r) => ({
-        fieldId: r.sourceId,
-        allowedValues: Array.isArray(r.value)
-          ? r.value
-          : r.value
-            ? [String(r.value)]
-            : [],
-      }));
+  const [conditions, setConditions] = useState<VisibilityConditionsConfig>(() => {
+    if (!initialConditions) return { match: "all", rules: [] };
+    if (Array.isArray(initialConditions)) {
+      return {
+        match: "all",
+        rules: initialConditions.map((r) => ({
+          fieldId: r.fieldId,
+          operator: r.operator ?? (r.allowedValues.length > 1 ? "in" : "equals"),
+          allowedValues: r.allowedValues,
+        })),
+      };
     }
-    return [];
+    if ("rules" in initialConditions && Array.isArray(initialConditions.rules)) {
+      const match = (initialConditions.match as "all" | "any") ?? "all";
+      return {
+        match,
+        rules: initialConditions.rules.map((r) => {
+          if ("fieldId" in r) {
+            const vr = r as VisibilityConditionRule;
+            return {
+              fieldId: vr.fieldId,
+              operator: vr.operator ?? (vr.allowedValues.length > 1 ? "in" : "equals"),
+              allowedValues: vr.allowedValues,
+            };
+          }
+          const legacyR = r as unknown as { sourceId: string; value?: unknown; operator?: string };
+          return {
+            fieldId: legacyR.sourceId,
+            operator: (legacyR.operator as VisibilityConditionOperator) ?? "equals",
+            allowedValues: Array.isArray(legacyR.value)
+              ? (legacyR.value as string[])
+              : legacyR.value
+                ? [String(legacyR.value)]
+                : [],
+          };
+        }),
+      };
+    }
+    return { match: "all", rules: [] };
   });
 
   const normalizedAvailableFields: FormField[] = (availableFields || []).map(
@@ -91,7 +131,6 @@ export default function InlineEditForm({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const isChoice = isChoiceField(fieldType);
-  const isMulti = isMultiChoiceField(fieldType);
 
   const handleSave = async () => {
     if (!label.trim()) {
@@ -116,7 +155,7 @@ export default function InlineEditForm({
         return;
       }
 
-      if (isMulti) {
+      if (fieldType === "multi_select" && isMulti) {
         finalMin = typeof minOptions === "number" ? minOptions : null;
         finalMax = typeof maxOptions === "number" ? maxOptions : null;
 
@@ -145,13 +184,16 @@ export default function InlineEditForm({
 
     setIsSaving(true);
     try {
-      let conditionsConfig: VisibilityConditionRule[] | null = null;
+      let conditionsConfig: VisibilityConditionsConfig | null = null;
       if (hasConditions) {
-        const validRules = conditions.filter(
+        const validRules = conditions.rules.filter(
           (r) => r.fieldId.trim() && r.allowedValues.length > 0,
         );
         if (validRules.length > 0) {
-          conditionsConfig = validRules;
+          conditionsConfig = {
+            match: conditions.match || "all",
+            rules: validRules,
+          };
         }
       }
 
@@ -162,6 +204,8 @@ export default function InlineEditForm({
         fieldType,
         isRequired,
         options: parsedOptions,
+        allowCustom: isChoice ? allowCustom : false,
+        isMulti: fieldType === "multi_select" ? isMulti : undefined,
         conditions: conditionsConfig,
         minOptions: finalMin,
         maxOptions: finalMax,
@@ -230,7 +274,16 @@ export default function InlineEditForm({
         )}
       </div>
 
-      {isChoice && isMulti && (
+      {isChoice && fieldType === "multi_select" && (
+        <div className={styles.editFormRow}>
+          <div className={styles.switchRow}>
+            <Switch checked={isMulti} onChange={setIsMulti} />
+            <label>Multi Select</label>
+          </div>
+        </div>
+      )}
+
+      {isChoice && fieldType === "multi_select" && isMulti && (
         <div className={styles.editFormRow}>
           <div className={styles.formGroup}>
             <label>Min Selections</label>
@@ -265,6 +318,15 @@ export default function InlineEditForm({
         </div>
       )}
 
+      {isChoice && (
+        <div className={styles.editFormRow}>
+          <div className={styles.switchRow}>
+            <Switch checked={allowCustom} onChange={setAllowCustom} />
+            <label>Allow Custom Answer</label>
+          </div>
+        </div>
+      )}
+
       <div className={styles.editFormRow}>
         <div className={styles.switchRow}>
           <Switch checked={hasConditions} onChange={setHasConditions} />
@@ -273,18 +335,7 @@ export default function InlineEditForm({
       </div>
 
       {hasConditions && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.85rem",
-            padding: "0.85rem",
-            background: "rgba(255, 255, 255, 0.03)",
-            borderRadius: "8px",
-            border: "1px solid var(--border-subtle)",
-            marginBottom: "1rem",
-          }}
-        >
+        <div className={styles.conditionSection}>
           <ConditionBuilder
             conditions={conditions}
             onChange={setConditions}

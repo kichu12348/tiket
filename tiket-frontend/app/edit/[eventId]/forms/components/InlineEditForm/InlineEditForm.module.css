@@ -47,6 +47,11 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.conditionSection {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
 .editFormFooter {
   display: flex;
   align-items: center;

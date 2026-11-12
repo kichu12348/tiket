@@ -4,7 +4,6 @@ import {
   Type,
   AlignLeft,
   List,
-  CheckSquare,
   Calendar,
   Mail,
   Hash,
@@ -12,7 +11,6 @@ import {
   Trash2,
   Phone,
   ChevronDown,
-  CircleDot,
   CalendarClock,
   Star,
   Clock,
@@ -24,13 +22,17 @@ import { confirm } from "@/components/ConfirmModal";
 import Switch from "@/components/Switch";
 import type { LocalField, FieldType } from "../../types";
 import { FIELD_TYPES } from "../../types";
-import {
-  isChoiceField,
-  isMultiChoiceField,
-} from "../../functions/formHelpers";
+import { isChoiceField } from "../../functions/formHelpers";
 import styles from "./FieldModal.module.css";
 import { toast } from "sonner";
-import type { FormField, VisibilityConditionRule, FieldConditionConfig } from "@/types/form";
+import type {
+  FormField,
+  VisibilityConditionRule,
+  VisibilityConditionsConfig,
+  VisibilityConditions,
+  VisibilityConditionOperator,
+  FieldConditionConfig,
+} from "@/types/form";
 import ConditionBuilder from "@/components/ConditionBuilder";
 
 interface Props {
@@ -38,12 +40,12 @@ interface Props {
   onClose: () => void;
   mode: "add" | "edit";
   initialField?:
-    | (LocalField & { conditions?: VisibilityConditionRule[] | FieldConditionConfig | null })
+    | (LocalField & { conditions?: VisibilityConditions | FieldConditionConfig | null })
     | null;
   availableFields?: (LocalField | FormField)[];
   onSave: (
     field: Omit<LocalField, "isEditing" | "localId"> & {
-      conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+      conditions?: VisibilityConditions | FieldConditionConfig | null;
     },
   ) => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -57,15 +59,11 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
   number: <Hash size={18} />,
   single_select: <ChevronDown size={18} />,
   multi_select: <List size={18} />,
-  select: <List size={18} />,
-  radio: <CircleDot size={18} />,
-  checkbox: <CheckSquare size={18} />,
   date: <Calendar size={18} />,
   datetime: <CalendarClock size={18} />,
   time: <Clock size={18} />,
   rating: <Star size={18} />,
   url: <Link size={18} />,
-  file: <Upload size={18} />,
 };
 
 const TYPE_DESCRIPTIONS: Record<string, string> = {
@@ -74,17 +72,13 @@ const TYPE_DESCRIPTIONS: Record<string, string> = {
   email: "Ask for an email address",
   phone: "Ask for a phone number",
   number: "Ask for a numerical value",
-  single_select: "Let the guest choose one option from a list",
-  multi_select: "Let the guest choose multiple options",
-  select: "Let the guest choose from a dropdown list",
-  radio: "Let the guest choose one option via radio buttons",
-  checkbox: "Ask guests to check one or more boxes",
+  single_select: "Let the guest choose one option from a dropdown",
+  multi_select: "Let the guest choose from a list of options",
   date: "Ask guests for a specific date",
   datetime: "Ask guests for a specific date and time",
   time: "Ask guests for a specific time",
   rating: "Ask guests for a rating out of 5",
   url: "Ask guests for a website link",
-  file: "Collect a private registration file",
 };
 
 function FieldModalContent({
@@ -118,10 +112,18 @@ function FieldModalContent({
   const [maxOptions, setMaxOptions] = useState<number | "">(
     typeof initialField?.maxOptions === "number" ? initialField.maxOptions : "",
   );
+  const [allowCustom, setAllowCustom] = useState<boolean>(
+    Boolean(initialField?.allowCustom),
+  );
+  const [isMulti, setIsMulti] = useState<boolean>(() => {
+    if (typeof initialField?.isMulti === "boolean") return initialField.isMulti;
+    if (initialField?.fieldType === "multi_select") return true;
+    return false;
+  });
 
   const initialConditions =
     (initialField as unknown as {
-      conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+      conditions?: VisibilityConditions | FieldConditionConfig | null;
     })?.conditions ?? null;
 
   const [hasConditions, setHasConditions] = useState(() => {
@@ -130,20 +132,45 @@ function FieldModalContent({
     return Boolean(initialConditions.rules && initialConditions.rules.length > 0);
   });
 
-  const [conditions, setConditions] = useState<VisibilityConditionRule[]>(() => {
-    if (!initialConditions) return [];
-    if (Array.isArray(initialConditions)) return initialConditions;
-    if ("rules" in initialConditions && Array.isArray(initialConditions.rules)) {
-      return initialConditions.rules.map((r) => ({
-        fieldId: r.sourceId,
-        allowedValues: Array.isArray(r.value)
-          ? r.value
-          : r.value
-            ? [String(r.value)]
-            : [],
-      }));
+  const [conditions, setConditions] = useState<VisibilityConditionsConfig>(() => {
+    if (!initialConditions) return { match: "all", rules: [] };
+    if (Array.isArray(initialConditions)) {
+      return {
+        match: "all",
+        rules: initialConditions.map((r) => ({
+          fieldId: r.fieldId,
+          operator: r.operator ?? (r.allowedValues.length > 1 ? "in" : "equals"),
+          allowedValues: r.allowedValues,
+        })),
+      };
     }
-    return [];
+    if ("rules" in initialConditions && Array.isArray(initialConditions.rules)) {
+      const match = (initialConditions.match as "all" | "any") ?? "all";
+      return {
+        match,
+        rules: initialConditions.rules.map((r) => {
+          if ("fieldId" in r) {
+            const vr = r as VisibilityConditionRule;
+            return {
+              fieldId: vr.fieldId,
+              operator: vr.operator ?? (vr.allowedValues.length > 1 ? "in" : "equals"),
+              allowedValues: vr.allowedValues,
+            };
+          }
+          const legacyR = r as unknown as { sourceId: string; value?: unknown; operator?: string };
+          return {
+            fieldId: legacyR.sourceId,
+            operator: (legacyR.operator as VisibilityConditionOperator) ?? "equals",
+            allowedValues: Array.isArray(legacyR.value)
+              ? (legacyR.value as string[])
+              : legacyR.value
+                ? [String(legacyR.value)]
+                : [],
+          };
+        }),
+      };
+    }
+    return { match: "all", rules: [] };
   });
 
   const normalizedAvailableFields: FormField[] = (availableFields || []).map(
@@ -173,10 +200,12 @@ function FieldModalContent({
   );
 
   const isChoice = isChoiceField(fieldType);
-  const isMulti = isMultiChoiceField(fieldType);
 
   const handleTypeSelect = (type: FieldType) => {
     setFieldType(type);
+    if (type === "multi_select" && initialField?.isMulti === undefined) {
+      setIsMulti(false);
+    }
     setStep("details");
   };
 
@@ -298,7 +327,7 @@ function FieldModalContent({
     let finalMin = typeof minOptions === "number" ? minOptions : null;
     let finalMax = typeof maxOptions === "number" ? maxOptions : null;
 
-    if (isMulti) {
+    if (fieldType === "multi_select" && isMulti) {
       if (finalMin !== null && finalMin < 0) {
         toast.error("Minimum selections cannot be negative.");
         return;
@@ -329,13 +358,16 @@ function FieldModalContent({
       const finalName =
         initialField?.name || label.toLowerCase().replace(/\s+/g, "_");
 
-      let conditionsConfig: VisibilityConditionRule[] | null = null;
+      let conditionsConfig: VisibilityConditionsConfig | null = null;
       if (hasConditions) {
-        const validRules = conditions.filter(
+        const validRules = conditions.rules.filter(
           (r) => r.fieldId.trim() && r.allowedValues.length > 0,
         );
         if (validRules.length > 0) {
-          conditionsConfig = validRules;
+          conditionsConfig = {
+            match: conditions.match || "all",
+            rules: validRules,
+          };
         }
       }
 
@@ -345,6 +377,8 @@ function FieldModalContent({
         fieldType,
         isRequired,
         options: isChoice ? validOptions : null,
+        allowCustom: isChoice ? allowCustom : false,
+        isMulti: fieldType === "multi_select" ? isMulti : undefined,
         conditions: conditionsConfig,
         minOptions: finalMin,
         maxOptions: finalMax,
@@ -405,9 +439,11 @@ function FieldModalContent({
       leftAction={leftAction}
       width={465}
       className={styles.modalContent}
+      headerClassName={styles.modalHeaderStyle}
+      withoutPadding
     >
       {step === "type" ? (
-        <>
+        <div className={styles.typeStepWrapper}>
           <p className={styles.modalSubtitle}>
             Ask guests custom questions when they register.
           </p>
@@ -425,19 +461,21 @@ function FieldModalContent({
               </button>
             ))}
           </div>
-        </>
+        </div>
       ) : (
-        <div className={styles.formBody}>
-          {/* Type summary card */}
-          <div className={styles.selectedTypeCard}>
-            <div className={styles.selectedTypeIcon}>
-              {TYPE_ICONS[fieldType] || <Type size={20} />}
-            </div>
-            <div className={styles.selectedTypeText}>
-              <h3>{typeConfig?.label}</h3>
-              <p>{TYPE_DESCRIPTIONS[fieldType] || "Custom question"}</p>
-            </div>
-          </div>
+        <div className={styles.detailsContainer}>
+          <div className={`${styles.modalScrollWrapper} scrollbar`}>
+            <div className={styles.formBody}>
+              {/* Type summary card */}
+              <div className={styles.selectedTypeCard}>
+                <div className={styles.selectedTypeIcon}>
+                  {TYPE_ICONS[fieldType] || <Type size={20} />}
+                </div>
+                <div className={styles.selectedTypeText}>
+                  <h3>{typeConfig?.label}</h3>
+                  <p>{TYPE_DESCRIPTIONS[fieldType] || "Custom question"}</p>
+                </div>
+              </div>
 
           {/* Question input */}
           <div className={styles.formGroup}>
@@ -534,7 +572,14 @@ function FieldModalContent({
                 </div>
               </div>
 
-              {isMulti && (
+              {fieldType === "multi_select" && (
+                <div className={styles.switchRow} style={{ marginTop: "0.5rem" }}>
+                  <span>Multi Select</span>
+                  <Switch checked={isMulti} onChange={setIsMulti} />
+                </div>
+              )}
+
+              {fieldType === "multi_select" && isMulti && (
                 <div
                   style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}
                 >
@@ -576,6 +621,11 @@ function FieldModalContent({
                   </div>
                 </div>
               )}
+
+              <div className={styles.switchRow} style={{ marginTop: "0.5rem" }}>
+                <span>Allow Custom Answer</span>
+                <Switch checked={allowCustom} onChange={setAllowCustom} />
+              </div>
             </div>
           )}
 
@@ -592,18 +642,7 @@ function FieldModalContent({
           </div>
 
           {hasConditions && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.85rem",
-                padding: "0.85rem",
-                background: "rgba(255, 255, 255, 0.03)",
-                borderRadius: "8px",
-                border: "1px solid var(--border-subtle)",
-                marginBottom: "0.5rem",
-              }}
-            >
+            <div className={styles.conditionSection}>
               <ConditionBuilder
                 conditions={conditions}
                 onChange={setConditions}
@@ -615,6 +654,8 @@ function FieldModalContent({
               />
             </div>
           )}
+            </div>
+          </div>
 
           {/* Submit + Delete */}
           <div className={styles.footer}>

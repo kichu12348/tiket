@@ -3,11 +3,35 @@ const visibilityConditionRuleSchema = {
   required: ["fieldId", "allowedValues"],
   properties: {
     fieldId: { type: "string" },
+    operator: {
+      type: "string",
+      enum: ["equals", "not_equals", "in"],
+    },
     allowedValues: {
       type: "array",
       items: { type: "string" },
     },
   },
+};
+
+const visibilityConditionsConfigSchema = {
+  type: "object",
+  required: ["rules"],
+  properties: {
+    match: { type: "string", enum: ["all", "any"] },
+    rules: {
+      type: "array",
+      items: visibilityConditionRuleSchema,
+    },
+  },
+};
+
+const visibilityConditionsSchema = {
+  anyOf: [
+    { type: "array", items: visibilityConditionRuleSchema },
+    visibilityConditionsConfigSchema,
+    { type: "null" },
+  ],
 };
 
 const conditionRuleSchema = {
@@ -125,12 +149,7 @@ const ticketTypeObj = {
     isFixedDefault: { type: "boolean" },
     collectGst: { type: "boolean" },
     isClosed: { type: "boolean" },
-    conditions: {
-      anyOf: [
-        { type: "array", items: visibilityConditionRuleSchema },
-        { type: "null" },
-      ],
-    },
+    conditions: visibilityConditionsSchema,
     eligibilityRules: {
       anyOf: [conditionGroupSchema, { type: "null" }],
     },
@@ -189,12 +208,7 @@ export const createTicketTypeSchema = {
         isFixedDefault: { type: "boolean" },
         collectGst: { type: "boolean" },
         isClosed: { type: "boolean" },
-        conditions: {
-          anyOf: [
-            { type: "array", items: visibilityConditionRuleSchema },
-            { type: "null" },
-          ],
-        },
+        conditions: visibilityConditionsSchema,
         eligibilityRules: {
           anyOf: [conditionGroupSchema, { type: "null" }],
         },
@@ -274,12 +288,7 @@ export const updateTicketTypeSchema = {
         isFixedDefault: { type: "boolean" },
         collectGst: { type: "boolean" },
         isClosed: { type: "boolean" },
-        conditions: {
-          anyOf: [
-            { type: "array", items: visibilityConditionRuleSchema },
-            { type: "null" },
-          ],
-        },
+        conditions: visibilityConditionsSchema,
         eligibilityRules: {
           anyOf: [conditionGroupSchema, { type: "null" }],
         },

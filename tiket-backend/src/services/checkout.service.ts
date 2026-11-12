@@ -6,7 +6,6 @@ import {
   orders,
   tickets,
   ticketTypes,
-  uploads,
   forms,
   users,
 } from "@db/schema";
@@ -38,6 +37,7 @@ import { priceCart, pricingPolicy } from "./pricing.service";
 import { enqueueOrderEmail } from "./notifications.service";
 import { gateway } from "./gateway.service";
 import { withRedisLock } from "./redis-lock.service";
+import { publishEventChange } from "./realtime.service";
 
 export interface CheckoutBody {
   eventId: string;
@@ -325,26 +325,6 @@ async function cart(
         );
       }
     }
-    for (const response of purchase.formResponses || []) {
-      if (fields.find((f) => f.id === response.fieldId)?.fieldType !== "file")
-        continue;
-      const [upload] = await tx
-        .select()
-        .from(uploads)
-        .where(
-          and(
-            eq(uploads.id, response.responseValue.replace(/^file:/, "")),
-            eq(uploads.userId, userId),
-            eq(uploads.eventId, event.id),
-            eq(uploads.fieldId, response.fieldId),
-          ),
-        );
-      if (!upload?.completedAt)
-        throw new HttpError(
-          400,
-          "Finish uploading your registration file first.",
-        );
-    }
     requested.set(tier.id, (requested.get(tier.id) || 0) + 1);
   }
   assertCapacity(
@@ -389,7 +369,7 @@ export async function createCheckout(
   const userLockKey = `lock:checkout:user:${userId}:${body.eventId}`;
   const eventLockKey = `lock:checkout:event:${body.eventId}`;
 
-  return withRedisLock(
+  const checkoutResult = await withRedisLock(
     userLockKey,
     10000,
     async () => {
@@ -518,12 +498,12 @@ export async function createCheckout(
         order.id,
         requireApproval ? "pending" : "confirmation",
       );
-    await emitEvent(
+    const newVersion = await emitEvent(
       tx,
       order.eventId,
       isFree ? "registration.changed" : "availability.changed",
     );
-    return order;
+    return { order, version: newVersion };
           });
         },
         {
@@ -539,6 +519,21 @@ export async function createCheckout(
         "Another checkout request is currently in progress for your account. Please wait.",
     },
   );
+
+  if (
+    checkoutResult &&
+    typeof checkoutResult === "object" &&
+    "version" in checkoutResult &&
+    "order" in checkoutResult
+  ) {
+    const res = checkoutResult as {
+      order: typeof orders.$inferSelect;
+      version: number;
+    };
+    void publishEventChange(res.order.eventId, res.version);
+    return res.order;
+  }
+  return checkoutResult as typeof orders.$inferSelect;
 }
 export async function initializeGatewayOrder(orderId: string) {
   const [claimed] = await db

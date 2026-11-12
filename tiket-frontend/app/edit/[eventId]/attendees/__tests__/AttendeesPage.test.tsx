@@ -362,7 +362,6 @@ const mockGetUpload = mock(async () => ({
 
 mock.module("@/api/commerce", () => ({
   decideRegistration: mockDecideRegistration,
-  connectDashboard: mock(async () => ({ ticket: "conn-ticket-123" })),
   getUpload: mockGetUpload,
 }));
 

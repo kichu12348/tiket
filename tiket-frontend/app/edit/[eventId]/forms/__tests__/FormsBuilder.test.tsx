@@ -94,6 +94,7 @@ describe("formHelpers unit tests", () => {
         choices: ["AI", "Design", "DevOps"],
         min: 1,
         max: 2,
+        allowCustom: true,
       },
       sortOrder: 2,
       page: 2,
@@ -102,6 +103,7 @@ describe("formHelpers unit tests", () => {
 
     const local = serverToLocal(raw);
     expect(local.options).toEqual(["AI", "Design", "DevOps"]);
+    expect(local.allowCustom).toBe(true);
     expect(local.minOptions).toBe(1);
     expect(local.maxOptions).toBe(2);
     expect(local.page).toBe(2);
@@ -155,35 +157,26 @@ describe("formHelpers unit tests", () => {
     expect(page2Fields.map((f) => f.label)).toEqual(["C"]);
   });
 
-  test("isChoiceField and isMultiChoiceField classify all 16 field types correctly", () => {
+  test("isChoiceField and isMultiChoiceField classify field types correctly", () => {
     expect(CHOICE_BASED_FIELD_TYPES).toEqual([
       "single_select",
       "multi_select",
-      "radio",
-      "checkbox",
-      "select",
     ]);
 
-    expect(MULTI_CHOICE_FIELD_TYPES).toEqual(["multi_select", "checkbox"]);
+    expect(MULTI_CHOICE_FIELD_TYPES).toEqual(["multi_select"]);
 
     expect(isChoiceField("single_select")).toBe(true);
     expect(isChoiceField("multi_select")).toBe(true);
-    expect(isChoiceField("radio")).toBe(true);
-    expect(isChoiceField("checkbox")).toBe(true);
-    expect(isChoiceField("select")).toBe(true);
 
     expect(isChoiceField("text")).toBe(false);
     expect(isChoiceField("email")).toBe(false);
     expect(isChoiceField("number")).toBe(false);
-    expect(isChoiceField("file")).toBe(false);
 
     expect(isMultiChoiceField("multi_select")).toBe(true);
-    expect(isMultiChoiceField("checkbox")).toBe(true);
     expect(isMultiChoiceField("single_select")).toBe(false);
-    expect(isMultiChoiceField("radio")).toBe(false);
   });
 
-  test("buildOptionsPayload constructs proper choices or { choices, min, max }", () => {
+  test("buildOptionsPayload constructs proper choices or { choices, min, max, allowCustom }", () => {
     // Non-choice field returns null
     expect(buildOptionsPayload("text", ["A", "B"])).toBeNull();
 
@@ -191,25 +184,35 @@ describe("formHelpers unit tests", () => {
     expect(buildOptionsPayload("single_select", [])).toBeNull();
     expect(buildOptionsPayload("single_select", ["  ", ""])).toBeNull();
 
-    // Single choice returns string array
+    // Single choice returns string array when allowCustom is not set
     expect(buildOptionsPayload("single_select", ["Small", "Large"])).toEqual(["Small", "Large"]);
-    expect(buildOptionsPayload("radio", ["Yes", "No"])).toEqual(["Yes", "No"]);
-    expect(buildOptionsPayload("select", ["One", "Two"])).toEqual(["One", "Two"]);
+
+    // Single choice with allowCustom returns object
+    expect(buildOptionsPayload("single_select", ["Small", "Large"], null, null, true)).toEqual({
+      choices: ["Small", "Large"],
+      min: null,
+      max: null,
+      allowCustom: true,
+    });
 
     // Multi-select without constraints returns array
     expect(buildOptionsPayload("multi_select", ["A", "B"], null, null)).toEqual(["A", "B"]);
 
-    // Multi-select or checkbox with min or max returns object
-    expect(buildOptionsPayload("multi_select", ["A", "B", "C"], 1, 2)).toEqual({
+    // Multi-select with min, max or allowCustom returns object
+    expect(buildOptionsPayload("multi_select", ["A", "B", "C"], 1, 2, true)).toEqual({
       choices: ["A", "B", "C"],
       min: 1,
       max: 2,
+      allowCustom: true,
     });
 
-    expect(buildOptionsPayload("checkbox", ["Option 1", "Option 2"], 1, null)).toEqual({
-      choices: ["Option 1", "Option 2"],
-      min: 1,
+    // Multi-select with isMulti specified returns object with isMulti
+    expect(buildOptionsPayload("multi_select", ["A", "B"], null, null, false, false)).toEqual({
+      choices: ["A", "B"],
+      min: null,
       max: null,
+      allowCustom: false,
+      isMulti: false,
     });
   });
 });
@@ -388,7 +391,7 @@ describe("EditFormsPage Component Integration", () => {
     expect(screen.getByText(/3 options/)).toBeInTheDocument();
   });
 
-  test("2. Adds a new custom field (Single Select with options) via modal", async () => {
+  test("2. Adds a new custom field (Dropdown with options) via modal", async () => {
     render(<EditFormsPage />);
 
     await waitFor(() => {
@@ -399,19 +402,19 @@ describe("EditFormsPage Component Integration", () => {
     const addBtn = screen.getByRole("button", { name: /Add Question/i });
     fireEvent.click(addBtn);
 
-    // Type selection step: Click "Single Select"
+    // Type selection step: Click "Dropdown"
     await waitFor(() => {
       expect(
         screen.getByText("Ask guests custom questions when they register."),
       ).toBeInTheDocument();
     });
-    const singleSelectBtn = screen.getByRole("button", { name: /Single Select/i });
-    fireEvent.click(singleSelectBtn);
+    const dropdownBtn = screen.getByRole("button", { name: /Dropdown/i });
+    fireEvent.click(dropdownBtn);
 
     // Details step: Enter label and options
     await waitFor(() => {
       expect(
-        screen.getByText("Let the guest choose one option from a list"),
+        screen.getByText("Let the guest choose one option from a dropdown"),
       ).toBeInTheDocument();
       expect(screen.getByText("Question")).toBeInTheDocument();
     });

@@ -1,0 +1,107 @@
+.ruleConnector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: -0.25rem 0;
+}
+
+.ruleConnector::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  z-index: 1;
+}
+
+.connectorBadge {
+  position: relative;
+  z-index: 2;
+  background: rgba(28, 28, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.8));
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ruleRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ruleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.ruleLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.7));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.deleteRuleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.deleteRuleBtn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.ruleSelectors {
+  display: grid;
+  grid-template-columns: 1fr 130px;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+@media (max-width: 380px) {
+  .ruleSelectors {
+    grid-template-columns: 1fr;
+  }
+}
+
+.questionSelectWrapper {
+  min-width: 0;
+  width: 100%;
+}
+
+.operatorSelectWrapper {
+  min-width: 0;
+  width: 100%;
+}
+
+.valuePickerWrapper {
+  width: 100%;
+  min-width: 0;
+}

@@ -1,0 +1,49 @@
+.matchBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.1rem 0;
+}
+
+.matchLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.7));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.matchPillGroup {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: 2px;
+  gap: 2px;
+}
+
+.matchPill {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, rgba(255, 255, 255, 0.6));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.matchPill:hover {
+  color: var(--color-text-primary, #ffffff);
+}
+
+.matchPillActive {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+}
+
+.matchPillActive:hover {
+  color: #000000;
+}

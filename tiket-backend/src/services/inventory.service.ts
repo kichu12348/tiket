@@ -24,7 +24,7 @@ export async function emitEvent(
   tx: Transaction,
   eventId: string,
   type: string,
-) {
+): Promise<number> {
   const [event] = await tx
     .update(events)
     .set({ version: sql`${events.version} + 1` })
@@ -33,6 +33,7 @@ export async function emitEvent(
   await tx
     .insert(domainEvents)
     .values({ eventId, version: event!.version, type });
+  return event!.version;
 }
 export async function releaseHold(
   tx: Transaction,

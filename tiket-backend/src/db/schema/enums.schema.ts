@@ -54,15 +54,11 @@ export const fieldTypeEnum = pgEnum("field_type", [
   "number",
   "single_select",
   "multi_select",
-  "radio",
-  "checkbox",
   "date",
   "datetime",
   "time",
   "rating",
-  "file",
   "url",
-  "select",
 ]);
 
 export const templateTypeEnum = pgEnum("template_type", [

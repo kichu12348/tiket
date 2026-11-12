@@ -1,4 +1,7 @@
-import type { ConditionGroup, VisibilityConditionRule } from "./form";
+import type {
+  ConditionGroup,
+  VisibilityConditions,
+} from "./form";
 
 export interface TicketLayoutLayer {
   id: string;
@@ -52,7 +55,7 @@ export interface TicketType {
   isFixedDefault?: boolean;
   collectGst?: boolean;
   isClosed?: boolean;
-  conditions?: VisibilityConditionRule[] | null;
+  conditions?: VisibilityConditions | null;
   eligibilityRules?: ConditionGroup | null;
   saleStart: string | null;
   saleEnd: string | null;
@@ -87,7 +90,7 @@ export interface CreateTicketTypePayload {
   isFixedDefault?: boolean;
   collectGst?: boolean;
   isClosed?: boolean;
-  conditions?: VisibilityConditionRule[] | null;
+  conditions?: VisibilityConditions | null;
   eligibilityRules?: ConditionGroup | null;
   saleStart?: string | null;
   saleEnd?: string | null;

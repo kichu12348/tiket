@@ -1,10 +1,22 @@
 import type { FormFieldDefinition } from "@db/schema";
 import { HttpError } from "./errors";
 
+export type VisibilityConditionOperator = "equals" | "not_equals" | "in";
+
 export interface VisibilityConditionRule {
   fieldId: string; // Selected via Radix UI Select dropdown (single form question)
-  allowedValues: string[]; // Checked via Radix UI Checkbox list (one or multiple values can be checked)
+  operator?: VisibilityConditionOperator;
+  allowedValues: string[]; // Checked via Radix UI Checkbox list or Tag Input
 }
+
+export interface VisibilityConditionsConfig {
+  match: "all" | "any"; // AND vs OR
+  rules: VisibilityConditionRule[];
+}
+
+export type VisibilityConditions =
+  | VisibilityConditionRule[]
+  | VisibilityConditionsConfig;
 
 export interface ConditionRule {
   sourceType: "field" | "ticketType";
@@ -32,17 +44,31 @@ export interface FormResponse {
 export type Field = FormFieldDefinition;
 
 export function evaluateVisibilityConditions(
-  conditions: VisibilityConditionRule[] | null | undefined,
+  conditions: VisibilityConditions | null | undefined,
   answers: Map<string, string>,
 ): boolean {
-  if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
+  if (!conditions) {
     return true;
   }
-  return conditions.every((rule) => {
+
+  const match: "all" | "any" = Array.isArray(conditions)
+    ? "all"
+    : conditions.match ?? "all";
+
+  const rules: VisibilityConditionRule[] = Array.isArray(conditions)
+    ? conditions
+    : conditions.rules ?? [];
+
+  if (rules.length === 0) {
+    return true;
+  }
+
+  const evaluateRule = (rule: VisibilityConditionRule): boolean => {
     if (!rule.fieldId || !rule.allowedValues || rule.allowedValues.length === 0) {
       return true;
     }
     const rawAnswer = answers.get(rule.fieldId) ?? "";
+    // Option A: Hidden until answered!
     if (!rawAnswer) return false;
 
     let userAnswers: string[] = [];
@@ -64,10 +90,26 @@ export function evaluateVisibilityConditions(
     const compareEq = (a: string, b: string) =>
       a.trim().toLowerCase() === b.trim().toLowerCase();
 
-    return userAnswers.some((ua) =>
-      rule.allowedValues.some((av) => compareEq(ua, av)),
-    );
-  });
+    const op = rule.operator ?? (rule.allowedValues.length > 1 ? "in" : "equals");
+
+    switch (op) {
+      case "not_equals":
+        return !userAnswers.some((ua) =>
+          rule.allowedValues.some((av) => compareEq(ua, av)),
+        );
+      case "equals":
+      case "in":
+      default:
+        return userAnswers.some((ua) =>
+          rule.allowedValues.some((av) => compareEq(ua, av)),
+        );
+    }
+  };
+
+  if (match === "any") {
+    return rules.some(evaluateRule);
+  }
+  return rules.every(evaluateRule);
 }
 
 export function evaluateConditionRule(
@@ -186,7 +228,7 @@ export function getFieldAction(
   ticketTypeId?: string,
 ): "show" | "require" | "hide" | "optional" {
   const fieldAny = field as unknown as {
-    conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+    conditions?: VisibilityConditions | FieldConditionConfig | null;
   };
   const rawConditions =
     fieldAny.conditions ||
@@ -195,7 +237,7 @@ export function getFieldAction(
     !Array.isArray(field.options) &&
     "conditions" in field.options
       ? (field.options as {
-          conditions?: VisibilityConditionRule[] | FieldConditionConfig;
+          conditions?: VisibilityConditions | FieldConditionConfig;
         }).conditions
       : null);
 
@@ -203,27 +245,33 @@ export function getFieldAction(
     return field.isRequired ? "require" : "optional";
   }
 
-  // Pure VisibilityConditionRule[] array
-  if (Array.isArray(rawConditions)) {
-    if (rawConditions.length === 0) {
-      return field.isRequired ? "require" : "optional";
-    }
-    const isVisible = evaluateVisibilityConditions(rawConditions, answers);
+  // VisibilityConditions (array or { match, rules })
+  if (
+    Array.isArray(rawConditions) ||
+    ("rules" in rawConditions &&
+      Array.isArray(rawConditions.rules) &&
+      !("thenAction" in rawConditions))
+  ) {
+    const isVisible = evaluateVisibilityConditions(
+      rawConditions as VisibilityConditions,
+      answers,
+    );
     if (!isVisible) return "hide";
     return field.isRequired ? "require" : "show";
   }
 
   // Backward-compatibility with legacy FieldConditionConfig object
-  if ("rules" in rawConditions && Array.isArray(rawConditions.rules)) {
-    if (rawConditions.rules.length === 0) {
+  if ("rules" in rawConditions && "thenAction" in rawConditions) {
+    const legacyConfig = rawConditions as FieldConditionConfig;
+    if (legacyConfig.rules.length === 0) {
       return field.isRequired ? "require" : "optional";
     }
     const isMatch = evaluateConditionGroup(
-      rawConditions,
+      legacyConfig,
       answers,
       ticketTypeId,
     );
-    return isMatch ? rawConditions.thenAction : rawConditions.elseAction;
+    return isMatch ? legacyConfig.thenAction : legacyConfig.elseAction;
   }
 
   return field.isRequired ? "require" : "optional";
@@ -254,9 +302,15 @@ export function validateFormResponses(
     }
 
     const value = answers.get(field.id) ?? "";
-    let selected: string[] = [];
+    const options = field.options;
+    const isMultiConfig =
+      options && typeof options === "object" && !Array.isArray(options)
+        ? (options as { isMulti?: boolean | null }).isMulti
+        : undefined;
     const multiple =
-      field.fieldType === "multi_select" || field.fieldType === "checkbox";
+      field.fieldType === "multi_select" && isMultiConfig !== false;
+
+    let selected: string[] = [];
     if (multiple && value) {
       try {
         const parsed: unknown = JSON.parse(value);
@@ -312,8 +366,6 @@ export function validateFormResponses(
         invalid();
       }
     }
-    if (field.fieldType === "file" && !/^file:[0-9a-f-]{36}$/i.test(value))
-      invalid();
     if (
       ["date", "datetime"].includes(field.fieldType) &&
       Number.isNaN(Date.parse(value))
@@ -324,7 +376,6 @@ export function validateFormResponses(
       !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value)
     )
       invalid();
-    const options = field.options;
     const choices: string[] = Array.isArray(options)
       ? options.filter((item): item is string => typeof item === "string")
       : options &&
@@ -335,12 +386,18 @@ export function validateFormResponses(
             (item): item is string => typeof item === "string",
           )
         : [];
+    const allowCustom = Boolean(
+      options &&
+        typeof options === "object" &&
+        !Array.isArray(options) &&
+        (options as { allowCustom?: boolean }).allowCustom,
+    );
+
     if (multiple) {
-      if (
-        new Set(selected).size !== selected.length ||
-        selected.some((item) => !choices.includes(item))
-      )
+      if (new Set(selected).size !== selected.length) invalid();
+      if (!allowCustom && selected.some((item) => !choices.includes(item))) {
         invalid();
+      }
       if (options && !Array.isArray(options) && typeof options === "object") {
         if (
           "min" in options &&
@@ -356,9 +413,12 @@ export function validateFormResponses(
           invalid();
       }
     } else if (
-      ["select", "single_select", "radio"].includes(field.fieldType) &&
-      !choices.includes(value)
-    )
-      invalid();
+      field.fieldType === "single_select" ||
+      (field.fieldType === "multi_select" && !multiple)
+    ) {
+      if (!allowCustom && !choices.includes(value)) {
+        invalid();
+      }
+    }
   }
 }

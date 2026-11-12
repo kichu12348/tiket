@@ -1,4 +1,4 @@
-import api, { frontendApi } from "@/lib/api";
+import api from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/config";
 import type {
   Availability,
@@ -70,13 +70,6 @@ export async function getCoupons(eventId: string): Promise<Coupon[]> {
 }
 export async function putCoupon(eventId: string, coupon: Coupon) {
   return (await api.put(API_ENDPOINTS.COMMERCE.COUPONS(eventId), coupon)).data;
-}
-export async function connectDashboard(
-  eventId: string,
-): Promise<{ ticket: string }> {
-  return (
-    await frontendApi.post(API_ENDPOINTS.FRONTEND.REALTIME_CONNECT, { eventId })
-  ).data;
 }
 export async function getMailConnection(
   eventId: string,

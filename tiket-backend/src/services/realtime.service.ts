@@ -1,42 +1,43 @@
 import db from "@db";
 import { events } from "@db/schema";
-import { eq, inArray } from "drizzle-orm";
-import { randomBytes } from "node:crypto";
-import type { FastifyInstance } from "fastify";
+import { eq } from "drizzle-orm";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { WebSocket } from "ws";
 import { verifyEventPermission } from "../utils/permissions";
-import { HttpError } from "../utils/errors";
-import { getRedisClient, isRedisConfigured } from "../utils/redis";
+import { getRedisClient, getRedisSubClient } from "../utils/redis";
 
-const MAX_FALLBACK_ENTRIES = 500;
-const memoryTickets = new Map<
-  string,
-  { userId: string; eventId: string; expiresAt: number }
->();
-
-export function getRealtimeMemoryTicketsCount(): number {
-  return memoryTickets.size;
+export interface RealtimeAuthContext {
+  userId: string;
+  eventId: string;
 }
 
-export function clearRealtimeMemoryTickets(): void {
-  memoryTickets.clear();
+export interface SocketMetadata {
+  eventId: string;
+  userId: string;
+  pong: boolean;
+  authenticatedAt: number;
 }
 
-function pruneMemoryTickets(): void {
-  const now = Date.now();
-  for (const [key, entry] of memoryTickets) {
-    if (entry.expiresAt <= now) {
-      memoryTickets.delete(key);
-    }
+// In-memory rooms and socket metadata registry
+const rooms = new Map<string, Set<WebSocket>>();
+const socketMetadata = new Map<WebSocket, SocketMetadata>();
+const activeSubscriptions = new Set<string>();
+
+export function getRoomSocketCount(eventId: string): number {
+  return rooms.get(eventId)?.size ?? 0;
+}
+
+export function isChannelSubscribed(eventId: string): boolean {
+  return activeSubscriptions.has(`event:${eventId}`);
+}
+
+export function clearAllRooms(): void {
+  for (const socket of Array.from(socketMetadata.keys())) {
+    unsubscribeSocket(socket);
   }
-  while (memoryTickets.size >= MAX_FALLBACK_ENTRIES) {
-    const oldestKey = memoryTickets.keys().next().value;
-    if (oldestKey) {
-      memoryTickets.delete(oldestKey);
-    } else {
-      break;
-    }
-  }
+  rooms.clear();
+  socketMetadata.clear();
+  activeSubscriptions.clear();
 }
 
 export async function canSubscribe(
@@ -50,211 +51,184 @@ export async function canSubscribe(
     "view_analytics",
     "view_payments",
     "scan_tickets",
-  ] as const)
+  ] as const) {
     if (await verifyEventPermission(eventId, userId, permission)) return true;
+  }
   return false;
 }
 
-export async function issueConnectionTicket(
-  userId: string,
-  eventId: string,
-): Promise<{ ticket: string; expiresIn: number }> {
-  if (!(await canSubscribe(eventId, userId)))
-    throw new HttpError(403, "Dashboard permission is required.");
-
-  const ticket = randomBytes(32).toString("hex");
-  const payload = JSON.stringify({ userId, eventId });
-
-  if (isRedisConfigured()) {
-    const redis = getRedisClient();
-    await redis.set(`ws_ticket:${ticket}`, payload, "EX", 30);
-  } else {
-    pruneMemoryTickets();
-    memoryTickets.set(`ws_ticket:${ticket}`, {
-      userId,
-      eventId,
-      expiresAt: Date.now() + 30000,
-    });
-  }
-
-  console.log(memoryTickets);
-
-  return { ticket, expiresIn: 30 };
-}
-
-export async function consumeConnectionTicket(
-  ticket: string,
-): Promise<{ userId: string; eventId: string } | null> {
-  if (!ticket || typeof ticket !== "string") {
-    return null;
-  }
-
-  const key = `ws_ticket:${ticket}`;
-
-  if (isRedisConfigured()) {
-    const redis = getRedisClient();
-    try {
-      const val = await redis.getdel(key);
-      if (!val) return null;
-      return JSON.parse(val) as { userId: string; eventId: string };
-    } catch {
-      const lua =
-        'local v = redis.call("GET", KEYS[1]); if v then redis.call("DEL", KEYS[1]); end; return v;';
-      const val = (await redis.send("EVAL", [lua, "1", key])) as string | null;
-      if (!val) return null;
-      return JSON.parse(val) as { userId: string; eventId: string };
-    }
-  }
-
-  const entry = memoryTickets.get(key);
-  if (!entry) {
-    return null;
-  }
-  memoryTickets.delete(key);
-  if (Date.now() >= entry.expiresAt) {
-    return null;
-  }
-  return { userId: entry.userId, eventId: entry.eventId };
-}
-
-interface Subscription {
-  eventId: string;
-  userId: string;
-  version: number;
-  pong: boolean;
-  authenticatedAt: number;
-}
-
-export function realtimeHandler(app: FastifyInstance) {
-  const subscriptions = new Map<WebSocket, Subscription>();
-  const unauthenticated = new Set<WebSocket>();
-  let busy = false;
-  const timer = setInterval(() => {
-    void poll().catch((error) => app.log.error(error));
-  }, 1000);
-  const heartbeat = setInterval(() => {
-    for (const [socket, subscription] of subscriptions) {
-      if (
-        !subscription.pong ||
-        Date.now() - subscription.authenticatedAt > 30 * 60_000
-      ) {
-        socket.close(4001, "Reconnect to renew authorization");
+function broadcastToRoom(eventId: string, rawPayload: string): void {
+  const sockets = rooms.get(eventId);
+  if (!sockets) return;
+  for (const socket of sockets) {
+    if (socket.readyState === 1 /* OPEN */) {
+      if (socket.bufferedAmount > 65536) {
+        socket.close(1013, "Refresh required");
         continue;
       }
-      subscription.pong = false;
-      socket.ping();
-    }
-  }, 20000);
-  timer.unref();
-  heartbeat.unref();
-  async function poll() {
-    if (busy || !subscriptions.size) return;
-    busy = true;
-    try {
-      const ids = [
-        ...new Set([...subscriptions.values()].map((sub) => sub.eventId)),
-      ];
-      const rows = await db
-        .select({ id: events.id, version: events.version })
-        .from(events)
-        .where(inArray(events.id, ids));
-      for (const [socket, subscription] of subscriptions) {
-        const version = rows.find(
-          (row) => row.id === subscription.eventId,
-        )?.version;
-        if (
-          version === undefined ||
-          !(await canSubscribe(subscription.eventId, subscription.userId))
-        ) {
-          socket.close(4003, "Access revoked");
-          continue;
-        }
-        if (version !== subscription.version) {
-          subscription.version = version;
-          if (socket.bufferedAmount > 65536) {
-            socket.close(1013, "Refresh required");
-            continue;
-          }
-          socket.send(
-            JSON.stringify({
-              type: "event.changed",
-              eventId: subscription.eventId,
-              version,
-            }),
-          );
-        }
-      }
-    } finally {
-      busy = false;
+      socket.send(rawPayload);
     }
   }
-  app.addHook("onClose", async () => {
-    clearInterval(timer);
-    clearInterval(heartbeat);
-    for (const socket of [...subscriptions.keys(), ...unauthenticated])
-      socket.terminate();
+}
+
+async function ensureRedisSubscribed(eventId: string): Promise<void> {
+  const channel = `event:${eventId}`;
+  if (activeSubscriptions.has(channel)) return;
+  activeSubscriptions.add(channel);
+
+  const sub = getRedisSubClient();
+  await sub.subscribe(channel, (message: string) => {
+    broadcastToRoom(eventId, message);
   });
-  return (socket: WebSocket) => {
-    if (unauthenticated.size >= 100 || subscriptions.size >= 1000) {
-      socket.close(1013, "Connection limit reached");
+}
+
+async function cleanupRedisSubscribed(eventId: string): Promise<void> {
+  const channel = `event:${eventId}`;
+  if (!activeSubscriptions.has(channel)) return;
+  activeSubscriptions.delete(channel);
+
+  const sub = getRedisSubClient();
+  await sub.unsubscribe(channel);
+}
+
+export async function subscribeSocket(
+  eventId: string,
+  userId: string,
+  socket: WebSocket,
+): Promise<void> {
+  let room = rooms.get(eventId);
+  if (!room) {
+    room = new Set();
+    rooms.set(eventId, room);
+    await ensureRedisSubscribed(eventId);
+  }
+  room.add(socket);
+
+  socketMetadata.set(socket, {
+    eventId,
+    userId,
+    pong: true,
+    authenticatedAt: Date.now(),
+  });
+
+  // Query DB once upon initial connection for the baseline version
+  let baselineVersion = 0;
+  try {
+    const [eventRecord] = await db
+      .select({ version: events.version })
+      .from(events)
+      .where(eq(events.id, eventId));
+    baselineVersion = eventRecord?.version ?? 0;
+  } catch {
+    baselineVersion = 0;
+  }
+
+  if (socket.readyState === 1 /* OPEN */) {
+    socket.send(
+      JSON.stringify({
+        type: "ready",
+        eventId,
+        version: baselineVersion,
+        serverTime: new Date().toISOString(),
+      }),
+    );
+  }
+
+  socket.on("pong", () => {
+    const meta = socketMetadata.get(socket);
+    if (meta) meta.pong = true;
+  });
+
+  socket.on("close", () => {
+    unsubscribeSocket(socket);
+  });
+
+  socket.on("error", () => {
+    socket.terminate();
+    unsubscribeSocket(socket);
+  });
+}
+
+export function unsubscribeSocket(socket: WebSocket): void {
+  const meta = socketMetadata.get(socket);
+  if (!meta) return;
+  socketMetadata.delete(socket);
+
+  const room = rooms.get(meta.eventId);
+  if (room) {
+    room.delete(socket);
+    if (room.size === 0) {
+      rooms.delete(meta.eventId);
+      void cleanupRedisSubscribed(meta.eventId);
+    }
+  }
+}
+
+export async function publishEventChange(
+  eventId: string,
+  version?: number,
+): Promise<void> {
+  let resolvedVersion = version;
+  if (resolvedVersion === undefined) {
+    try {
+      const [eventRow] = await db
+        .select({ version: events.version })
+        .from(events)
+        .where(eq(events.id, eventId));
+      resolvedVersion = eventRow?.version ?? 0;
+    } catch {
+      resolvedVersion = 0;
+    }
+  }
+
+  const payload = JSON.stringify({
+    type: "event.changed",
+    eventId,
+    version: resolvedVersion,
+    serverTime: new Date().toISOString(),
+  });
+
+  const pub = getRedisClient();
+  await pub.publish(`event:${eventId}`, payload);
+}
+
+// Lightweight ping/pong connection liveness timer (zero DB queries)
+const heartbeat = setInterval(() => {
+  for (const [socket, meta] of socketMetadata) {
+    if (!meta.pong || Date.now() - meta.authenticatedAt > 30 * 60_000) {
+      socket.close(4001, "Reconnect to renew authorization");
+      continue;
+    }
+    meta.pong = false;
+    socket.ping();
+  }
+}, 20000);
+heartbeat.unref();
+
+export function realtimeHandler(app: FastifyInstance) {
+  app.addHook("onClose", async () => {
+    clearInterval(heartbeat);
+    for (const socket of socketMetadata.keys()) {
+      socket.terminate();
+    }
+    clearAllRooms();
+  });
+
+  return (socket: WebSocket, req: FastifyRequest) => {
+    const auth = (
+      req as FastifyRequest & {
+        realtimeAuth?: RealtimeAuthContext;
+      }
+    ).realtimeAuth;
+
+    if (!auth) {
+      socket.close(4001, "Authentication failed");
       return;
     }
-    unauthenticated.add(socket);
-    let authenticating = false;
-    const timeout = setTimeout(() => {
-      if (!subscriptions.has(socket))
-        socket.close(4001, "Authentication required");
-    }, 5000);
-    timeout.unref();
-    socket.on("pong", () => {
-      const sub = subscriptions.get(socket);
-      if (sub) sub.pong = true;
-    });
-    socket.on("message", (data) => {
-      if (authenticating || subscriptions.has(socket)) return;
-      authenticating = true;
-      void (async () => {
-        const payload: unknown = JSON.parse(data.toString());
-        if (
-          !payload ||
-          typeof payload !== "object" ||
-          !("ticket" in payload) ||
-          typeof payload.ticket !== "string"
-        )
-          throw new Error("Invalid connection ticket");
-        const ticket = await consumeConnectionTicket(payload.ticket);
-        if (!ticket || !(await canSubscribe(ticket.eventId, ticket.userId)))
-          throw new Error("Invalid connection ticket");
-        if (socket.readyState !== 1) return;
-        const [event] = await db
-          .select({ version: events.version })
-          .from(events)
-          .where(eq(events.id, ticket.eventId));
-        subscriptions.set(socket, {
-          eventId: ticket.eventId,
-          userId: ticket.userId,
-          version: event!.version,
-          pong: true,
-          authenticatedAt: Date.now(),
-        });
-        unauthenticated.delete(socket);
-        clearTimeout(timeout);
-        socket.send(
-          JSON.stringify({
-            type: "ready",
-            eventId: ticket.eventId,
-            version: event!.version,
-          }),
-        );
-      })().catch(() => socket.close(4001, "Authentication failed"));
-    });
-    socket.on("close", () => {
-      clearTimeout(timeout);
-      subscriptions.delete(socket);
-      unauthenticated.delete(socket);
-    });
-    socket.on("error", () => {
-      socket.terminate();
+
+    void subscribeSocket(auth.eventId, auth.userId, socket).catch((err) => {
+      app.log.error(err);
+      socket.close(1011, "Internal server error");
     });
   };
 }

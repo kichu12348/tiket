@@ -10,6 +10,7 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 import { emitEvent } from "../services/inventory.service";
 import { enqueueCheckInEmail } from "../services/notifications.service";
+import { publishEventChange } from "../services/realtime.service";
 import { HttpError } from "./errors";
 import { verifyEventPermission } from "./permissions";
 
@@ -104,7 +105,7 @@ export async function changeAdmission(
   undo = false,
   options?: AdmissionOptions,
 ) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [eventRecord] = await tx
       .select({ id: events.id, timezone: events.timezone })
       .from(events)
@@ -187,7 +188,7 @@ export async function changeAdmission(
         action: "checkin",
       });
 
-      await emitEvent(tx, eventId, "checkin.changed");
+      const version = await emitEvent(tx, eventId, "checkin.changed");
 
       const todayCount = todayCheckIns + 1;
       const totalCount = totalCheckIns + 1;
@@ -200,6 +201,7 @@ export async function changeAdmission(
         totalCheckIns: totalCount,
         checkedInAt: insertedCheckIn.checkedInAt.toISOString(),
         message: `Attendee checked in (#${todayCount} today, ${totalCount} total).`,
+        _version: version,
       };
     } else {
       // Undo
@@ -229,7 +231,7 @@ export async function changeAdmission(
         action: "undo",
       });
 
-      await emitEvent(tx, eventId, "checkin.changed");
+      const version = await emitEvent(tx, eventId, "checkin.changed");
 
       const remainingToday = existingCheckIns
         .slice(1)
@@ -246,7 +248,15 @@ export async function changeAdmission(
             ? existingCheckIns[1]?.checkedInAt.toISOString()
             : null,
         message: "Check-in undone.",
+        _version: version,
       };
     }
   });
+
+  if (result._version !== undefined) {
+    void publishEventChange(eventId, result._version);
+  }
+  const { _version, ...cleanResult } = result;
+  void _version;
+  return cleanResult;
 }

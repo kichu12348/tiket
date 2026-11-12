@@ -7,6 +7,7 @@ import {
   evaluateVisibilityConditions,
   getFieldAction,
   type VisibilityConditionRule,
+  type VisibilityConditionsConfig,
   type ConditionRule,
   type ConditionGroup,
   type FieldConditionConfig,
@@ -128,7 +129,7 @@ describe("If / Then / Else Conditional Rule Engine", () => {
     eventId: "e-1",
     name: "role",
     label: "Role",
-    fieldType: "select" as const,
+    fieldType: "single_select" as const,
     isRequired: true,
     options: ["Student", "Professional", "Speaker"],
     sortOrder: 1,
@@ -380,7 +381,7 @@ describe("If / Then / Else Conditional Rule Engine", () => {
         eventId: "e-1",
         name: "role",
         label: "Role",
-        fieldType: "select" as const,
+        fieldType: "single_select" as const,
         isRequired: true,
         options: ["Student", "Professional"],
         sortOrder: 1,
@@ -428,6 +429,223 @@ describe("If / Then / Else Conditional Rule Engine", () => {
       expect(() => {
         validateFormResponses(testFields, [
           { fieldId: "f-clean-role", responseValue: "Professional" },
+        ]);
+      }).not.toThrow();
+    });
+
+    test("evaluateVisibilityConditions operators: equals, not_equals (Option A), and in", () => {
+      // 1. equals
+      const ruleEquals: VisibilityConditionRule = {
+        fieldId: "f-tier",
+        operator: "equals",
+        allowedValues: ["VIP"],
+      };
+      // Matches case-insensitively
+      expect(
+        evaluateVisibilityConditions([ruleEquals], new Map([["f-tier", "vip"]])),
+      ).toBe(true);
+      // Mismatch
+      expect(
+        evaluateVisibilityConditions(
+          [ruleEquals],
+          new Map([["f-tier", "Regular"]]),
+        ),
+      ).toBe(false);
+      // Option A: Unanswered field -> false
+      expect(evaluateVisibilityConditions([ruleEquals], new Map())).toBe(false);
+
+      // 2. not_equals (Option A: hidden until answered with any value other than excluded)
+      const ruleNotEquals: VisibilityConditionRule = {
+        fieldId: "f-tier",
+        operator: "not_equals",
+        allowedValues: ["VIP"],
+      };
+      // When answered with a different value -> true
+      expect(
+        evaluateVisibilityConditions(
+          [ruleNotEquals],
+          new Map([["f-tier", "Regular"]]),
+        ),
+      ).toBe(true);
+      // When answered with the excluded value -> false
+      expect(
+        evaluateVisibilityConditions(
+          [ruleNotEquals],
+          new Map([["f-tier", "vip"]]),
+        ),
+      ).toBe(false);
+      // When unanswered -> false (Option A: hidden until trigger is answered!)
+      expect(evaluateVisibilityConditions([ruleNotEquals], new Map())).toBe(
+        false,
+      );
+
+      // 3. in
+      const ruleIn: VisibilityConditionRule = {
+        fieldId: "f-city",
+        operator: "in",
+        allowedValues: ["Bangalore", "Mumbai", "Delhi"],
+      };
+      expect(
+        evaluateVisibilityConditions(
+          [ruleIn],
+          new Map([["f-city", "mumbai"]]),
+        ),
+      ).toBe(true);
+      expect(
+        evaluateVisibilityConditions(
+          [ruleIn],
+          new Map([["f-city", "Chennai"]]),
+        ),
+      ).toBe(false);
+      expect(evaluateVisibilityConditions([ruleIn], new Map())).toBe(false);
+
+      // Multi-select JSON string with in operator
+      expect(
+        evaluateVisibilityConditions(
+          [ruleIn],
+          new Map([["f-city", JSON.stringify(["Chennai", "Delhi"])]]),
+        ),
+      ).toBe(true);
+    });
+
+    test("VisibilityConditionsConfig: match 'all' (AND) vs match 'any' (OR)", () => {
+      const configAll: VisibilityConditionsConfig = {
+        match: "all",
+        rules: [
+          { fieldId: "f1", operator: "equals", allowedValues: ["Yes"] },
+          { fieldId: "f2", operator: "equals", allowedValues: ["Agree"] },
+        ],
+      };
+      const configAny: VisibilityConditionsConfig = {
+        match: "any",
+        rules: [
+          { fieldId: "f1", operator: "equals", allowedValues: ["Yes"] },
+          { fieldId: "f2", operator: "equals", allowedValues: ["Agree"] },
+        ],
+      };
+
+      // Both true
+      const answersBoth = new Map([
+        ["f1", "yes"],
+        ["f2", "agree"],
+      ]);
+      expect(evaluateVisibilityConditions(configAll, answersBoth)).toBe(true);
+      expect(evaluateVisibilityConditions(configAny, answersBoth)).toBe(true);
+
+      // Only f1 true
+      const answersOne = new Map([
+        ["f1", "yes"],
+        ["f2", "disagree"],
+      ]);
+      expect(evaluateVisibilityConditions(configAll, answersOne)).toBe(false);
+      expect(evaluateVisibilityConditions(configAny, answersOne)).toBe(true);
+
+      // Neither true
+      const answersNeither = new Map([
+        ["f1", "no"],
+        ["f2", "disagree"],
+      ]);
+      expect(evaluateVisibilityConditions(configAll, answersNeither)).toBe(false);
+      expect(evaluateVisibilityConditions(configAny, answersNeither)).toBe(false);
+
+      // Default match is 'all' if omitted
+      const configDefault: { rules: VisibilityConditionRule[] } = {
+        rules: [
+          { fieldId: "f1", operator: "equals", allowedValues: ["Yes"] },
+          { fieldId: "f2", operator: "equals", allowedValues: ["Agree"] },
+        ],
+      };
+      expect(
+        evaluateVisibilityConditions(
+          configDefault as unknown as VisibilityConditionsConfig,
+          answersOne,
+        ),
+      ).toBe(false);
+      expect(
+        evaluateVisibilityConditions(
+          configDefault as unknown as VisibilityConditionsConfig,
+          answersBoth,
+        ),
+      ).toBe(true);
+    });
+
+    test("validateFormResponses with VisibilityConditionsConfig match: any", () => {
+      const fields = [
+        {
+          id: "f-is-student",
+          eventId: "e-1",
+          name: "is_student",
+          label: "Are you a student?",
+          fieldType: "single_select" as const,
+          isRequired: true,
+          options: ["Yes", "No"],
+          sortOrder: 1,
+          page: 1,
+          createdAt: new Date(),
+        },
+        {
+          id: "f-is-speaker",
+          eventId: "e-1",
+          name: "is_speaker",
+          label: "Are you a speaker?",
+          fieldType: "single_select" as const,
+          isRequired: true,
+          options: ["Yes", "No"],
+          sortOrder: 2,
+          page: 1,
+          createdAt: new Date(),
+        },
+        {
+          id: "f-discount-code",
+          eventId: "e-1",
+          name: "discount_code",
+          label: "Discount Code",
+          fieldType: "text" as const,
+          isRequired: true,
+          options: null,
+          conditions: {
+            match: "any" as const,
+            rules: [
+              {
+                fieldId: "f-is-student",
+                operator: "equals" as const,
+                allowedValues: ["Yes"],
+              },
+              {
+                fieldId: "f-is-speaker",
+                operator: "equals" as const,
+                allowedValues: ["Yes"],
+              },
+            ],
+          },
+          sortOrder: 3,
+          page: 1,
+          createdAt: new Date(),
+        },
+      ];
+
+      // Neither student nor speaker -> discount code is hidden -> valid without code
+      expect(() => {
+        validateFormResponses(fields, [
+          { fieldId: "f-is-student", responseValue: "No" },
+          { fieldId: "f-is-speaker", responseValue: "No" },
+        ]);
+      }).not.toThrow();
+
+      // Student = Yes (speaker = No) -> discount code is visible & required -> throws if missing
+      expect(() => {
+        validateFormResponses(fields, [
+          { fieldId: "f-is-student", responseValue: "Yes" },
+          { fieldId: "f-is-speaker", responseValue: "No" },
+        ]);
+      }).toThrow("Discount Code is required.");
+
+      // Student = Yes and discount code provided -> passes
+      expect(() => {
+        validateFormResponses(fields, [
+          { fieldId: "f-is-student", responseValue: "Yes" },
+          { fieldId: "f-is-speaker", responseValue: "No" },
+          { fieldId: "f-discount-code", responseValue: "STU50" },
         ]);
       }).not.toThrow();
     });

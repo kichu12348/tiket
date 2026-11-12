@@ -70,9 +70,9 @@ describe("Forms JSONB Schema & Validation", () => {
     {
       id: "field-6",
       eventId: "event-1",
-      name: "idProof",
-      label: "ID Proof",
-      fieldType: "file",
+      name: "portfolioUrl",
+      label: "Portfolio URL",
+      fieldType: "url",
       isRequired: false,
       options: null,
       sortOrder: 0,
@@ -189,13 +189,13 @@ describe("Forms JSONB Schema & Validation", () => {
     );
   });
 
-  test("validates file upload format prefix (file:<uuid>)", () => {
+  test("validates url format", () => {
     const valid: FormResponse[] = [
       { fieldId: "field-1", responseValue: "Ada Lovelace" },
       { fieldId: "field-2", responseValue: "ada@example.com" },
       {
         fieldId: "field-6",
-        responseValue: "file:12345678-1234-1234-1234-123456789abc",
+        responseValue: "https://example.com/ada",
       },
     ];
     expect(() => validateFormResponses(sampleFields, valid)).not.toThrow();
@@ -203,11 +203,59 @@ describe("Forms JSONB Schema & Validation", () => {
     const invalid: FormResponse[] = [
       { fieldId: "field-1", responseValue: "Ada Lovelace" },
       { fieldId: "field-2", responseValue: "ada@example.com" },
-      { fieldId: "field-6", responseValue: "not-a-file" },
+      { fieldId: "field-6", responseValue: "not-a-url" },
     ];
     expect(() => validateFormResponses(sampleFields, invalid)).toThrow(
-      "Invalid answer for ID Proof.",
+      "Invalid answer for Portfolio URL.",
     );
+  });
+
+  test("allows custom unlisted response when allowCustom is true", () => {
+    const customFields: FormFieldDefinition[] = [
+      {
+        id: "cf-1",
+        eventId: "event-1",
+        name: "role",
+        label: "Your Role",
+        fieldType: "single_select",
+        isRequired: true,
+        options: {
+          choices: ["Engineer", "Designer", "Product Manager"],
+          allowCustom: true,
+        },
+        sortOrder: 0,
+        page: 1,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "cf-2",
+        eventId: "event-1",
+        name: "skills",
+        label: "Skills",
+        fieldType: "multi_select",
+        isRequired: false,
+        options: {
+          choices: ["React", "Bun", "PostgreSQL"],
+          allowCustom: true,
+        },
+        sortOrder: 1,
+        page: 1,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    // Single select custom value
+    const customSingle: FormResponse[] = [
+      { fieldId: "cf-1", responseValue: "Chief Happiness Officer" },
+    ];
+    expect(() => validateFormResponses(customFields, customSingle)).not.toThrow();
+
+    // Multi select with custom unlisted choice
+    const customMulti: FormResponse[] = [
+      { fieldId: "cf-1", responseValue: "Engineer" },
+      { fieldId: "cf-2", responseValue: JSON.stringify(["React", "Rust"]) },
+    ];
+    expect(() => validateFormResponses(customFields, customMulti)).not.toThrow();
   });
 
   test("enforces conditional visibility and requirement", () => {
@@ -345,6 +393,54 @@ describe("Forms JSONB Schema & Validation", () => {
     };
 
     expect(canDelete(normalField)).toBe(true);
+  });
+
+  test("multi_select with isMulti: false validates as a single selection", () => {
+    const singleSelectField: FormFieldDefinition = {
+      id: "select-field",
+      eventId: "event-1",
+      name: "favoriteFruit",
+      label: "Favorite Fruit",
+      fieldType: "multi_select",
+      isRequired: true,
+      options: {
+        choices: ["Apple", "Banana", "Cherry"],
+        isMulti: false,
+        allowCustom: true,
+      },
+      sortOrder: 0,
+      page: 1,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Valid single choice passes
+    expect(() =>
+      validateFormResponses([singleSelectField], [
+        { fieldId: "select-field", responseValue: "Banana" },
+      ]),
+    ).not.toThrow();
+
+    // Custom choice passes because allowCustom is true
+    expect(() =>
+      validateFormResponses([singleSelectField], [
+        { fieldId: "select-field", responseValue: "Mango" },
+      ]),
+    ).not.toThrow();
+
+    // Multiple values fail when isMulti is false and allowCustom is false
+    const strictField: FormFieldDefinition = {
+      ...singleSelectField,
+      options: {
+        choices: ["Apple", "Banana", "Cherry"],
+        isMulti: false,
+        allowCustom: false,
+      },
+    };
+    expect(() =>
+      validateFormResponses([strictField], [
+        { fieldId: "select-field", responseValue: "Mango" },
+      ]),
+    ).toThrow();
   });
 });
 

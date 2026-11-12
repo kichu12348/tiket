@@ -4,14 +4,10 @@ import type { LocalField } from "../types";
 export const CHOICE_BASED_FIELD_TYPES: FieldType[] = [
   "single_select",
   "multi_select",
-  "radio",
-  "checkbox",
-  "select",
 ];
 
 export const MULTI_CHOICE_FIELD_TYPES: FieldType[] = [
   "multi_select",
-  "checkbox",
 ];
 
 export function isChoiceField(type: FieldType): boolean {
@@ -27,6 +23,8 @@ export function buildOptionsPayload(
   options: string[] | null,
   minOptions?: number | null,
   maxOptions?: number | null,
+  allowCustom?: boolean | null,
+  isMulti?: boolean | null,
 ): FormFieldOptions {
   if (!isChoiceField(fieldType) || !options) {
     return null;
@@ -40,16 +38,28 @@ export function buildOptionsPayload(
     return null;
   }
 
-  if (isMultiChoiceField(fieldType)) {
-    const hasMin = typeof minOptions === "number";
-    const hasMax = typeof maxOptions === "number";
-    if (hasMin || hasMax) {
-      return {
-        choices: validChoices,
-        min: hasMin ? minOptions : null,
-        max: hasMax ? maxOptions : null,
-      };
+  const hasMin = typeof minOptions === "number";
+  const hasMax = typeof maxOptions === "number";
+  const hasCustom = Boolean(allowCustom);
+  const hasMulti = typeof isMulti === "boolean";
+
+  if (hasMin || hasMax || hasCustom || hasMulti) {
+    const payload: {
+      choices: string[];
+      min?: number | null;
+      max?: number | null;
+      allowCustom?: boolean | null;
+      isMulti?: boolean | null;
+    } = {
+      choices: validChoices,
+      min: hasMin ? minOptions : null,
+      max: hasMax ? maxOptions : null,
+      allowCustom: hasCustom,
+    };
+    if (hasMulti) {
+      payload.isMulti = isMulti;
     }
+    return payload;
   }
 
   return validChoices;
@@ -59,15 +69,23 @@ export function serverToLocal(field: FormField): LocalField {
   let parsedOptions: string[] | null = null;
   let minOptions: number | null = null;
   let maxOptions: number | null = null;
+  let allowCustom = false;
+  let isMulti = false;
 
   if (field.options) {
     if (Array.isArray(field.options)) {
       parsedOptions = field.options;
+      isMulti = field.fieldType === "multi_select";
     } else if (typeof field.options === "object") {
       const optObj = field.options;
       parsedOptions = Array.isArray(optObj.choices) ? optObj.choices : [];
       minOptions = typeof optObj.min === "number" ? optObj.min : null;
       maxOptions = typeof optObj.max === "number" ? optObj.max : null;
+      allowCustom = Boolean(optObj.allowCustom);
+      isMulti =
+        typeof optObj.isMulti === "boolean"
+          ? optObj.isMulti
+          : field.fieldType === "multi_select";
     }
   }
 
@@ -79,6 +97,8 @@ export function serverToLocal(field: FormField): LocalField {
     fieldType: field.fieldType,
     isRequired: field.isRequired,
     options: parsedOptions,
+    allowCustom,
+    isMulti,
     minOptions,
     maxOptions,
     sortOrder: field.sortOrder ?? 0,

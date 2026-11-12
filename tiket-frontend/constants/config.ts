@@ -10,7 +10,6 @@ export const TOKEN_KEY = "authToken";
 export const MAX_AGE = 30 * 24 * 60 * 60;
 
 export const API_ENDPOINTS = {
-  REALTIME_CONNECT: (eventId: string) => `/api/realtime/events/${eventId}/connect`,
   COMMERCE: {
     PERMISSIONS: (id: string) => `/api/commerce/${id}/permissions`,
     APPROVALS: (id: string) => `/api/commerce/${id}/approvals`,
@@ -28,7 +27,6 @@ export const API_ENDPOINTS = {
       `/api/commerce/${id}/blacklist/${blacklistId}`,
   },
   REALTIME: {
-    CONNECT: (id: string) => `/api/realtime/events/${id}/connect`,
     SOCKET: "/api/realtime/ws",
   },
   CONNECTIONS: {
@@ -46,7 +44,6 @@ export const API_ENDPOINTS = {
     },
   },
   FRONTEND: {
-    REALTIME_CONNECT: "/api/realtime/connect",
     AUTH: {
       PASSWORD: "/api/auth/password",
       OTP_SEND: "/api/auth/otp/send",

@@ -22,7 +22,7 @@ import ConditionBuilder from "@/components/ConditionBuilder";
 import RichTextEditor from "@/components/DescriptionModal/RichTextEditor";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import type { FormField, VisibilityConditionRule } from "@/types/form";
+import type { FormField, VisibilityConditionsConfig } from "@/types/form";
 import styles from "./TicketSettingsPanel.module.css";
 import { cn } from "@/lib/utils";
 
@@ -111,8 +111,8 @@ interface TicketSettingsPanelProps {
   setCodeLength: (v: number) => void;
   tagsInput: string;
   setTagsInput: (v: string) => void;
-  conditions: VisibilityConditionRule[];
-  setConditions: (v: VisibilityConditionRule[]) => void;
+  conditions: VisibilityConditionsConfig;
+  setConditions: (v: VisibilityConditionsConfig) => void;
   formFields: FormField[];
   feePercent: number;
   gatewayFeePercent: number;

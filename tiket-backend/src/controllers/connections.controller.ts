@@ -1,15 +1,13 @@
 import type { FastifyRequest } from "fastify";
 import db from "@db";
-import { emailConnections, events, forms, uploads } from "@db/schema";
+import { emailConnections, events, uploads } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
 import { verifyEventPermission } from "../utils/permissions";
 import { saveMailConfig, type MailConfig } from "../services/mail.service";
 import {
-  ALLOWED_FILES,
   downloadUpload,
   finalizeUpload,
-  presignUpload,
 } from "../services/storage.service";
 
 async function owner(request: FastifyRequest, eventId: string) {
@@ -48,7 +46,7 @@ export async function deleteMailConnection(
   return { custom: false };
 }
 export async function beginUpload(
-  request: FastifyRequest<{
+  _request: FastifyRequest<{
     Body: {
       eventId: string;
       fieldId: string;
@@ -58,38 +56,7 @@ export async function beginUpload(
     };
   }>,
 ) {
-  await request.jwtVerify();
-  const userId = (request.user as { id: string }).id;
-  const body = request.body;
-  if (!ALLOWED_FILES.includes(body.contentType))
-    throw new HttpError(400, "Use a PDF, PNG, JPEG or plain text file.");
-  const [event] = await db
-    .select({
-      status: events.status,
-    })
-    .from(events)
-    .where(eq(events.id, body.eventId));
-  const [formRow] = await db
-    .select({
-      fields: forms.fields,
-    })
-    .from(forms)
-    .where(eq(forms.eventId, body.eventId));
-  const field = formRow?.fields?.find((f) => f.id === body.fieldId);
-  if (
-    !event ||
-    event.status !== "published" ||
-    !field ||
-    field.fieldType !== "file"
-  )
-    throw new HttpError(404, "Registration upload field not found.");
-  const match = (body.filename || "").match(/\.([a-zA-Z0-9]+)$/);
-  const ext = match?.[1] ? match[1].toLowerCase() : "bin";
-  const id = crypto.randomUUID();
-  const objectKey = `staging/${body.eventId}/form-file/${id}.${ext}`;
-  const url = await presignUpload(objectKey, body.contentType, body.size);
-  await db.insert(uploads).values({ ...body, id, userId, objectKey });
-  return { id, url, expiresIn: 300 };
+  throw new HttpError(404, "Registration upload field not found.");
 }
 export async function completeUpload(
   request: FastifyRequest<{ Params: { uploadId: string } }>,

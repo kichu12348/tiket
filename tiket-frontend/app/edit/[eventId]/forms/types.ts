@@ -11,6 +11,8 @@ export interface LocalField {
   fieldType: FieldType;
   isRequired: boolean;
   options: string[] | null;
+  allowCustom?: boolean;
+  isMulti?: boolean;
   minOptions?: number | null;
   maxOptions?: number | null;
   sortOrder: number;

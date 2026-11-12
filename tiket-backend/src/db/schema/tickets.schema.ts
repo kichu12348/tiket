@@ -13,7 +13,7 @@ import {
 import { v7 as uuidv7 } from "uuid";
 import type {
   ConditionGroup,
-  VisibilityConditionRule,
+  VisibilityConditions,
 } from "../../utils/registration-validation";
 import { ticketStatusEnum, transferStatusEnum } from "./enums.schema";
 import { users } from "./users.schema";
@@ -25,6 +25,9 @@ export type {
   ConditionRule,
   ConditionGroup,
   FieldConditionConfig,
+  VisibilityConditionRule,
+  VisibilityConditionsConfig,
+  VisibilityConditions,
 } from "../../utils/registration-validation";
 
 export interface TicketLayoutLayer {
@@ -81,7 +84,7 @@ export const ticketTypes = pgTable("ticket_types", {
   collectGst: boolean("collect_gst").notNull().default(false),
   isClosed: boolean("is_closed").notNull().default(false),
   passFeeToCustomer: boolean("pass_fee_to_customer").notNull().default(true),
-  conditions: jsonb("conditions").$type<VisibilityConditionRule[] | null>(),
+  conditions: jsonb("conditions").$type<VisibilityConditions | null>(),
   eligibilityRules: jsonb("eligibility_rules").$type<ConditionGroup | null>(),
   saleStart: timestamp("sale_start"),
   saleEnd: timestamp("sale_end"),

@@ -12,7 +12,7 @@ import { users } from "./users.schema";
 import { events } from "./events.schema";
 import type {
   FieldConditionConfig,
-  VisibilityConditionRule,
+  VisibilityConditions,
 } from "../../utils/registration-validation";
 
 export type FormFieldType =
@@ -23,24 +23,27 @@ export type FormFieldType =
   | "number"
   | "single_select"
   | "multi_select"
-  | "radio"
-  | "checkbox"
   | "date"
   | "datetime"
   | "time"
   | "rating"
-  | "file"
-  | "url"
-  | "select";
+  | "url";
 
 export interface FormFieldOptionsConfig {
   choices?: string[];
   min?: number | null;
   max?: number | null;
-  conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+  allowCustom?: boolean | null;
+  isMulti?: boolean | null;
+  conditions?: VisibilityConditions | FieldConditionConfig | null;
 }
 
-export type { VisibilityConditionRule } from "../../utils/registration-validation";
+export type {
+  VisibilityConditionOperator,
+  VisibilityConditionRule,
+  VisibilityConditionsConfig,
+  VisibilityConditions,
+} from "../../utils/registration-validation";
 
 export interface FormFieldDefinition {
   id: string;
@@ -51,7 +54,7 @@ export interface FormFieldDefinition {
   isRequired: boolean;
   isLocked?: boolean;
   options: string[] | FormFieldOptionsConfig | null;
-  conditions?: VisibilityConditionRule[] | FieldConditionConfig | null;
+  conditions?: VisibilityConditions | FieldConditionConfig | null;
   sortOrder: number;
   page: number;
   createdAt: string | Date;
