@@ -35,10 +35,13 @@ export interface Refund {
 export interface OrganizerBankAccount {
   userId: string;
   accountHolderName: string;
+  phone?: string;
   accountNumber: string;
   ifscCode: string;
   bankName: string;
   upiId?: string | null;
+  gatewayAccountId?: string | null;
+  onboardingStatus?: string;
   updatedAt: string;
 }
 
@@ -56,6 +59,9 @@ export interface PayoutRequest {
     upiId?: string | null;
   };
   referenceNumber?: string | null;
+  gatewayPayoutId?: string | null;
+  gatewaySettlementId?: string | null;
+  processedAt?: string | null;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -70,6 +76,7 @@ export interface FinanceSummary {
   netEarningsPaise: number;
   withdrawnOrPendingPaise: number;
   availableToWithdrawPaise: number;
+  unsettledBalancePaise?: number;
 }
 
 export interface Finance {
@@ -83,12 +90,14 @@ export interface Finance {
     ticketId: string;
   })[];
   summary?: FinanceSummary;
+  unsettledBalancePaise?: number;
   bankAccount?: OrganizerBankAccount | null;
   payouts?: PayoutRequest[];
 }
 
 export interface SaveBankAccountPayload {
   accountHolderName: string;
+  phone?: string;
   accountNumber: string;
   ifscCode: string;
   bankName: string;

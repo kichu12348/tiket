@@ -1,9 +1,10 @@
 import db from "@db";
 import {
-  type events,
+  events,
   eventTeamMembers,
   orderItems,
   orders,
+  organizerBankAccounts,
   tickets,
   ticketTypes,
   forms,
@@ -549,16 +550,72 @@ export async function initializeGatewayOrder(orderId: string) {
     .returning();
   if (!claimed) return;
   try {
-    const remote = await gateway().createOrder(claimed.totalPaise, claimed.id);
+    const [eventRow] = await db
+      .select({ organizationId: events.organizationId })
+      .from(events)
+      .where(eq(events.id, claimed.eventId));
+
+    let splitTransfer:
+      | {
+          gatewayAccountId: string;
+          organizerNetPaise: number;
+          onHold: boolean;
+        }
+      | undefined;
+    let linkedAccountId: string | null = null;
+
+    if (eventRow) {
+      const [bankAccount] = await db
+        .select()
+        .from(organizerBankAccounts)
+        .where(eq(organizerBankAccounts.userId, eventRow.organizationId));
+
+      if (claimed.totalPaise > 0 && !bankAccount?.gatewayAccountId) {
+        throw new Error("Organizer bank account is not configured for paid order.");
+      }
+
+      if (bankAccount?.gatewayAccountId) {
+        linkedAccountId = bankAccount.gatewayAccountId;
+        const items = await db
+          .select({ organizerNetPaise: orderItems.organizerNetPaise })
+          .from(orderItems)
+          .where(eq(orderItems.orderId, claimed.id));
+        const totalNetPaise = items.reduce(
+          (sum, item) => sum + (item.organizerNetPaise || 0),
+          0,
+        );
+
+        if (totalNetPaise > 0) {
+          splitTransfer = {
+            gatewayAccountId: bankAccount.gatewayAccountId,
+            organizerNetPaise: totalNetPaise,
+            onHold: false,
+          };
+        }
+      }
+    }
+
+    const remote = await gateway().createOrder(
+      claimed.totalPaise,
+      claimed.id,
+      splitTransfer,
+    );
     if (
       remote.amount !== claimed.totalPaise ||
       remote.currency !== claimed.currency
     )
       throw new Error("Gateway order does not match the quote.");
+
+    const transferId = remote.transfers?.[0]?.id ?? null;
+
     await db
       .update(orders)
       .set({
         paymentIntentId: remote.id,
+        linkedAccountId,
+        gatewayTransferId: transferId,
+        transferReleased: false,
+        transferStatus: splitTransfer ? "pending" : "none",
         initializationState: "ready",
         updatedAt: new Date(),
       })

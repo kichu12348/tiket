@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createTicketType, updateTicketType } from "@/api/tickets";
+import { getFinance } from "@/api/commerce";
 import { getFormFields } from "@/api/forms";
 import type { TicketType } from "@/types/ticketType";
 import type {
@@ -169,6 +170,10 @@ function TicketEditModalContent({
   const [passFeeToCustomer, setPassFeeToCustomer] = useState(
     ticket?.passFeeToCustomer ?? true,
   );
+  const [hasBankAccount, setHasBankAccount] = useState<boolean | null>(null);
+  const [allowRefunds, setAllowRefunds] = useState(
+    ticket?.allowRefunds ?? false,
+  );
 
   // Close Ticket & Invite Only
   const [isClosed, setIsClosed] = useState(ticket?.isClosed ?? false);
@@ -243,6 +248,13 @@ function TicketEditModalContent({
     getFormFields(eventId)
       .then((fields) => setAvailableFields(fields || []))
       .catch(() => {});
+    getFinance(eventId)
+      .then((res) => {
+        setHasBankAccount(Boolean(res?.bankAccount?.gatewayAccountId));
+      })
+      .catch(() => {
+        setHasBankAccount(false);
+      });
   }, [eventId]);
 
   // Direct Ticket URL
@@ -325,6 +337,14 @@ function TicketEditModalContent({
         computedMaxCheckInsPerDay = 1;
       }
 
+      if (isPaid && Number(price) > 0 && hasBankAccount === false) {
+        toast.error(
+          "You must add a payout bank account in Finance settings before creating paid tickets.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const payload = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -353,6 +373,7 @@ function TicketEditModalContent({
         saleStart,
         saleEnd,
         isRefundable,
+        allowRefunds: isPaid ? allowRefunds : false,
         isTransferable,
         maxTransfers: isTransferable ? parseInt(maxTransfers, 10) || 1 : 0,
       };
@@ -536,6 +557,21 @@ function TicketEditModalContent({
 
             {isPaid && (
               <div className={styles.nestedSection}>
+                {hasBankAccount === false && (
+                  <div className="p-3 mb-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 flex items-center justify-between gap-2">
+                    <span>
+                      Payout bank account not configured. A connected bank account is required to sell paid tickets.
+                    </span>
+                    <a
+                      href={`/edit/${eventId}/finance`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline font-medium text-amber-300 hover:text-amber-100 shrink-0"
+                    >
+                      Configure in Finance
+                    </a>
+                  </div>
+                )}
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Ticket Price</label>
                   <div className={styles.priceInputWrapper}>
@@ -551,6 +587,21 @@ function TicketEditModalContent({
                       data-testid="ticket-price-input"
                     />
                   </div>
+                </div>
+
+                <div className={styles.switchRow}>
+                  <div className={styles.switchLabelBlock}>
+                    <span className={styles.switchTitle}>
+                      Allow Refunds (Before Event Starts)
+                    </span>
+                    <span className={styles.switchSubtext}>
+                      Allow automated dashboard refunds while unsettled funds remain before event start
+                    </span>
+                  </div>
+                  <Switch
+                    checked={allowRefunds}
+                    onChange={setAllowRefunds}
+                  />
                 </div>
 
                 <div className={styles.switchRow}>

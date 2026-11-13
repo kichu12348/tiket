@@ -31,11 +31,13 @@ import {
 } from "../services/inventory.service";
 import { commandKey } from "../services/checkout.service";
 import {
+  getOrganizerUnsettledBalancePaise,
   queueRefund,
   requestRefund,
   type RefundCommand,
 } from "../services/refund.service";
 import { enqueueOrderEmail } from "../services/notifications.service";
+import { gateway } from "../services/gateway.service";
 
 type EventRequest = FastifyRequest<{ Params: { eventId: string } }>;
 export async function getPermissions(request: EventRequest) {
@@ -263,6 +265,10 @@ export async function getFinance(request: EventRequest) {
     : [];
 
   const summary = await calculateFinanceSummary(db, request.params.eventId);
+  const unsettledBalancePaise = await getOrganizerUnsettledBalancePaise(
+    request.params.eventId,
+    db,
+  );
 
   const [bankRecord] = await db
     .select()
@@ -298,7 +304,11 @@ export async function getFinance(request: EventRequest) {
           .from(orderItems)
           .where(inArray(orderItems.orderId, ids))
       : [],
-    summary,
+    summary: {
+      ...summary,
+      unsettledBalancePaise,
+    },
+    unsettledBalancePaise,
     bankAccount,
     payouts,
   };
@@ -309,6 +319,7 @@ export async function updateBankAccount(
     Params: { eventId: string };
     Body: {
       accountHolderName: string;
+      phone: string;
       accountNumber: string;
       ifscCode: string;
       bankName: string;
@@ -330,6 +341,11 @@ export async function updateBankAccount(
     );
   }
 
+  const phone = (request.body.phone || "").trim();
+  if (!phone || phone.length < 10) {
+    throw new HttpError(400, "Valid phone number is required for bank verification.");
+  }
+
   const ifsc = request.body.ifscCode.trim().toUpperCase();
   if (!validateIfscCode(ifsc)) {
     throw new HttpError(400, "Invalid IFSC code format.");
@@ -340,25 +356,63 @@ export async function updateBankAccount(
     throw new HttpError(400, "Account number must be 6 to 20 digits.");
   }
 
-  const [saved] = await db
-    .insert(organizerBankAccounts)
-    .values({
+  const [user] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, actor));
+
+  const [existingAccount] = await db
+    .select({ gatewayAccountId: organizerBankAccounts.gatewayAccountId })
+    .from(organizerBankAccounts)
+    .where(eq(organizerBankAccounts.userId, actor));
+
+  let gatewayAccountId: string | null =
+    existingAccount?.gatewayAccountId || null;
+  let onboardingStatus = "active";
+
+  try {
+    const subAccount = await gateway().upsertSubMerchantAccount({
       userId: actor,
+      email: user?.email || "",
+      phone,
       accountHolderName: request.body.accountHolderName.trim(),
       accountNumber,
       ifscCode: ifsc,
       bankName: request.body.bankName.trim(),
       upiId: request.body.upiId?.trim() || null,
+      existingAccountId: existingAccount?.gatewayAccountId || null,
+    });
+    gatewayAccountId = subAccount.gatewayAccountId;
+    onboardingStatus = subAccount.status || "active";
+  } catch (err) {
+    request.log.error(err, "Sub-merchant onboarding warning");
+  }
+
+  const [saved] = await db
+    .insert(organizerBankAccounts)
+    .values({
+      userId: actor,
+      accountHolderName: request.body.accountHolderName.trim(),
+      phone,
+      accountNumber,
+      ifscCode: ifsc,
+      bankName: request.body.bankName.trim(),
+      upiId: request.body.upiId?.trim() || null,
+      gatewayAccountId,
+      onboardingStatus,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
       target: organizerBankAccounts.userId,
       set: {
         accountHolderName: request.body.accountHolderName.trim(),
+        phone,
         accountNumber,
         ifscCode: ifsc,
         bankName: request.body.bankName.trim(),
         upiId: request.body.upiId?.trim() || null,
+        gatewayAccountId,
+        onboardingStatus,
         updatedAt: new Date(),
       },
     })
@@ -380,7 +434,7 @@ export async function requestPayout(
   await request.jwtVerify();
   const actor = (request.user as { id: string }).id;
 
-  const createdPayout = await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const event = await lockEvent(tx, request.params.eventId);
     if (event.organizationId !== actor) {
       throw new HttpError(
@@ -431,10 +485,80 @@ export async function requestPayout(
       })
       .returning();
 
-    return created;
+    if (!created) {
+      throw new HttpError(500, "Failed to create payout request.");
+    }
+
+    // Collect held transfers for this event to release
+    const heldOrders = await tx
+      .select({
+        gatewayTransferId: orders.gatewayTransferId,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.eventId, event.id),
+          eq(orders.transferReleased, false),
+          sql`${orders.gatewayTransferId} IS NOT NULL`,
+        ),
+      );
+
+    const heldTransferIds = heldOrders
+      .map((o) => o.gatewayTransferId)
+      .filter((id): id is string => Boolean(id));
+
+    let withdrawalStatus: "requested" | "processing" | "paid" = "paid";
+    let gatewayPayoutId: string | null = null;
+    let referenceNumber: string | null = null;
+    let failureReason: string | null = null;
+
+    try {
+      const withdrawal = await gateway().executeAutomatedWithdrawal({
+        payoutRequestId: created.id,
+        amountPaise: request.body.amountPaise,
+        bankAccount: {
+          gatewayAccountId: bankAccount.gatewayAccountId,
+          accountHolderName: bankAccount.accountHolderName,
+          accountNumber: bankAccount.accountNumber,
+          ifscCode: bankAccount.ifscCode,
+          bankName: bankAccount.bankName,
+          upiId: bankAccount.upiId,
+        },
+        heldTransferIds,
+      });
+
+      withdrawalStatus = withdrawal.status;
+      gatewayPayoutId = withdrawal.gatewayPayoutId;
+      referenceNumber = withdrawal.referenceNumber ?? null;
+
+      if (heldTransferIds.length > 0) {
+        await tx
+          .update(orders)
+          .set({ transferReleased: true, updatedAt: new Date() })
+          .where(inArray(orders.gatewayTransferId, heldTransferIds));
+      }
+    } catch (err) {
+      withdrawalStatus = "requested";
+      failureReason =
+        err instanceof Error ? err.message : "Gateway withdrawal failed";
+    }
+
+    const [updatedPayout] = await tx
+      .update(payoutRequests)
+      .set({
+        status: failureReason ? "rejected" : withdrawalStatus,
+        gatewayPayoutId,
+        referenceNumber,
+        failureReason,
+        updatedAt: new Date(),
+      })
+      .where(eq(payoutRequests.id, created.id))
+      .returning();
+
+    return updatedPayout;
   });
 
-  return reply.code(201).send(createdPayout);
+  return reply.code(201).send(result);
 }
 
 export async function refundOrder(

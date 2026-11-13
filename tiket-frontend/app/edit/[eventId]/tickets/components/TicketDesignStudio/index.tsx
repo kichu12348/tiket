@@ -3,21 +3,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { getSignedUrl, uploadToCDN } from "@/api/events";
-import { getImageUrl } from "@/constants/config";
-import {
-  getTicketTypes,
-  createTicketType,
-  updateTicketType,
-} from "@/api/tickets";
-import { getFormFields } from "@/api/forms";
 import { useEventStore } from "@/store/useEventStore";
 import { getErrorMessage } from "@/lib/errors";
 import type { FormField } from "@/types/form";
-import type {
-  TicketType,
-  TicketLayoutConfig,
-} from "@/types/ticketType";
+import type { TicketType } from "@/types/ticketType";
 import type { StudioMode } from "./types";
 import { interpolateSamplePreview } from "./utils/interpolate";
 import {
@@ -29,6 +18,15 @@ import {
 } from "./hooks/useTicketDesignState";
 import { useTicketSettingsState } from "./hooks/useTicketSettingsState";
 import { useLayerInteraction } from "./hooks/useLayerInteraction";
+import {
+  loadStudioTicketTypes,
+  loadStudioFormFields,
+  uploadTemplateImage,
+  buildTicketLayoutConfig,
+  buildTicketPayload,
+  persistTicket,
+  getStudioEventMetadata,
+} from "./functions";
 import StudioHeader from "./components/StudioHeader";
 import CanvasViewport from "./components/CanvasViewport";
 import StudioSidebar from "./components/StudioSidebar";
@@ -110,10 +108,9 @@ export default function TicketDesignStudio({
   // Load ticket types for switcher
   useEffect(() => {
     let isMounted = true;
-    getTicketTypes(eventId)
-      .then((data) => {
+    loadStudioTicketTypes(eventId)
+      .then((list) => {
         if (!isMounted) return;
-        const list = data || [];
         setTicketTypesList(list);
 
         // In pass designer mode ("edit"), auto-select the first tier if none was passed
@@ -133,14 +130,12 @@ export default function TicketDesignStudio({
     };
   }, [eventId]);
 
-
-
   // Load form fields for tokens
   useEffect(() => {
     let isMounted = true;
-    getFormFields(eventId)
+    loadStudioFormFields(eventId)
       .then((fields) => {
-        if (isMounted) setFormFields(fields || []);
+        if (isMounted) setFormFields(fields);
       })
       .catch((err) => {
         console.error("Failed to load form fields", err);
@@ -183,21 +178,10 @@ export default function TicketDesignStudio({
       // Upload local image file to CDN only upon Update/Save click
       if (design.pendingImageFile) {
         try {
-          const {
-            url,
-            filename: cdnUrl,
-            fileUrl,
-          } = await getSignedUrl(
-            design.pendingImageFile.name,
-            design.pendingImageFile.type,
-            { eventId, objType: "ticket-template" },
-          );
-          const { filename } = await uploadToCDN(
-            url,
+          finalImageUrl = await uploadTemplateImage(
             design.pendingImageFile,
-            fileUrl || cdnUrl,
+            eventId,
           );
-          finalImageUrl = getImageUrl(filename || "");
           design.setPendingImageFile(null);
           design.setTemplateImageUrl(finalImageUrl);
         } catch (uploadErr) {
@@ -211,128 +195,22 @@ export default function TicketDesignStudio({
         finalImageUrl = activeTicket?.templateImageUrl || null;
       }
 
-      const parsedTags = settings.tagsInput
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
+      const config = buildTicketLayoutConfig(design.getDesign());
+      const payload = buildTicketPayload({
+        settings,
+        finalImageUrl,
+        config,
+      });
 
-      const validRules = settings.conditions.rules.filter(
-        (c) => c.fieldId && c.allowedValues.length > 0,
+      const resultTicket = await persistTicket({
+        eventId,
+        activeTicket,
+        payload,
+      });
+
+      toast.success(
+        activeTicket ? "Ticket type updated." : "Ticket type created.",
       );
-      const validConditions =
-        validRules.length > 0
-          ? {
-              match: settings.conditions.match || "all",
-              rules: validRules,
-            }
-          : null;
-
-      const designOutput = design.getDesign();
-
-      const config: TicketLayoutConfig = {
-        canvasWidth: Math.round(
-          designOutput.artboardW || DEFAULT_ARTBOARD_WIDTH,
-        ),
-        canvasHeight: Math.round(
-          designOutput.artboardH || DEFAULT_ARTBOARD_HEIGHT,
-        ),
-        layers: designOutput.layers.map((l) => ({
-          id: l.id,
-          type: l.type,
-          name: l.name || (l.type === "qr" ? "QR Code" : l.text || "Text"),
-          tokenOrText:
-            l.tokenOrText ||
-            l.text ||
-            (l.type === "qr" ? "{{ticket_code}}" : "Text"),
-          x: Math.round(l.x),
-          y: Math.round(l.y),
-          width: Math.round(
-            l.width || (l.type === "qr" ? l.size : Math.max(120, l.size * 5)),
-          ),
-          height: Math.round(
-            l.height ||
-            (l.type === "qr" ? l.size : Math.max(30, Math.round(l.size * 1.4))),
-          ),
-          fontSize: Math.round(
-            l.type === "text" ? l.size || l.fontSize || 48 : 14,
-          ),
-          fontColor:
-            l.color ||
-            l.fontColor ||
-            (l.type === "qr" ? l.qrColor || "#000000" : "#ffffff"),
-          maxLines: l.maxLines || 1,
-          lineSpacing: l.lineSpacing || 0,
-          fontWeight: l.fontWeight || (l.type === "text" ? "600" : undefined),
-          fontFamily:
-            l.fontFamily || (l.type === "text" ? "'Inter', sans-serif" : undefined),
-          fontStyle: l.fontStyle || (l.type === "text" ? "normal" : undefined),
-          textDecoration:
-            l.textDecoration || (l.type === "text" ? "none" : undefined),
-          qrColor:
-            l.type === "qr"
-              ? l.qrColor || l.color || l.fontColor || "#000000"
-              : undefined,
-          qrBgColor: l.type === "qr" ? l.qrBgColor || "#ffffff" : undefined,
-        })),
-      };
-
-      const payload = {
-        name: settings.name.trim(),
-        description: settings.description.trim() || undefined,
-        price: settings.isPaid ? Number(settings.price) : 0,
-        passFeeToCustomer: settings.isPaid
-          ? settings.passFeeToCustomer
-          : false,
-        quantityLimit:
-          settings.hasLimitCapacity && settings.quantityLimit
-            ? parseInt(settings.quantityLimit, 10)
-            : null,
-        maxPerUser:
-          settings.hasMaxPerUser && settings.maxPerUser
-            ? parseInt(settings.maxPerUser, 10)
-            : null,
-        enableWaitlist: settings.enableWaitlist,
-        multiDayCheckIn: settings.multiDayCheckIn,
-        isFixedDefault: settings.isFixedDefault,
-        collectGst: settings.isPaid ? settings.collectGst : false,
-        isClosed: settings.isClosed,
-        isHidden: settings.isHidden,
-        category: settings.category.trim() || null,
-        poolName: settings.category.trim() || null,
-        poolCapacity: settings.poolCapacity
-          ? parseInt(settings.poolCapacity, 10)
-          : null,
-        codePrefix: settings.codePrefix.trim().toUpperCase() || "",
-        codeLength: settings.codeLength || 6,
-        maxCheckInsPerDay: settings.multiDayCheckIn
-          ? settings.maxCheckInsPerDay
-          : 1,
-        tags: parsedTags,
-        conditions: validConditions,
-        saleStart: settings.saleStart,
-        saleEnd: settings.saleEnd,
-        isRefundable: settings.isRefundable,
-        isTransferable: settings.isTransferable,
-        maxTransfers: settings.isTransferable
-          ? parseInt(settings.maxTransfers, 10) || 1
-          : 0,
-        templateImageUrl: finalImageUrl,
-        templateConfig: config,
-      };
-
-      let resultTicket: TicketType;
-
-      if (activeTicket) {
-        resultTicket = await updateTicketType(
-          eventId,
-          activeTicket.id,
-          payload,
-        );
-        toast.success("Ticket type updated.");
-      } else {
-        resultTicket = await createTicketType(eventId, payload);
-        toast.success("Ticket type created.");
-      }
 
       setActiveTicket(resultTicket);
       setTicketTypesList((prev) => {
@@ -358,20 +236,8 @@ export default function TicketDesignStudio({
     }
   };
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const eventSlug = storeEvent?.slug || "event";
-  const directTicketUrl = activeTicket?.id
-    ? `${origin}/${eventSlug}?ticket_id=${activeTicket.id}`
-    : "";
-
-  const eventTitle = storeEvent?.title || "Tech Summit 2026";
-  const timezone =
-    storeEvent?.timezone ||
-    Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const eventCapacityDisplay =
-    typeof storeEvent?.capacity === "number" && storeEvent.capacity > 0
-      ? storeEvent.capacity
-      : "Unlimited";
+  const { eventTitle, timezone, eventCapacityDisplay, directTicketUrl } =
+    getStudioEventMetadata(storeEvent, activeTicket?.id);
 
   return (
     <div className={styles.studioContainer} data-testid="ticket-design-studio">
@@ -464,7 +330,6 @@ export default function TicketDesignStudio({
           timezone={timezone}
           eventCapacityDisplay={eventCapacityDisplay}
           directTicketUrl={directTicketUrl}
-          onSwitchToDesign={() => setMode("edit")}
         />
       )}
 

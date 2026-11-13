@@ -30,10 +30,15 @@ export const organizerBankAccounts = pgTable("organizer_bank_accounts", {
     .references(() => users.id, { onDelete: "cascade" })
     .primaryKey(),
   accountHolderName: varchar("account_holder_name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull().default(""),
   accountNumber: varchar("account_number", { length: 64 }).notNull(),
   ifscCode: varchar("ifsc_code", { length: 32 }).notNull(),
   bankName: varchar("bank_name", { length: 255 }).notNull(),
   upiId: varchar("upi_id", { length: 255 }),
+  gatewayAccountId: varchar("gateway_account_id", { length: 255 }),
+  onboardingStatus: varchar("onboarding_status", { length: 50 })
+    .notNull()
+    .default("active"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

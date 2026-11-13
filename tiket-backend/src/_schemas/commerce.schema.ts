@@ -123,9 +123,16 @@ export const bankAccountSchema = {
     body: {
       type: "object",
       additionalProperties: false,
-      required: ["accountHolderName", "accountNumber", "ifscCode", "bankName"],
+      required: [
+        "accountHolderName",
+        "phone",
+        "accountNumber",
+        "ifscCode",
+        "bankName",
+      ],
       properties: {
         accountHolderName: { type: "string", minLength: 1, maxLength: 255 },
+        phone: { type: "string", minLength: 10, maxLength: 20 },
         accountNumber: { type: "string", pattern: "^[0-9]{6,20}$" },
         ifscCode: { type: "string", pattern: "^[A-Za-z]{4}0[A-Za-z0-9]{6}$" },
         bankName: { type: "string", minLength: 1, maxLength: 255 },

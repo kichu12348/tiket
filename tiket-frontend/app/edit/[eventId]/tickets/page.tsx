@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useEventStore } from "@/store/useEventStore";
-import { cn } from "@/lib/utils";
 import type { TicketType } from "@/types/ticketType";
 import TicketTypesPanel from "./components/TicketTypesPanel";
 import TicketDesignStudio from "./components/TicketDesignStudio";
@@ -50,30 +49,6 @@ export default function EditTicketsPage() {
           <p className={styles.subtitle}>
             Manage your ticket tiers, pricing, and custom pass designs.
           </p>
-
-          <div className={styles.tabs} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={true}
-              className={cn(styles.tabBtn, styles.tabBtnActive)}
-              onClick={() => setActiveTab("tiers")}
-            >
-              Ticket Tiers
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={false}
-              className={styles.tabBtn}
-              onClick={() => {
-                setStudioMode("edit");
-                setActiveTab("designer");
-              }}
-            >
-              Custom Ticket Designer
-            </button>
-          </div>
         </div>
       )}
 

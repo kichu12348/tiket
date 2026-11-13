@@ -89,6 +89,7 @@ export const ticketTypes = pgTable("ticket_types", {
   saleStart: timestamp("sale_start"),
   saleEnd: timestamp("sale_end"),
   isRefundable: boolean("is_refundable").notNull().default(false),
+  allowRefunds: boolean("allow_refunds").notNull().default(false),
   refundableUntil: timestamp("refundable_until"),
   isTransferable: boolean("is_transferable").notNull().default(false),
   maxTransfers: integer("max_transfers").notNull().default(0),

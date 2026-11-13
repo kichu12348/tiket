@@ -1,5 +1,5 @@
 import { useFileDownload } from "@/hooks/useFileDownload";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Mail,
@@ -16,6 +16,7 @@ import {
   X,
   Download,
   Ban,
+  RotateCcw,
 } from "lucide-react";
 import Modal from "@/components/Modal";
 import type {
@@ -23,7 +24,8 @@ import type {
   FormResponseItem,
 } from "@/types/attendee";
 import { getAttendeeFormResponses } from "@/api/attendees";
-import { createBlacklistEntry } from "@/api/commerce";
+import { createBlacklistEntry, getFinance, refundOrder } from "@/api/commerce";
+import { useEventStore } from "@/store/useEventStore";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
 import styles from "./AttendeeDetailModal.module.css";
@@ -62,6 +64,75 @@ export default function AttendeeDetailModal({
   const [cancelExisting, setCancelExisting] = useState(true);
   const [blockReason, setBlockReason] = useState("");
   const [isBlocking, setIsBlocking] = useState(false);
+  const [isRefunding, setIsRefunding] = useState(false);
+  const [unsettledBalancePaise, setUnsettledBalancePaise] = useState<
+    number | null
+  >(null);
+
+  const storeEvent = useEventStore((state) => state.event);
+  const priceNum = detail ? Number(detail.attendee.ticketType.price || 0) : 0;
+  const isPaidTicket = priceNum > 0;
+  const ticketPricePaise = Math.round(priceNum * 100);
+
+  useEffect(() => {
+    if (detail && isPaidTicket) {
+      getFinance(eventId)
+        .then((f) => {
+          setUnsettledBalancePaise(
+            f?.summary?.unsettledBalancePaise ?? f?.unsettledBalancePaise ?? 0,
+          );
+        })
+        .catch(() => setUnsettledBalancePaise(0));
+    }
+  }, [eventId, detail, isPaidTicket]);
+
+  const allowRefunds = Boolean(
+    (
+      detail?.attendee.ticketType as
+        | { id: string; name: string; price: string; allowRefunds?: boolean }
+        | undefined
+    )?.allowRefunds,
+  );
+  const eventStartDate = storeEvent?.startDate;
+  const isBeforeStart =
+    !eventStartDate || new Date() < new Date(eventStartDate);
+  const hasSufficientBalance =
+    (unsettledBalancePaise ?? 0) >= ticketPricePaise;
+  const isEligibleForRefund =
+    isPaidTicket && allowRefunds && isBeforeStart && hasSufficientBalance;
+
+  let refundUnavailableReason = "";
+  if (isPaidTicket) {
+    if (!allowRefunds) {
+      refundUnavailableReason = "Refunds not enabled for ticket tier";
+    } else if (!isBeforeStart) {
+      refundUnavailableReason = "Automated refunds disabled after event starts";
+    } else if (!hasSufficientBalance) {
+      refundUnavailableReason =
+        "Insufficient unsettled balance to issue automated refund";
+    }
+  }
+
+  const handleRefundTicket = async () => {
+    if (!detail || !isEligibleForRefund || isRefunding) return;
+    try {
+      setIsRefunding(true);
+      await refundOrder(
+        eventId,
+        detail.attendee.order.id,
+        ticketPricePaise,
+        "Organizer dashboard refund",
+        `ref_${Date.now()}_${detail.attendee.id}`,
+      );
+      toast.success("Ticket refunded successfully.");
+      onCancelTicket(detail.attendee.id);
+      onClose();
+    } catch (err) {
+      toast.error(getErrorMessage(err) || "Failed to refund ticket.");
+    } finally {
+      setIsRefunding(false);
+    }
+  };
 
   const handleBlockAttendee = async () => {
     if (!detail) return;
@@ -429,7 +500,36 @@ export default function AttendeeDetailModal({
                   ) : (
                     <>
                       {detail.attendee.status !== "cancelled" &&
-                        detail.attendee.status !== "refunded" && (
+                        detail.attendee.status !== "refunded" &&
+                        (isPaidTicket ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <button
+                              type="button"
+                              onClick={handleRefundTicket}
+                              disabled={!isEligibleForRefund || isRefunding}
+                              className={
+                                isEligibleForRefund
+                                  ? styles.btnDanger
+                                  : `${styles.btnDanger} opacity-50 cursor-not-allowed`
+                              }
+                              title={
+                                refundUnavailableReason || "Refund Ticket"
+                              }
+                            >
+                              <RotateCcw size={14} />
+                              <span>
+                                {isRefunding
+                                  ? "Refunding..."
+                                  : "Refund Ticket"}
+                              </span>
+                            </button>
+                            {refundUnavailableReason && (
+                              <span className="text-[10px] text-amber-400/80 max-w-[200px] text-right">
+                                {refundUnavailableReason}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
                           <button
                             onClick={() => onCancelTicket(detail.attendee.id)}
                             className={styles.btnDanger}
@@ -437,7 +537,7 @@ export default function AttendeeDetailModal({
                             <XCircle size={14} />
                             <span>Cancel Ticket</span>
                           </button>
-                        )}
+                        ))}
 
                       <button
                         onClick={() => onToggleCheckIn(detail.attendee.id)}

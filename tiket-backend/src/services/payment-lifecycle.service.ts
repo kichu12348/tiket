@@ -1,11 +1,14 @@
 import db from "@db";
 import {
+  events,
   orders,
+  organizerBankAccounts,
   paymentAttempts,
+  payoutRequests,
   tickets,
   webhookInbox,
 } from "@db/schema";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Transaction } from "../db/types";
 import { HttpError } from "../utils/errors";
 import {
@@ -244,6 +247,8 @@ export async function processInbox() {
           "kind" in payloadObj &&
           (payloadObj.kind === "payment" ||
             payloadObj.kind === "refund" ||
+            payloadObj.kind === "payout" ||
+            payloadObj.kind === "transfer" ||
             payloadObj.kind === "ignored")
         ) {
           normalized = payloadObj as unknown as NormalizedWebhookEvent;
@@ -276,6 +281,116 @@ export async function processInbox() {
             .where(eq(orders.id, mapped.orderId));
           await lockEvent(tx, order!.eventId);
           await applyRefund(tx, remote);
+        } else if (normalized.kind === "payout") {
+          const remote = normalized.payout;
+          const [payout] = await tx
+            .select()
+            .from(payoutRequests)
+            .where(eq(payoutRequests.gatewayPayoutId, remote.id));
+          if (payout) {
+            const isSuccess =
+              remote.status === "paid" || remote.status === "processed";
+            const isFailed =
+              remote.status === "failed" ||
+              remote.status === "reversed" ||
+              remote.status === "rejected";
+            if (isSuccess) {
+              await tx
+                .update(payoutRequests)
+                .set({
+                  status: "paid",
+                  referenceNumber:
+                    remote.referenceNumber || payout.referenceNumber,
+                  updatedAt: new Date(),
+                })
+                .where(eq(payoutRequests.id, payout.id));
+            } else if (isFailed) {
+              await tx
+                .update(payoutRequests)
+                .set({
+                  status: "rejected",
+                  failureReason:
+                    remote.failureReason || "Payout rejected by gateway/bank",
+                  updatedAt: new Date(),
+                })
+                .where(eq(payoutRequests.id, payout.id));
+            }
+          }
+        } else if (normalized.kind === "transfer") {
+          const remote = normalized.transfer;
+          if (remote.status === "settled" || remote.status === "processed") {
+            await tx
+              .update(orders)
+              .set({
+                transferReleased: true,
+                transferStatus:
+                  remote.status === "settled" ? "settled" : "processed",
+                updatedAt: new Date(),
+              })
+              .where(eq(orders.gatewayTransferId, remote.id));
+          } else if (remote.status === "failed") {
+            await tx
+              .update(orders)
+              .set({
+                transferStatus: "failed",
+                updatedAt: new Date(),
+              })
+              .where(eq(orders.gatewayTransferId, remote.id));
+          }
+        } else if (normalized.kind === "settlement") {
+          const remote = normalized.settlement;
+          const [bankAccount] = await tx
+            .select()
+            .from(organizerBankAccounts)
+            .where(eq(organizerBankAccounts.gatewayAccountId, remote.accountId));
+
+          if (bankAccount) {
+            const [orgEvent] = await tx
+              .select({ id: events.id })
+              .from(events)
+              .where(eq(events.organizationId, bankAccount.userId))
+              .orderBy(desc(events.createdAt))
+              .limit(1);
+
+            if (orgEvent) {
+              const maskedAccountNumber =
+                bankAccount.accountNumber.length > 4
+                  ? `••••${bankAccount.accountNumber.slice(-4)}`
+                  : bankAccount.accountNumber;
+
+              await tx.insert(payoutRequests).values({
+                eventId: orgEvent.id,
+                requestedBy: bankAccount.userId,
+                amountPaise: remote.amount,
+                status: "paid",
+                gatewaySettlementId: remote.id,
+                referenceNumber: remote.utr ?? null,
+                bankSnapshot: {
+                  accountHolderName: bankAccount.accountHolderName,
+                  maskedAccountNumber,
+                  ifscCode: bankAccount.ifscCode,
+                  bankName: bankAccount.bankName,
+                  upiId: bankAccount.upiId || null,
+                },
+                processedAt: new Date(),
+                notes: "Automatic Razorpay settlement cycle",
+              });
+            }
+
+            await tx
+              .update(orders)
+              .set({
+                transferStatus: "settled",
+                gatewaySettlementId: remote.id,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(orders.linkedAccountId, remote.accountId),
+                  inArray(orders.transferStatus, ["pending", "processed"]),
+                ),
+              );
+          }
         }
 
         await tx

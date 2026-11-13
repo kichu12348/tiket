@@ -1,7 +1,14 @@
 import db from "@db";
-import { orders, refunds, tickets } from "@db/schema";
+import {
+  events,
+  orderItems,
+  orders,
+  refunds,
+  tickets,
+  ticketTypes,
+} from "@db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import type { Transaction } from "../db/types";
+import type { Database, Transaction } from "../db/types";
 import { HttpError } from "../utils/errors";
 import { fingerprint } from "./checkout.service";
 import { emitEvent, lockEvent } from "./inventory.service";
@@ -13,6 +20,64 @@ export interface RefundCommand {
   reason: string;
   voidTicketIds?: string[];
 }
+
+export async function getOrganizerUnsettledBalancePaise(
+  eventId: string,
+  client: Database | Transaction = db,
+): Promise<number> {
+  const eligibleOrders = await client
+    .select({
+      id: orders.id,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.eventId, eventId),
+        inArray(orders.paymentStatus, ["success", "partially_refunded"]),
+        inArray(orders.transferStatus, ["pending", "processed"]),
+      ),
+    );
+
+  const orderIds = eligibleOrders.map((o) => o.id);
+  if (orderIds.length === 0) return 0;
+
+  const items = await client
+    .select({
+      organizerNetPaise: orderItems.organizerNetPaise,
+    })
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const totalUnsettledPaise = items.reduce(
+    (sum, item) => sum + (item.organizerNetPaise || 0),
+    0,
+  );
+
+  const activeRefunds = await client
+    .select({
+      amountPaise: refunds.amountPaise,
+    })
+    .from(refunds)
+    .where(
+      and(
+        inArray(refunds.orderId, orderIds),
+        inArray(refunds.status, [
+          "requested",
+          "processing",
+          "uncertain",
+          "processed",
+        ]),
+      ),
+    );
+
+  const totalRefundedPaise = activeRefunds.reduce(
+    (sum, r) => sum + r.amountPaise,
+    0,
+  );
+
+  return Math.max(0, totalUnsettledPaise - totalRefundedPaise);
+}
+
 export async function queueRefund(
   tx: Transaction,
   order: typeof orders.$inferSelect,
@@ -67,6 +132,55 @@ export async function queueRefund(
     voidIds.some((id) => !selected.some((t) => t.id === id))
   )
     throw new HttpError(400, "Refund tickets must belong to this order.");
+
+  if (requestedBy) {
+    // Gate 1: Check all ticket tiers being refunded have allowRefunds === true
+    const ticketTiers = await tx
+      .select({
+        ticketId: tickets.id,
+        allowRefunds: ticketTypes.allowRefunds,
+      })
+      .from(tickets)
+      .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+      .where(eq(tickets.orderId, order.id));
+
+    const targetTiers =
+      voidIds.length > 0
+        ? ticketTiers.filter((t) => voidIds.includes(t.ticketId))
+        : ticketTiers;
+
+    if (targetTiers.some((t) => !t.allowRefunds)) {
+      throw new HttpError(
+        400,
+        "Refunds are not enabled for this ticket tier. Please contact the organizer directly.",
+      );
+    }
+
+    // Gate 2: Verify event has not started yet
+    const [eventRow] = await tx
+      .select({ startDate: events.startDate })
+      .from(events)
+      .where(eq(events.id, order.eventId));
+
+    if (eventRow && new Date() >= new Date(eventRow.startDate)) {
+      throw new HttpError(
+        400,
+        "Automated refunds are disabled once the event has started. Please handle any refund directly with the attendee.",
+      );
+    }
+
+    // Gate 3: Verify organizer has sufficient unsettled balance
+    const unsettledPaise = await getOrganizerUnsettledBalancePaise(
+      order.eventId,
+      tx,
+    );
+    if (unsettledPaise < command.amountPaise) {
+      throw new HttpError(
+        400,
+        "Insufficient unsettled balance in the Razorpay settlement cycle to issue this refund. Please refund the attendee directly.",
+      );
+    }
+  }
   const [refund] = await tx
     .insert(refunds)
     .values({
@@ -209,6 +323,7 @@ export async function applyRefund(tx: Transaction, remote: GatewayRefund) {
                 order.registrationStatus === "declined"
                   ? ("declined" as const)
                   : ("cancelled" as const),
+              transferStatus: "reversed" as const,
             }
           : {}),
         updatedAt: new Date(),
@@ -254,6 +369,7 @@ export async function processRefunds() {
         refund.paymentId,
         refund.amountPaise,
         refund.id,
+        { reverseAll: true },
       );
       await applyRemote(refund.orderId, remote);
     } catch (error) {

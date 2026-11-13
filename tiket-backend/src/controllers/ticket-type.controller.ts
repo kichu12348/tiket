@@ -18,6 +18,7 @@ import {
   ticketTypes,
   events,
   tickets,
+  organizerBankAccounts,
   type TicketLayoutConfig,
 } from "@db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
@@ -49,6 +50,7 @@ interface CreateTicketTypeBody {
   saleStart?: string | null;
   saleEnd?: string | null;
   isRefundable?: boolean;
+  allowRefunds?: boolean;
   refundableUntil?: string | null;
   isTransferable?: boolean;
   maxTransfers?: number;
@@ -82,7 +84,28 @@ export const createTicketType = async (
     const body = request.body;
 
     // Normalize price string mapping perfectly
-    const normalizedPrice = fromPaise(toPaise(String(body.price ?? 0)));
+    const pricePaise = toPaise(String(body.price ?? 0));
+    const normalizedPrice = fromPaise(pricePaise);
+
+    if (pricePaise > 0) {
+      const [event] = await db
+        .select({ organizationId: events.organizationId })
+        .from(events)
+        .where(eq(events.id, eventId));
+      if (!event) throw new HttpError(404, "Event not found.");
+
+      const [bankAccount] = await db
+        .select()
+        .from(organizerBankAccounts)
+        .where(eq(organizerBankAccounts.userId, event.organizationId));
+
+      if (!bankAccount?.gatewayAccountId) {
+        throw new HttpError(
+          400,
+          "You must add a payout bank account in Finance settings before creating paid tickets.",
+        );
+      }
+    }
     if (
       body.saleStart &&
       body.saleEnd &&
@@ -141,6 +164,7 @@ export const createTicketType = async (
           saleStart: body.saleStart ? new Date(body.saleStart) : null,
           saleEnd: body.saleEnd ? new Date(body.saleEnd) : null,
           isRefundable: body.isRefundable ?? false,
+          allowRefunds: body.allowRefunds ?? false,
           refundableUntil: body.refundableUntil
             ? new Date(body.refundableUntil)
             : null,
@@ -235,8 +259,29 @@ export const updateTicketType = async (
     if (body.isHidden !== undefined) payload.isHidden = body.isHidden;
     if (body.name !== undefined) payload.name = body.name;
     if (body.description !== undefined) payload.description = body.description;
-    if (body.price !== undefined)
-      payload.price = fromPaise(toPaise(String(body.price)));
+    if (body.price !== undefined) {
+      const pricePaise = toPaise(String(body.price));
+      if (pricePaise > 0) {
+        const [event] = await db
+          .select({ organizationId: events.organizationId })
+          .from(events)
+          .where(eq(events.id, eventId));
+        if (!event) throw new HttpError(404, "Event not found.");
+
+        const [bankAccount] = await db
+          .select()
+          .from(organizerBankAccounts)
+          .where(eq(organizerBankAccounts.userId, event.organizationId));
+
+        if (!bankAccount?.gatewayAccountId) {
+          throw new HttpError(
+            400,
+            "You must add a payout bank account in Finance settings before creating paid tickets.",
+          );
+        }
+      }
+      payload.price = fromPaise(pricePaise);
+    }
     if (body.templateImageUrl !== undefined)
       payload.templateImageUrl = body.templateImageUrl;
     if (body.templateConfig !== undefined) {
@@ -279,6 +324,8 @@ export const updateTicketType = async (
       payload.eligibilityRules = body.eligibilityRules;
     if (body.isRefundable !== undefined)
       payload.isRefundable = body.isRefundable;
+    if (body.allowRefunds !== undefined)
+      payload.allowRefunds = body.allowRefunds;
     if (body.isTransferable !== undefined)
       payload.isTransferable = body.isTransferable;
     if (body.maxTransfers !== undefined)

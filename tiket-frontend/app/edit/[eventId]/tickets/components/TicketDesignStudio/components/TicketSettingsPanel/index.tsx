@@ -1,14 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Globe,
-  CalendarIcon,
-  Clock,
-  Copy,
-  Check,
-  Palette,
-} from "lucide-react";
+import { Globe, CalendarIcon, Clock, Copy, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -123,7 +116,6 @@ interface TicketSettingsPanelProps {
   timezone: string;
   eventCapacityDisplay: string | number;
   directTicketUrl: string;
-  onSwitchToDesign: () => void;
 }
 
 export default function TicketSettingsPanel({
@@ -189,7 +181,6 @@ export default function TicketSettingsPanel({
   timezone,
   eventCapacityDisplay,
   directTicketUrl,
-  onSwitchToDesign,
 }: TicketSettingsPanelProps) {
   const [copiedUrl, setCopiedUrl] = useState(false);
 
@@ -721,7 +712,8 @@ export default function TicketSettingsPanel({
                 }}
               />
               <span className={styles.helperText}>
-                Optional prefix added to generated pass codes (e.g. &quot;VIP-&quot;).
+                Optional prefix added to generated pass codes (e.g.
+                &quot;VIP-&quot;).
               </span>
               {codePrefix && codePrefix.trim().length > 0 && (
                 <div className={styles.codePreviewRow}>
@@ -749,7 +741,8 @@ export default function TicketSettingsPanel({
                 }}
               />
               <span className={styles.helperText}>
-                Length of the random number sequence (4 to 12 digits, default is 6).
+                Length of the random number sequence (4 to 12 digits, default is
+                6).
               </span>
             </div>
 
@@ -767,7 +760,8 @@ export default function TicketSettingsPanel({
                 data-testid="ticket-pool-name-input"
               />
               <span className={styles.helperText}>
-                Share capacity across multiple tiers (e.g. Early Bird + Regular).
+                Share capacity across multiple tiers (e.g. Early Bird +
+                Regular).
               </span>
             </div>
 
@@ -814,7 +808,8 @@ export default function TicketSettingsPanel({
                 Conditions & Visibility Rules
               </label>
               <span className={styles.helperText}>
-                Only attendees who submit matching answers on the registration form can view and select this tier.
+                Only attendees who submit matching answers on the registration
+                form can view and select this tier.
               </span>
               <ConditionBuilder
                 conditions={conditions}
@@ -824,19 +819,6 @@ export default function TicketSettingsPanel({
             </div>
           </div>
         </section>
-
-        {/* Footer Quick Action: Jump to Pass Designer */}
-        <div className={styles.footerActionBox}>
-          <button
-            type="button"
-            className={styles.designLayoutBannerBtn}
-            onClick={onSwitchToDesign}
-            data-testid="modal-design-pass-btn"
-          >
-            <Palette size={16} />
-            <span>Design Custom Pass Layout</span>
-          </button>
-        </div>
       </div>
     </div>
   );

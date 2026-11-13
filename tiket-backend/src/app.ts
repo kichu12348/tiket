@@ -20,11 +20,20 @@ import attendeeRoutes from "./routes/attendee.routes";
 import emailRoutes from "./routes/email.routes";
 import { closeRedisClient } from "./services/redis-lock.service";
 
+import pretty from "pino-pretty";
+
+const stream = pretty({
+  colorize: true,
+  translateTime: "HH:MM:ss",
+  ignore: "pid,hostname",
+  customColors: "info:blue,warn:yellow,error:red,debug:gray",
+});
+
 export function buildApp() {
-  const __dev__ = process.env.DEBUG === "true";
+  const isDev = process.env.DEBUG === "true";
 
   const fastify = Fastify({
-    logger: __dev__,
+    logger: isDev ? { level: "debug", stream } : { level: "info" },
     ajv: {
       customOptions: {
         allowUnionTypes: true,

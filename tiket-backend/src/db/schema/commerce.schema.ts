@@ -86,6 +86,14 @@ export const orders = pgTable(
     couponId: uuid("coupon_id").references(() => coupons.id),
     linkedAccountId: varchar("linked_account_id", { length: 255 }),
     payoutReference: varchar("payout_reference", { length: 255 }),
+    gatewayTransferId: varchar("gateway_transfer_id", { length: 255 }),
+    transferReleased: boolean("transfer_released").notNull().default(false),
+    transferStatus: varchar("transfer_status", {
+      enum: ["none", "pending", "processed", "settled", "reversed", "failed"],
+    })
+      .notNull()
+      .default("none"),
+    gatewaySettlementId: varchar("gateway_settlement_id", { length: 255 }),
     initializationState: varchar("initialization_state", {
       enum: ["new", "creating", "ready", "uncertain"],
     })
@@ -276,6 +284,10 @@ export const payoutRequests = pgTable("payout_requests", {
     }>()
     .notNull(),
   referenceNumber: varchar("reference_number", { length: 255 }),
+  gatewayPayoutId: varchar("gateway_payout_id", { length: 255 }),
+  gatewaySettlementId: varchar("gateway_settlement_id", { length: 255 }),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  failureReason: text("failure_reason"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

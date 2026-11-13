@@ -3,6 +3,7 @@ import { buildApp } from "./app";
 import { connectRedis } from "./utils";
 
 const app = buildApp();
+
 startJobs(app);
 
 app.get("/health", () => {

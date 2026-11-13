@@ -1,15 +1,23 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { Palette, Bold, Italic, Underline } from "lucide-react";
+import {
+  Palette,
+  Bold,
+  Italic,
+  Underline,
+  ChevronDown,
+  Check,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { ColorPicker } from "@/components/ui/color-picker";
+import { cn } from "@/lib/utils";
 import type { TicketDesignerLayer } from "../../types";
 import type { FormField } from "@/types/form";
 import TokenPicker from "../TokenPicker";
@@ -56,7 +64,8 @@ export default function LayerInspector({
   onUpdateLayer,
 }: LayerInspectorProps) {
   useEffect(() => {
-    if (typeof document === "undefined" || process.env.NODE_ENV === "test") return;
+    if (typeof document === "undefined" || process.env.NODE_ENV === "test")
+      return;
     try {
       if (document.querySelector(`link[href="${GOOGLE_FONTS_URL}"]`)) return;
       const link = document.createElement("link");
@@ -83,11 +92,11 @@ export default function LayerInspector({
             style={{
               fontSize: "0.75rem",
               marginTop: "0.25rem",
-              color: "var(--text-muted)",
+              color: "var(--color-text-muted)",
             }}
           >
-            Click any layer on the canvas or in the Layers list above to edit its
-            properties.
+            Click any layer on the canvas or in the Layers list above to edit
+            its properties.
           </p>
         </div>
       </div>
@@ -96,13 +105,24 @@ export default function LayerInspector({
 
   const isQr = selectedLayer.type === "qr";
   const currentWidth = selectedLayer.width || (isQr ? selectedLayer.size : 320);
-  const currentHeight = selectedLayer.height || (isQr ? selectedLayer.size : 80);
+  const currentHeight =
+    selectedLayer.height || (isQr ? selectedLayer.size : 80);
 
   const currentWeight = selectedLayer.fontWeight || "600";
-  const isBold =
-    currentWeight === "bold" || parseInt(currentWeight, 10) >= 700;
+  const isBold = currentWeight === "bold" || parseInt(currentWeight, 10) >= 700;
   const isItalic = selectedLayer.fontStyle === "italic";
   const isUnderline = selectedLayer.textDecoration === "underline";
+
+  const selectedFontFamily = selectedLayer.fontFamily || "'Inter', sans-serif";
+  const displayFontFamilyName =
+    FONT_FAMILIES.find((f) => f.value === selectedFontFamily)?.name ||
+    selectedFontFamily.replace(/['",]/g, "").split(" ")[0] ||
+    "Inter";
+
+  const selectedFontWeight = selectedLayer.fontWeight || "600";
+  const displayFontWeightLabel =
+    FONT_WEIGHTS.find((w) => w.value === selectedFontWeight)?.label ||
+    selectedFontWeight;
 
   return (
     <div className={styles.card} data-testid="inspector-card">
@@ -125,7 +145,10 @@ export default function LayerInspector({
                   x: parseInt(e.target.value, 10) || 0,
                 })
               }
-              className="h-9 text-xs"
+              className={cn(
+                "h-9 text-xs rounded-[var(--radius-md)]",
+                styles.inspectorInput,
+              )}
               data-testid="input-x"
             />
           </div>
@@ -140,7 +163,10 @@ export default function LayerInspector({
                   y: parseInt(e.target.value, 10) || 0,
                 })
               }
-              className="h-9 text-xs"
+              className={cn(
+                "h-9 text-xs rounded-[var(--radius-md)]",
+                styles.inspectorInput,
+              )}
               data-testid="input-y"
             />
           </div>
@@ -163,7 +189,10 @@ export default function LayerInspector({
                     : { width: val },
                 );
               }}
-              className="h-9 text-xs"
+              className={cn(
+                "h-9 text-xs rounded-[var(--radius-md)]",
+                styles.inspectorInput,
+              )}
               data-testid={isQr ? "input-qr-width" : "input-width"}
             />
           </div>
@@ -183,7 +212,10 @@ export default function LayerInspector({
                     : { height: val },
                 );
               }}
-              className="h-9 text-xs"
+              className={cn(
+                "h-9 text-xs rounded-[var(--radius-md)]",
+                styles.inspectorInput,
+              )}
               data-testid={isQr ? "input-qr-height" : "input-height"}
             />
           </div>
@@ -194,74 +226,43 @@ export default function LayerInspector({
           <>
             <div className={styles.formField}>
               <label className={styles.formLabel}>QR CODE COLOR</label>
-              <div className={styles.colorPickerRow}>
-                <input
-                  type="color"
-                  value={
-                    selectedLayer.qrColor ||
-                    selectedLayer.color ||
-                    selectedLayer.fontColor ||
-                    "#000000"
-                  }
-                  onChange={(e) =>
-                    onUpdateLayer({
-                      qrColor: e.target.value,
-                      color: e.target.value,
-                      fontColor: e.target.value,
-                    })
-                  }
-                  className={styles.colorInputSwatch}
-                  data-testid="input-qr-color-swatch"
-                />
-                <Input
-                  type="text"
-                  value={
-                    selectedLayer.qrColor ||
-                    selectedLayer.color ||
-                    selectedLayer.fontColor ||
-                    "#000000"
-                  }
-                  onChange={(e) =>
-                    onUpdateLayer({
-                      qrColor: e.target.value,
-                      color: e.target.value,
-                      fontColor: e.target.value,
-                    })
-                  }
-                  className="h-9 text-xs flex-1 font-mono uppercase"
-                  placeholder="#000000"
-                  data-testid="input-qr-color"
-                />
-              </div>
+              <ColorPicker
+                value={
+                  selectedLayer.qrColor ||
+                  selectedLayer.color ||
+                  selectedLayer.fontColor ||
+                  "#000000"
+                }
+                onChange={(val) =>
+                  onUpdateLayer({
+                    qrColor: val,
+                    color: val,
+                    fontColor: val,
+                  })
+                }
+                swatchTestId="input-qr-color-swatch"
+                inputTestId="input-qr-color"
+                dropperTestId="btn-qr-color-dropper"
+                placeholder="#000000"
+                allowAlpha
+              />
             </div>
 
             <div className={styles.formField}>
               <label className={styles.formLabel}>QR BACKGROUND COLOR</label>
-              <div className={styles.colorPickerRow}>
-                <input
-                  type="color"
-                  value={selectedLayer.qrBgColor || "#ffffff"}
-                  onChange={(e) =>
-                    onUpdateLayer({
-                      qrBgColor: e.target.value,
-                    })
-                  }
-                  className={styles.colorInputSwatch}
-                  data-testid="input-qr-bg-color-swatch"
-                />
-                <Input
-                  type="text"
-                  value={selectedLayer.qrBgColor || "#ffffff"}
-                  onChange={(e) =>
-                    onUpdateLayer({
-                      qrBgColor: e.target.value,
-                    })
-                  }
-                  className="h-9 text-xs flex-1 font-mono uppercase"
-                  placeholder="#ffffff"
-                  data-testid="input-qr-bg-color"
-                />
-              </div>
+              <ColorPicker
+                value={selectedLayer.qrBgColor || "#ffffff"}
+                onChange={(val) =>
+                  onUpdateLayer({
+                    qrBgColor: val,
+                  })
+                }
+                swatchTestId="input-qr-bg-color-swatch"
+                inputTestId="input-qr-bg-color"
+                dropperTestId="btn-qr-bg-color-dropper"
+                placeholder="#ffffff"
+                allowAlpha
+              />
             </div>
           </>
         )}
@@ -281,7 +282,10 @@ export default function LayerInspector({
                       tokenOrText: e.target.value,
                     })
                   }
-                  className="h-9 text-xs flex-1"
+                  className={cn(
+                    "h-9 text-xs flex-1 rounded-[var(--radius-md)]",
+                    styles.inspectorInput,
+                  )}
                   placeholder="e.g. {{name}}"
                   data-testid="input-text-token"
                 />
@@ -301,31 +305,51 @@ export default function LayerInspector({
               </div>
             </div>
 
-            {/* Font Family */}
+            {/* Font Family Dropdown */}
             <div className={styles.formField}>
               <label className={styles.formLabel}>FONT FAMILY</label>
-              <Select
-                value={selectedLayer.fontFamily || "'Inter', sans-serif"}
-                onValueChange={(val) => onUpdateLayer({ fontFamily: val })}
-              >
-                <SelectTrigger
-                  className="h-9 text-xs"
-                  data-testid="select-font-family"
-                >
-                  <SelectValue placeholder="Select font family" />
-                </SelectTrigger>
-                <SelectContent>
-                  {FONT_FAMILIES.map((f) => (
-                    <SelectItem
-                      key={f.value}
-                      value={f.value}
-                      style={{ fontFamily: f.value }}
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={styles.dropdownTrigger}
+                    data-testid="select-font-family"
+                  >
+                    <span
+                      className={styles.dropdownValue}
+                      style={{ fontFamily: selectedFontFamily }}
                     >
-                      {f.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      {displayFontFamilyName}
+                    </span>
+                    <ChevronDown size={14} className={styles.dropdownChevron} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className={cn(styles.dropdownContent, "scrollbar")}
+                  align="start"
+                >
+                  {FONT_FAMILIES.map((f) => {
+                    const isSelected = selectedFontFamily === f.value;
+                    return (
+                      <DropdownMenuItem
+                        key={f.value}
+                        onSelect={() => onUpdateLayer({ fontFamily: f.value })}
+                        onClick={() => onUpdateLayer({ fontFamily: f.value })}
+                        className={cn(
+                          styles.dropdownItem,
+                          isSelected && styles.dropdownItemSelected,
+                        )}
+                        style={{ fontFamily: f.value }}
+                      >
+                        <span>{f.name}</span>
+                        {isSelected && (
+                          <Check size={14} className={styles.itemCheckIcon} />
+                        )}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Font Size & Font Weight */}
@@ -344,31 +368,60 @@ export default function LayerInspector({
                       fontSize: val,
                     });
                   }}
-                  className="h-9 text-xs"
+                  className={cn(
+                    "h-9 text-xs rounded-[var(--radius-md)]",
+                    styles.inspectorInput,
+                  )}
                   data-testid="input-font-size"
                 />
               </div>
 
               <div className={styles.formField}>
                 <label className={styles.formLabel}>FONT WEIGHT</label>
-                <Select
-                  value={selectedLayer.fontWeight || "600"}
-                  onValueChange={(val) => onUpdateLayer({ fontWeight: val })}
-                >
-                  <SelectTrigger
-                    className="h-9 text-xs"
-                    data-testid="select-font-weight"
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={styles.dropdownTrigger}
+                      data-testid="select-font-weight"
+                    >
+                      <span className={styles.dropdownValue}>
+                        {displayFontWeightLabel?.split("-")[1]?.trim() ||
+                          displayFontWeightLabel}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className={styles.dropdownChevron}
+                      />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className={cn(styles.dropdownContent, "scrollbar")}
+                    align="start"
                   >
-                    <SelectValue placeholder="Select weight" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FONT_WEIGHTS.map((w) => (
-                      <SelectItem key={w.value} value={w.value}>
-                        {w.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    {FONT_WEIGHTS.map((w) => {
+                      const isSelected = selectedFontWeight === w.value;
+                      return (
+                        <DropdownMenuItem
+                          key={w.value}
+                          onSelect={() =>
+                            onUpdateLayer({ fontWeight: w.value })
+                          }
+                          onClick={() => onUpdateLayer({ fontWeight: w.value })}
+                          className={cn(
+                            styles.dropdownItem,
+                            isSelected && styles.dropdownItemSelected,
+                          )}
+                        >
+                          <span>{w.label}</span>
+                          {isSelected && (
+                            <Check size={14} className={styles.itemCheckIcon} />
+                          )}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -433,7 +486,10 @@ export default function LayerInspector({
                       maxLines: parseInt(e.target.value, 10) || 1,
                     })
                   }
-                  className="h-9 text-xs"
+                  className={cn(
+                    "h-9 text-xs rounded-[var(--radius-md)]",
+                    styles.inspectorInput,
+                  )}
                   data-testid="input-max-lines"
                 />
               </div>
@@ -442,32 +498,20 @@ export default function LayerInspector({
             {/* Font Color */}
             <div className={styles.formField}>
               <label className={styles.formLabel}>FONT COLOR</label>
-              <div className={styles.colorPickerRow}>
-                <input
-                  type="color"
-                  value={selectedLayer.color || "#ffffff"}
-                  onChange={(e) =>
-                    onUpdateLayer({
-                      color: e.target.value,
-                      fontColor: e.target.value,
-                    })
-                  }
-                  className={styles.colorInputSwatch}
-                  data-testid="input-font-color-swatch"
-                />
-                <Input
-                  type="text"
-                  value={selectedLayer.color || "#ffffff"}
-                  onChange={(e) =>
-                    onUpdateLayer({
-                      color: e.target.value,
-                      fontColor: e.target.value,
-                    })
-                  }
-                  className="h-9 text-xs flex-1 font-mono uppercase"
-                  data-testid="input-font-color-hex"
-                />
-              </div>
+              <ColorPicker
+                value={selectedLayer.color || "#ffffff"}
+                onChange={(val) =>
+                  onUpdateLayer({
+                    color: val,
+                    fontColor: val,
+                  })
+                }
+                swatchTestId="input-font-color-swatch"
+                inputTestId="input-font-color-hex"
+                dropperTestId="btn-font-color-dropper"
+                placeholder="#ffffff"
+                allowAlpha
+              />
             </div>
           </>
         )}

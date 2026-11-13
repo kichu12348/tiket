@@ -60,6 +60,7 @@ export interface TicketType {
   saleStart: string | null;
   saleEnd: string | null;
   isRefundable: boolean;
+  allowRefunds?: boolean;
   refundableUntil: string | null;
   isTransferable: boolean;
   maxTransfers: number;
@@ -95,6 +96,7 @@ export interface CreateTicketTypePayload {
   saleStart?: string | null;
   saleEnd?: string | null;
   isRefundable?: boolean;
+  allowRefunds?: boolean;
   refundableUntil?: string | null;
   isTransferable?: boolean;
   maxTransfers?: number;

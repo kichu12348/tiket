@@ -1,0 +1,206 @@
+.colorPickerContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.colorSwatchTrigger {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+  outline: none;
+}
+
+.colorSwatchTrigger:hover {
+  border-color: var(--color-border-hover);
+}
+
+.colorSwatchTrigger:focus-visible {
+  border-color: var(--color-border-hover);
+  box-shadow: 0 0 0 1px var(--color-border-hover);
+}
+
+/* Checkerboard pattern for showing transparency */
+.checkerboard {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(45deg, var(--color-item-selected) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-item-selected) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-item-selected) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-item-selected) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  background-color: var(--surface-hover);
+  z-index: 1;
+}
+
+.colorOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transition: background-color 0.15s ease;
+}
+
+.transparentSlash {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--destructive);
+  transform: rotate(-45deg);
+  z-index: 3;
+}
+
+.colorInput {
+  border-radius: var(--radius-md) !important;
+}
+
+.dropperBtn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.dropperBtn:hover {
+  background: var(--surface-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.dropperBtn:focus-visible {
+  border-color: var(--color-border-hover);
+  box-shadow: 0 0 0 1px var(--color-border-hover);
+}
+
+.actionRow {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex: 1;
+  height: 28px;
+  font-size: 0.72rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0 0.5rem;
+}
+
+.actionBtn:hover {
+  background: var(--surface-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-light);
+}
+
+/* Popover Content */
+.popoverContent {
+  width: 240px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--surface-popover);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 110;
+}
+
+/* React colorful custom styling */
+.reactColorful {
+  width: 100% !important;
+  height: 150px !important;
+}
+
+.popoverContent :global(.react-colorful__saturation) {
+  border-radius: var(--radius-sm);
+  border-bottom: none;
+}
+
+.popoverContent :global(.react-colorful__hue),
+.popoverContent :global(.react-colorful__alpha) {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+}
+
+.popoverContent :global(.react-colorful__pointer) {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--color-text-primary);
+  box-shadow: 0 2px 4px var(--color-overlay);
+}
+
+.checkerboardMini {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid var(--border-subtle);
+  position: relative;
+  overflow: hidden;
+  background-image: 
+    linear-gradient(45deg, var(--color-item-selected) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-item-selected) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-item-selected) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-item-selected) 75%);
+  background-size: 6px 6px;
+  background-position: 0 0, 0 3px, 3px -3px, -3px 0px;
+  background-color: var(--surface-hover);
+}
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.presetSwatch {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.presetSwatch:hover {
+  transform: scale(1.12);
+  border-color: var(--color-border-light);
+  z-index: 2;
+}
