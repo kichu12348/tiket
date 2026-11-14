@@ -118,18 +118,14 @@ describe("EmailModelSerializer", () => {
       expect(html).toContain("display: inline-block");
       expect(html).toContain("Claim Your Digital Pass");
 
-      // Deserialize back and verify CTA styling attributes remain intact
+      // Deserialize back and verify CTA styling attributes remain intact as ctaButton node
       const deserialized = EmailModelSerializer.deserializeHtmlToJson(html);
-      const buttonParagraph = deserialized.content![0];
-      expect(buttonParagraph.type).toBe("paragraph");
-
-      const linkTextNode = buttonParagraph.content![0];
-      expect(linkTextNode.text).toBe("Claim Your Digital Pass");
-      const linkMark = linkTextNode.marks?.find((m) => m.type === "link");
-      expect(linkMark).toBeDefined();
-      expect(linkMark?.attrs?.href).toBe("{{event.passUrl}}");
-      expect(linkMark?.attrs?.style).toContain("background-color: #000000");
-      expect(linkMark?.attrs?.style).toContain("padding: 12px 24px");
+      const buttonNode = deserialized.content![0];
+      expect(buttonNode.type).toBe("ctaButton");
+      expect(buttonNode.attrs?.label).toBe("Claim Your Digital Pass");
+      expect(buttonNode.attrs?.url).toBe("{{event.passUrl}}");
+      expect(buttonNode.attrs?.buttonColor).toBe("#000000");
+      expect(buttonNode.attrs?.textColor).toBe("#ffffff");
     });
 
     test("losslessly handles images with variable src like {{ticket.qrCodeUrl}}", () => {
@@ -357,16 +353,21 @@ describe("EmailModelSerializer", () => {
       expect(container?.attrs?.backgroundColor).toBe("#f9fafb");
       expect(container?.attrs?.borderColor).toBe("#e5e7eb");
 
-      // Find CTA button
-      const ctaP = doc.content!.find(
-        (n) =>
-          n.type === "paragraph" &&
-          n.content?.some((c) => c.marks?.some((m) => m.type === "link")),
-      );
-      expect(ctaP).toBeDefined();
-      const linkMark = ctaP!.content![0].marks!.find((m) => m.type === "link")!;
-      expect(linkMark.attrs?.href).toBe("{{event.passUrl}}");
-      expect(linkMark.attrs?.style).toContain("background-color: #000000");
+      // Find CTA button (either ctaButton node or styled link)
+      const ctaNode =
+        doc.content!.find((n) => n.type === "ctaButton") ||
+        doc.content!.find(
+          (n) =>
+            n.type === "paragraph" &&
+            n.content?.some((c) => c.marks?.some((m) => m.type === "link")),
+        );
+      expect(ctaNode).toBeDefined();
+      if (ctaNode!.type === "ctaButton") {
+        expect(ctaNode!.attrs?.url).toBe("{{event.passUrl}}");
+      } else {
+        const linkMark = ctaNode!.content![0].marks!.find((m) => m.type === "link")!;
+        expect(linkMark.attrs?.href).toBe("{{event.passUrl}}");
+      }
 
       // Verify re-serializing produces intact HTML
       const reserialized = EmailModelSerializer.serializeJsonToHtml(doc);

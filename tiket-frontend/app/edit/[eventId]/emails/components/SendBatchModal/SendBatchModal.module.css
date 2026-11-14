@@ -46,7 +46,7 @@
 }
 
 .groupOptionCard[data-selected="true"] {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-soft-bg-hover);
 }
 
 .optionTextCol {

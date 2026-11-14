@@ -17,6 +17,7 @@ import {
   ContainerExtension,
   CustomLinkExtension,
   CustomImageExtension,
+  CustomButtonExtension,
 } from "./extensions";
 import TopControlBar from "./components/TopControlBar";
 import SubjectBox from "./components/SubjectBox";
@@ -38,6 +39,7 @@ interface EmailPaperCanvasProps {
   onOpenSendTest: () => void;
   onOpenSendBatch: () => void;
   isSaving: boolean;
+  eventId?: string;
 }
 
 const DEFAULT_EMAIL_BODY = `
@@ -57,6 +59,7 @@ function EmailPaperCanvasContent({
   onOpenSendTest,
   onOpenSendBatch,
   isSaving,
+  eventId,
 }: EmailPaperCanvasProps) {
   const [name, setName] = useState(template.name);
   const [subject, setSubject] = useState(template.subject || "");
@@ -102,11 +105,57 @@ function EmailPaperCanvasContent({
       }),
       ContainerExtension,
       CustomImageExtension,
+      CustomButtonExtension,
       Placeholder.configure({
         placeholder: "Click or select text here to start editing your email template...",
       }),
       BlockStyleExtension,
     ],
+    editorProps: {
+      handleDOMEvents: {
+        click: (view, event) => {
+          const target = event.target as HTMLElement | null;
+          // Intercept any clicks on <a> tags in editor mode to prevent navigation
+          const anchor = target?.closest("a");
+          if (anchor) {
+            event.preventDefault();
+          }
+
+          const ctaWrapper = target?.closest('[data-type="cta-button"]');
+          if (ctaWrapper) {
+            event.preventDefault();
+            event.stopPropagation();
+            const pos = view.posAtDOM(ctaWrapper, 0);
+            if (typeof pos === "number") {
+              let nodePos = pos;
+              const $pos = view.state.doc.resolve(pos);
+              if ($pos.nodeAfter?.type.name === "ctaButton") {
+                nodePos = pos;
+              } else if ($pos.parent?.type.name === "ctaButton") {
+                nodePos = $pos.before();
+              } else if (
+                pos > 0 &&
+                view.state.doc.nodeAt(pos - 1)?.type.name === "ctaButton"
+              ) {
+                nodePos = pos - 1;
+              }
+              try {
+                view.dispatch(
+                  view.state.tr.setSelection(
+                    NodeSelection.create(view.state.doc, nodePos),
+                  ),
+                );
+                view.focus();
+                return true;
+              } catch {
+                // Ignore if position cannot form NodeSelection
+              }
+            }
+          }
+          return false;
+        },
+      },
+    },
     content: EmailModelSerializer.deserializeHtmlToJson(
       template.body || DEFAULT_EMAIL_BODY,
     ),
@@ -158,28 +207,24 @@ function EmailPaperCanvasContent({
   const handleInsertCtaButton = () => {
     if (!ctaLabel.trim() || !ctaUrl.trim()) return;
 
-    const buttonHtml = `
-<p style="text-align: center; margin: 28px 0;">
-  <a href="${ctaUrl.trim()}" style="background-color: #000000; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">
-    ${ctaLabel.trim()}
-  </a>
-</p>
-`.trim();
-
     const chain = editor.chain().focus();
     if (savedSelectionRef.current) {
       chain.setTextSelection(savedSelectionRef.current);
     }
 
-    const { $from } = editor.state.selection;
-    const currentParagraphEmpty =
-      $from.parent.type.name === "paragraph" && $from.parent.content.size === 0;
-
-    if (currentParagraphEmpty) {
-      chain.insertContent(buttonHtml).run();
-    } else {
-      chain.insertContentAt(editor.state.selection.to, buttonHtml).run();
-    }
+    chain
+      .insertContent({
+        type: "ctaButton",
+        attrs: {
+          label: ctaLabel.trim(),
+          url: ctaUrl.trim(),
+          buttonColor: "#000000",
+          textColor: "#ffffff",
+          borderRadius: "8px",
+          alignment: "center",
+        },
+      })
+      .run();
 
     setIsCtaModalOpen(false);
     savedSelectionRef.current = null;
@@ -299,21 +344,46 @@ function EmailPaperCanvasContent({
     sampleValues[v.key] = v.sample;
   });
 
-  const renderInterpolated = (templateStr: string) => {
+  const qrUrl =
+    sampleValues["{{ticket.qrCodeUrl}}"] ||
+    sampleValues["ticket.qrCodeUrl"] ||
+    "https://quickchart.io/qr?text=TKT-884920-XYZ";
+
+  const renderInterpolated = (templateStr: string, isBody = false) => {
     if (!templateStr) return "";
-    return templateStr.replace(
-      /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,
+
+    let result = templateStr.replace(
+      /src=["']\{\{\s*([^}]+?)\s*\}\}["']/g,
       (match, key) => {
-        const fullKey = `{{${key}}}`;
-        return sampleValues[fullKey] || match;
+        const trimmed = key.trim();
+        const fullKey = `{{${trimmed}}}`;
+        const val = sampleValues[fullKey] || sampleValues[trimmed];
+        return `src="${val || qrUrl}"`;
       },
     );
+
+    result = result.replace(
+      /\{\{\s*([^}]+?)\s*\}\}/g,
+      (match, key) => {
+        const trimmedKey = key.trim();
+        if (trimmedKey === "ticket.qrCodeUrl") {
+          if (isBody) {
+            return `<img src="${qrUrl}" alt="Ticket QR Code" width="160" height="160" style="display:block;margin:12px auto;border-radius:8px;border:1px solid #e5e7eb;" />`;
+          }
+          return qrUrl;
+        }
+        const fullKey = `{{${trimmedKey}}}`;
+        return sampleValues[fullKey] || sampleValues[trimmedKey] || match;
+      },
+    );
+
+    return result;
   };
 
-  const previewSubject = renderInterpolated(subject) || "(No Subject)";
+  const previewSubject = renderInterpolated(subject, false) || "(No Subject)";
   const compiledRawHtml = EmailModelSerializer.serializeJsonToHtml(editor.getJSON());
   const previewBodyHtml =
-    renderInterpolated(compiledRawHtml) ||
+    renderInterpolated(compiledRawHtml, true) ||
     "<p style='color:#9ca3af;'>No content written yet...</p>";
 
   // Current Active Node Style Getters
@@ -456,6 +526,77 @@ function EmailPaperCanvasContent({
     }
   };
 
+  // Active CTA Button Detection
+  const selectedCtaNode =
+    editor.state.selection instanceof NodeSelection &&
+    editor.state.selection.node.type.name === "ctaButton"
+      ? editor.state.selection.node
+      : null;
+  const isCtaSelected = Boolean(selectedCtaNode);
+  const isCtaActive = editor.isActive("ctaButton") || isCtaSelected;
+  const activeCtaAttrs =
+    selectedCtaNode?.attrs || editor.getAttributes("ctaButton") || {};
+
+  const currentCtaLabel = (activeCtaAttrs.label as string) || "";
+  const currentCtaUrl = (activeCtaAttrs.url as string) || "";
+  const currentCtaButtonColor =
+    (activeCtaAttrs.buttonColor as string) || "#000000";
+  const currentCtaTextColor =
+    (activeCtaAttrs.textColor as string) || "#ffffff";
+  const currentCtaBorderRadius =
+    (activeCtaAttrs.borderRadius as string) || "8px";
+  const currentCtaAlignment =
+    (activeCtaAttrs.alignment as "left" | "center" | "right") || "center";
+
+  const updateCtaAttributes = (attrs: Record<string, string>) => {
+    const { selection } = editor.state;
+    if (
+      selection instanceof NodeSelection &&
+      selection.node.type.name === "ctaButton"
+    ) {
+      editor
+        .chain()
+        .updateAttributes("ctaButton", attrs)
+        .setNodeSelection(selection.from)
+        .run();
+    } else {
+      editor.chain().updateAttributes("ctaButton", attrs).run();
+    }
+  };
+
+  const isBoldActive =
+    Boolean(editor.isActive("bold")) ||
+    currentFontWeight === "700" ||
+    currentFontWeight === "bold";
+
+  const toggleBoldAndWeight = () => {
+    if (isBoldActive) {
+      editor
+        .chain()
+        .focus()
+        .unsetMark("bold")
+        .setMark("textStyle", { fontWeight: "400" })
+        .run();
+    } else {
+      editor
+        .chain()
+        .focus()
+        .setMark("bold")
+        .setMark("textStyle", { fontWeight: "700" })
+        .run();
+    }
+  };
+
+  const setFontWeight = (val: string) => {
+    const chain = editor.chain().focus().setMark("textStyle", { fontWeight: val });
+    if (val === "700" || val === "800" || val === "900") {
+      chain.setMark("bold");
+    } else {
+      chain.unsetMark("bold");
+    }
+    chain.run();
+  };
+
   const currentElementType = editor.isActive("heading", { level: 1 })
     ? "h1"
     : editor.isActive("heading", { level: 2 })
@@ -530,6 +671,16 @@ function EmailPaperCanvasContent({
           updateImageHref={updateImageHref}
           updateImageAlignment={updateImageAlignment}
           handleInsertVariable={handleInsertVariable}
+          isCtaActive={isCtaActive}
+          currentCtaLabel={currentCtaLabel}
+          currentCtaUrl={currentCtaUrl}
+          currentCtaButtonColor={currentCtaButtonColor}
+          currentCtaTextColor={currentCtaTextColor}
+          currentCtaBorderRadius={currentCtaBorderRadius}
+          currentCtaAlignment={currentCtaAlignment}
+          updateCtaAttributes={updateCtaAttributes}
+          onToggleBold={toggleBoldAndWeight}
+          onSetFontWeight={setFontWeight}
         />
 
         {/* Right Viewport Canvas */}
@@ -594,6 +745,7 @@ function EmailPaperCanvasContent({
         imageWidth={imageWidth}
         setImageWidth={setImageWidth}
         handleInsertImage={handleInsertImage}
+        eventId={eventId}
       />
     </form>
   );
@@ -602,7 +754,7 @@ function EmailPaperCanvasContent({
 export default function EmailPaperCanvas(props: EmailPaperCanvasProps) {
   return (
     <EmailPaperCanvasContent
-      key={props.template.id + props.template.updatedAt}
+      key={props.template.id}
       {...props}
     />
   );

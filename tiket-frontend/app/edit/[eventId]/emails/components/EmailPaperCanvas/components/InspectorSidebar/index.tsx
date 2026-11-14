@@ -65,6 +65,16 @@ interface InspectorSidebarProps {
   updateImageHref: (href: string) => void;
   updateImageAlignment: (alignment: "left" | "center" | "right") => void;
   handleInsertVariable: (varKey: string) => void;
+  isCtaActive?: boolean;
+  currentCtaLabel?: string;
+  currentCtaUrl?: string;
+  currentCtaButtonColor?: string;
+  currentCtaTextColor?: string;
+  currentCtaBorderRadius?: string;
+  currentCtaAlignment?: "left" | "center" | "right";
+  updateCtaAttributes?: (attrs: Record<string, string>) => void;
+  onToggleBold?: () => void;
+  onSetFontWeight?: (weight: string) => void;
 }
 
 export default function InspectorSidebar({
@@ -97,7 +107,33 @@ export default function InspectorSidebar({
   updateImageHref,
   updateImageAlignment,
   handleInsertVariable,
+  isCtaActive = false,
+  currentCtaLabel = "",
+  currentCtaUrl = "",
+  currentCtaButtonColor = "#000000",
+  currentCtaTextColor = "#ffffff",
+  currentCtaBorderRadius = "8px",
+  currentCtaAlignment = "center",
+  updateCtaAttributes,
+  onToggleBold,
+  onSetFontWeight,
 }: InspectorSidebarProps) {
+  const [userToggledSections, setUserToggledSections] = React.useState<string[]>([
+    "textFormatting",
+    "bgBorders",
+  ]);
+
+  const activeSections = React.useMemo(() => {
+    const list = [...userToggledSections];
+    if (isCtaActive && !list.includes("buttonControls")) {
+      list.push("buttonControls");
+    }
+    if (isImageActive && !list.includes("imageControls")) {
+      list.push("imageControls");
+    }
+    return list;
+  }, [userToggledSections, isCtaActive, isImageActive]);
+
   return (
     <div className={styles.leftInspectorSidebar}>
       <div className={styles.sidebarHeaderTitleRow}>
@@ -125,7 +161,8 @@ export default function InspectorSidebar({
 
       <Accordion
         type="multiple"
-        defaultValue={["textFormatting", "bgBorders"]}
+        value={activeSections}
+        onValueChange={setUserToggledSections}
         className="w-full"
       >
         {/* 1. Text Formatting Accordion Item */}
@@ -159,13 +196,17 @@ export default function InspectorSidebar({
                 variant="dark"
                 options={FONT_WEIGHTS}
                 value={currentFontWeight}
-                onChange={(val) =>
-                  editor
-                    .chain()
-                    .focus()
-                    .setMark("textStyle", { fontWeight: val })
-                    .run()
-                }
+                onChange={(val) => {
+                  if (onSetFontWeight) {
+                    onSetFontWeight(val);
+                  } else {
+                    editor
+                      .chain()
+                      .focus()
+                      .setMark("textStyle", { fontWeight: val })
+                      .run();
+                  }
+                }}
                 placeholder="Font Weight"
                 btnWidth="100%"
                 width="100%"
@@ -253,9 +294,19 @@ export default function InspectorSidebar({
                 <button
                   type="button"
                   className={styles.toggleBtn}
-                  data-active={editor.isActive("bold")}
+                  data-active={
+                    editor.isActive("bold") ||
+                    currentFontWeight === "700" ||
+                    currentFontWeight === "bold"
+                  }
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => editor.chain().focus().toggleBold().run()}
+                  onClick={() => {
+                    if (onToggleBold) {
+                      onToggleBold();
+                    } else {
+                      editor.chain().focus().toggleBold().run();
+                    }
+                  }}
                 >
                   <Bold size={15} />
                 </button>
@@ -382,7 +433,194 @@ export default function InspectorSidebar({
           </AccordionContent>
         </AccordionItem>
 
-        {/* 4. Image Controls Accordion Item */}
+        {/* 4. Button Controls Accordion Item */}
+        <AccordionItem value="buttonControls">
+          <AccordionTrigger>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+              }}
+            >
+              <MousePointerClick size={15} />
+              <span>Button Controls</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            {isCtaActive ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.75rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span
+                    className={styles.inputLabel}
+                    style={{ color: "#34d399" }}
+                  >
+                    ● Active Button Selected
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.clearSwatchBtn}
+                    onClick={() =>
+                      editor.chain().focus().deleteSelection().run()
+                    }
+                    title="Delete selected button"
+                  >
+                    Delete
+                  </button>
+                </div>
+
+                {/* Button Label */}
+                <div className={styles.inputFieldGroup}>
+                  <label className={styles.inputLabel}>Button Label</label>
+                  <input
+                    type="text"
+                    className={styles.inputControl}
+                    value={currentCtaLabel}
+                    onChange={(e) =>
+                      updateCtaAttributes?.({ label: e.target.value })
+                    }
+                    placeholder="e.g. View Ticket"
+                  />
+                </div>
+
+                {/* Target URL */}
+                <div className={styles.inputFieldGroup}>
+                  <label className={styles.inputLabel}>Button Link (URL)</label>
+                  <input
+                    type="text"
+                    className={styles.inputControl}
+                    value={currentCtaUrl}
+                    onChange={(e) =>
+                      updateCtaAttributes?.({ url: e.target.value })
+                    }
+                    placeholder="e.g. {{event.passUrl}} or https://..."
+                  />
+                </div>
+
+                {/* Alignment */}
+                <div className={styles.inputFieldGroup}>
+                  <label className={styles.inputLabel}>Alignment</label>
+                  <div className={styles.buttonToggleGroup}>
+                    <button
+                      type="button"
+                      className={styles.toggleBtn}
+                      data-active={currentCtaAlignment === "left"}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() =>
+                        updateCtaAttributes?.({ alignment: "left" })
+                      }
+                      title="Align Left"
+                    >
+                      <AlignLeft size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.toggleBtn}
+                      data-active={currentCtaAlignment === "center"}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() =>
+                        updateCtaAttributes?.({ alignment: "center" })
+                      }
+                      title="Align Center"
+                    >
+                      <AlignCenter size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.toggleBtn}
+                      data-active={currentCtaAlignment === "right"}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() =>
+                        updateCtaAttributes?.({ alignment: "right" })
+                      }
+                      title="Align Right"
+                    >
+                      <AlignRight size={15} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Button Color & Text Color */}
+                <div className={styles.rowTwoGrid}>
+                  <div className={styles.inputFieldGroup}>
+                    <label className={styles.inputLabel}>Button Color</label>
+                    <ColorPicker
+                      value={currentCtaButtonColor}
+                      onChange={(color) =>
+                        updateCtaAttributes?.({ buttonColor: color })
+                      }
+                    />
+                  </div>
+                  <div className={styles.inputFieldGroup}>
+                    <label className={styles.inputLabel}>Text Color</label>
+                    <ColorPicker
+                      value={currentCtaTextColor}
+                      onChange={(color) =>
+                        updateCtaAttributes?.({ textColor: color })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Corner Radius */}
+                <div className={styles.inputFieldGroup}>
+                  <label className={styles.inputLabel}>Corner Radius</label>
+                  <Dropdown
+                    variant="dark"
+                    options={CORNER_RADII}
+                    value={currentCtaBorderRadius}
+                    onChange={(val) =>
+                      updateCtaAttributes?.({ borderRadius: val })
+                    }
+                    placeholder="Radius"
+                    btnWidth="100%"
+                    width="100%"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6rem",
+                }}
+              >
+                <p className={styles.inspectorInstructionText}>
+                  Click any CTA button in the email canvas to inspect and edit its
+                  text, link, colors, and styling.
+                </p>
+                <button
+                  type="button"
+                  className={styles.btnPrimary}
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    fontSize: "0.78rem",
+                  }}
+                  onClick={onOpenCtaModal}
+                >
+                  <MousePointerClick size={14} />
+                  <span>Insert CTA Button</span>
+                </button>
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* 5. Image Controls Accordion Item */}
         <AccordionItem value="imageControls">
           <AccordionTrigger>
             <div
@@ -624,6 +862,7 @@ export default function InspectorSidebar({
                     key={v.key}
                     type="button"
                     className={styles.sidebarVarPill}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleInsertVariable(v.key)}
                     title={`Insert ${v.key}`}
                   >

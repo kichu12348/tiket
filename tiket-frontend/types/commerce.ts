@@ -125,7 +125,7 @@ export interface SmtpMailPayload {
   port: number;
   secure: boolean;
   username: string;
-  password: string;
+  password?: string;
   fromEmail: string;
   fromName?: string;
 }
@@ -135,7 +135,7 @@ export type MailConfig = {
   port: number;
   secure: boolean;
   username: string;
-  password: string;
+  password?: string;
   fromEmail: string;
   fromName?: string;
 };

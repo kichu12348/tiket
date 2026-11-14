@@ -80,60 +80,77 @@
 .title {
   font-size: 2.1rem;
   font-weight: 700;
-  color: var(--text-primary, #ffffff);
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.02em;
 }
 
 .subtitle {
   font-size: 0.95rem;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  color: var(--text-secondary);
   margin: 0;
   line-height: 1.4;
 }
 
-.loadingCard {
-  background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(16px);
+.tabsRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.tabsList {
+  display: inline-flex;
+  gap: 0.5rem;
+  background: var(--color-soft-bg);
+  padding: 0.3rem;
+  border-radius: var(--radius-sm);
+  width: fit-content;
+}
+
+.tabTrigger {
+  padding: 0.4rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-soft);
+  background: transparent;
   border: none;
-  border-radius: var(--radius-lg, 16px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tabTrigger:hover {
+  color: var(--text-primary);
+}
+
+.tabTrigger[data-state="active"] {
+  background: var(--color-soft-bg-hover);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  outline: none;
+}
+
+.loadingCard {
+  background: var(--color-soft-bg);
+  backdrop-filter: blur(var(--blur-md));
+  border: none;
+  border-radius: var(--radius-lg);
   padding: 3rem;
   text-align: center;
 }
 
 .loadingText {
   font-size: 0.9rem;
-  color: var(--text-muted, rgba(255, 255, 255, 0.4));
+  color: var(--text-muted);
   margin: 0;
-}
-
-.customSubBar {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
-}
-
-.subTab {
-  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
-  border: none;
-  border-radius: var(--radius-sm, 8px);
-  padding: 0.35rem 0.75rem;
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.subTab:hover {
-  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
-  color: var(--text-primary, #ffffff);
-}
-
-.subTab[data-active="true"] {
-  background: rgba(255, 255, 255, 0.15);
-  color: var(--text-primary, #ffffff);
 }
 
 .templateMetaBar {
@@ -152,7 +169,7 @@
 .currentTemplateName {
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--text-primary, #ffffff);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -160,51 +177,31 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
+  background: var(--color-soft-bg);
   border: none;
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--radius-sm);
   padding: 0.4rem 0.85rem;
   font-size: 0.85rem;
   font-weight: 500;
-  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
+  color: var(--color-text-soft);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .statusToggleBtn[data-active="true"] {
-  background: rgba(40, 167, 69, 0.15);
-  color: var(--status-success, #28a745);
+  background: var(--status-success-bg);
+  color: var(--status-success);
 }
 
 .statusToggleBtn[data-active="false"] {
-  background: rgba(255, 80, 80, 0.15);
-  color: var(--status-danger, #ff5050);
+  background: var(--color-soft-bg-subtle);
+  color: var(--status-danger);
 }
 
 .statusToggleBtn:hover {
-  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
-}
-
-.workspaceGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  align-items: start;
-}
-
-@media (max-width: 990px) {
-  .workspaceGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.leftCol,
-.rightCol {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  background: var(--color-soft-bg-hover);
 }
 
 .logsSection {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }

@@ -155,6 +155,58 @@ export class EmailModelSerializer {
   }
 
   private static parseElementToNode(el: HTMLElement): EmailDocumentNode | EmailDocumentNode[] | null {
+    // Check if element is a CTA button container or anchor
+    const isExplicitCta =
+      el.getAttribute("data-type") === "cta-button" ||
+      el.querySelector('[data-type="cta-button"]') !== null;
+
+    const anchorChild = el.tagName === "A" ? el : el.querySelector("a");
+    const isButtonStyledAnchor =
+      anchorChild &&
+      (anchorChild.getAttribute("data-type") === "cta-button" ||
+        anchorChild.style.display?.includes("inline-block") ||
+        (anchorChild.style.padding &&
+          (anchorChild.style.backgroundColor || anchorChild.style.color)));
+
+    if (isExplicitCta || isButtonStyledAnchor) {
+      const anchor = anchorChild || el;
+      const label =
+        anchor.textContent?.trim() ||
+        el.textContent?.trim() ||
+        "Click Here";
+      const url =
+        anchor.getAttribute("href") ||
+        el.getAttribute("data-url") ||
+        "#";
+      const buttonColor =
+        anchor.style.backgroundColor ||
+        el.getAttribute("data-button-color") ||
+        "#000000";
+      const textColor =
+        anchor.style.color ||
+        el.getAttribute("data-text-color") ||
+        "#ffffff";
+      const borderRadius =
+        anchor.style.borderRadius ||
+        el.getAttribute("data-border-radius") ||
+        "8px";
+      const alignment = (el.getAttribute("data-align") ||
+        el.style.textAlign ||
+        "center") as "left" | "center" | "right";
+
+      return {
+        type: "ctaButton",
+        attrs: {
+          label,
+          url,
+          buttonColor,
+          textColor,
+          borderRadius,
+          alignment,
+        },
+      };
+    }
+
     const tagName = el.tagName.toUpperCase();
     const attrs = this.parseStyleAttributes(el);
 
@@ -532,6 +584,23 @@ export class EmailModelSerializer {
         });
       }
       return text;
+    }
+
+    if (node.type === "ctaButton") {
+      const label = (node.attrs?.label as string) || "Click Here";
+      const url = (node.attrs?.url as string) || "#";
+      const buttonColor = (node.attrs?.buttonColor as string) || "#000000";
+      const textColor = (node.attrs?.textColor as string) || "#ffffff";
+      const borderRadius = (node.attrs?.borderRadius as string) || "8px";
+      const alignment = (node.attrs?.alignment as string) || "center";
+
+      return `
+<div data-type="cta-button" data-align="${alignment}" data-button-color="${buttonColor}" data-text-color="${textColor}" data-border-radius="${borderRadius}" data-url="${url}" style="text-align: ${alignment}; margin: 24px 0;">
+  <a href="${url}" style="background-color: ${buttonColor}; color: ${textColor}; padding: 12px 24px; text-decoration: none; border-radius: ${borderRadius}; font-weight: 600; font-size: 15px; display: inline-block;">
+    ${this.escapeHtml(label)}
+  </a>
+</div>
+`.trim();
     }
 
     if (node.type === "image") {

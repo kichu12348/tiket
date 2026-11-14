@@ -1,35 +1,16 @@
 "use client";
-import { getErrorMessage } from "@/lib/errors";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useEventStore } from "@/store/useEventStore";
-import type {
-  EmailTemplate,
-  EmailTemplateType,
-  AvailableVariables,
-  EmailLog,
-  EmailAnalytics,
-} from "@/types/email";
-import {
-  getEmailTemplates,
-  getEmailTemplateById,
-  getAvailableVariables,
-  updateEmailTemplate,
-  resetEmailTemplate,
-  sendTestEmail,
-  sendBatchEmail,
-  getEmailLogs,
-  resendEmailLog,
-} from "@/api/emails";
-import { getMailConnection } from "@/api/commerce";
-import { toast } from "sonner";
+import { useEmailStore } from "@/store/useEmailStore";
+import { useEmailManagement } from "@/hooks/useEmailManagement";
+import type { EmailTemplateType, EmailTemplate } from "@/types/email";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Power } from "lucide-react";
 import styles from "./EmailsPage.module.css";
 
 import TemplateTypeSelector from "./components/TemplateTypeSelector";
 import EmailPaperCanvas from "./components/EmailPaperCanvas";
-import VariablePicker from "./components/VariablePicker";
-import LivePreviewPane from "./components/LivePreviewPane";
 import SendTestModal from "./components/SendTestModal";
 import SendBatchModal from "./components/SendBatchModal";
 import MailConnectionModal from "./components/MailConnectionModal";
@@ -41,87 +22,37 @@ import {
 
 export default function EditEmailsPage() {
   const { event } = useEventStore();
-  const [activeType, setActiveType] =
-    useState<EmailTemplateType>("confirmation");
-  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [loadedTemplatesMap, setLoadedTemplatesMap] = useState<
-    Record<string, EmailTemplate>
-  >({});
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    null,
-  );
-  const [variables, setVariables] = useState<AvailableVariables | null>(null);
-  const [logs, setLogs] = useState<EmailLog[]>([]);
-  const [analytics, setAnalytics] = useState<EmailAnalytics | null>(null);
+  const {
+    templates,
+    activeType,
+    selectedTemplateId,
+    loadedTemplatesMap,
+    variables,
+    logs,
+    analytics,
+    smtpStatus,
+    activeTab,
+    isLoading,
+    isTemplateLoading,
+    isSaving,
+    isLogsLoading,
+    setActiveTab,
+  } = useEmailStore();
 
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [isTemplateLoading, setIsTemplateLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLogsLoading, setIsLogsLoading] = useState(false);
-  const [resetKey, setResetKey] = useState(0);
+  const {
+    loadInitialData,
+    selectTemplateType,
+    saveTemplate,
+    toggleTemplateActive,
+    resetTemplate,
+    sendTest,
+    sendBatch,
+    resendLog,
+  } = useEmailManagement();
 
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isMailModalOpen, setIsMailModalOpen] = useState(false);
-  const [isCustomSmtp, setIsCustomSmtp] = useState(false);
-
-  // 1. Initial load: Fetch template types list, variables, logs & mail connection
-  const loadInitialData = useCallback(async (eventId: string) => {
-    getMailConnection(eventId)
-      .then((mailRes) => {
-        setIsCustomSmtp(Boolean(mailRes?.custom));
-      })
-      .catch(() => {
-        setIsCustomSmtp(false);
-      });
-
-    return Promise.all([
-      getEmailTemplates(eventId),
-      getAvailableVariables(eventId),
-      getEmailLogs(eventId),
-    ])
-      .then(async ([tplData, varData, logData]) => {
-        const standardTemplates = tplData.filter((t) => t.type !== "custom");
-        setTemplates(standardTemplates);
-        setVariables(varData);
-        if (Array.isArray(logData)) {
-          setLogs(logData);
-          setAnalytics(null);
-        } else if (logData && typeof logData === "object" && "logs" in logData) {
-          setLogs(logData.logs);
-          setAnalytics(logData.analytics || null);
-        } else {
-          setLogs([]);
-          setAnalytics(null);
-        }
-
-        // Select first template matching activeType
-        const match =
-          standardTemplates.find((t) => t.type === "confirmation") ||
-          standardTemplates[0];
-        if (match) {
-          setSelectedTemplateId(match.id);
-          try {
-            const full = await getEmailTemplateById(eventId, match.id);
-            setLoadedTemplatesMap((prev) => ({
-              ...prev,
-              [full.id]: full,
-            }));
-          } catch {
-            setLoadedTemplatesMap((prev) => ({
-              ...prev,
-              [match.id]: match,
-            }));
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        toast.error(getErrorMessage(err) || "Failed to load email templates");
-      })
-      .finally(() => {
-        setIsInitialLoading(false);
-      });
-  }, []);
 
   useEffect(() => {
     if (event?.id) {
@@ -129,253 +60,65 @@ export default function EditEmailsPage() {
     }
   }, [event?.id, loadInitialData]);
 
-  // When active category changes, fetch full template on demand and select it
-  const handleSelectType = async (type: EmailTemplateType) => {
-    setActiveType(type);
-    const matching = templates.filter((t) => t.type === type);
-    if (matching.length > 0) {
-      const target = matching[0];
-      setSelectedTemplateId(target.id);
-      if (event?.id) {
-        try {
-          setIsTemplateLoading(true);
-          const full = await getEmailTemplateById(event.id, target.id);
-          setLoadedTemplatesMap((prev) => ({
-            ...prev,
-            [full.id]: full,
-          }));
-        } catch (err: unknown) {
-          toast.error(getErrorMessage(err) || "Failed to load template");
-        } finally {
-          setIsTemplateLoading(false);
-        }
-      }
-    } else {
-      setSelectedTemplateId(null);
-    }
-  };
-
-  const currentTemplate = selectedTemplateId
+  const currentTemplate: EmailTemplate | null = selectedTemplateId
     ? loadedTemplatesMap[selectedTemplateId] || null
     : null;
 
-  // Save template updates
+  const handleSelectType = (type: EmailTemplateType) => {
+    if (event?.id) {
+      selectTemplateType(event.id, type);
+    }
+  };
+
   const handleSaveTemplate = async (updatedFields: Partial<EmailTemplate>) => {
     if (!event?.id || !selectedTemplateId) return;
-    try {
-      setIsSaving(true);
-      const updated = await updateEmailTemplate(
-        event.id,
-        selectedTemplateId,
-        updatedFields,
-      );
-      setTemplates((prev) =>
-        prev.map((t) => (t.id === updated.id ? updated : t)),
-      );
-      setLoadedTemplatesMap((prev) => ({
-        ...prev,
-        [updated.id]: updated,
-      }));
-      toast.success("Email template saved successfully!");
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to save template");
-    } finally {
-      setIsSaving(false);
-    }
+    await saveTemplate(event.id, selectedTemplateId, updatedFields);
   };
 
-  // Toggle template active status with immediate persistence
   const handleToggleActive = async () => {
-    if (!event?.id || !selectedTemplateId || !currentTemplate) return;
-    try {
-      const nextActive = !currentTemplate.isActive;
-      const updated = await updateEmailTemplate(event.id, selectedTemplateId, {
-        isActive: nextActive,
-      });
-      setTemplates((prev) =>
-        prev.map((t) => (t.id === updated.id ? updated : t)),
-      );
-      setLoadedTemplatesMap((prev) => ({
-        ...prev,
-        [updated.id]: updated,
-      }));
-      toast.success(
-        `Template marked as ${updated.isActive ? "active" : "inactive"}!`,
-      );
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to update template status");
-    }
+    if (!event?.id || !selectedTemplateId) return;
+    await toggleTemplateActive(event.id, selectedTemplateId);
   };
 
-  // Reset template to system defaults
   const handleResetTemplate = async () => {
     if (!event?.id || !selectedTemplateId) return;
-    try {
-      setIsSaving(true);
-      const reseted = await resetEmailTemplate(event.id, selectedTemplateId);
-      setTemplates((prev) =>
-        prev.map((t) => (t.id === reseted.id ? reseted : t)),
-      );
-      setLoadedTemplatesMap((prev) => ({
-        ...prev,
-        [reseted.id]: reseted,
-      }));
-      setResetKey((k) => k + 1);
-      toast.success("Template reset to system default email layout!");
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to reset template");
-    } finally {
-      setIsSaving(false);
-    }
+    await resetTemplate(event.id, selectedTemplateId);
   };
 
-  // Variable insertion into active subject input or ProseMirror canvas
-  const handleInsertVariable = (variableKey: string) => {
-    const activeEl = document.activeElement as
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | null;
-
-    if (
-      activeEl &&
-      (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")
-    ) {
-      const start = activeEl.selectionStart ?? activeEl.value.length;
-      const end = activeEl.selectionEnd ?? activeEl.value.length;
-      const val = activeEl.value;
-      const before = val.slice(0, start);
-      const after = val.slice(end);
-      const spaceBefore = before.length > 0 && !before.endsWith(" ") ? " " : "";
-      const spaceAfter = after.length > 0 && !after.startsWith(" ") ? " " : "";
-      const nextVal = `${before}${spaceBefore}${variableKey}${spaceAfter}${after}`;
-
-      const nativeSetter = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )?.set;
-      if (nativeSetter) {
-        nativeSetter.call(activeEl, nextVal);
-      } else {
-        activeEl.value = nextVal;
-      }
-      activeEl.dispatchEvent(new Event("input", { bubbles: true }));
-      activeEl.dispatchEvent(new Event("change", { bubbles: true }));
-
-      const nextPos =
-        start + spaceBefore.length + variableKey.length + spaceAfter.length;
-      activeEl.setSelectionRange(nextPos, nextPos);
-      activeEl.focus();
-      return;
-    }
-
-    const proseMirrorEl = document.querySelector(
-      ".ProseMirror",
-    ) as HTMLElement | null;
-    if (proseMirrorEl) {
-      proseMirrorEl.focus();
-      document.execCommand("insertText", false, ` ${variableKey} `);
-      return;
-    }
-
-    const subjectInput = document.querySelector(
-      "input[placeholder*='Invited to'], input[class*='subjectBoxInput']",
-    ) as HTMLInputElement | null;
-    if (subjectInput) {
-      const val = subjectInput.value;
-      const nextVal = val ? `${val} ${variableKey}` : variableKey;
-      const nativeSetter = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )?.set;
-      if (nativeSetter) {
-        nativeSetter.call(subjectInput, nextVal);
-      } else {
-        subjectInput.value = nextVal;
-      }
-      subjectInput.dispatchEvent(new Event("input", { bubbles: true }));
-      subjectInput.dispatchEvent(new Event("change", { bubbles: true }));
-      subjectInput.focus();
-    }
-  };
-
-  // Send Test email
   const handleSendTest = async (
     recipientEmail: string,
     recipientName: string,
   ) => {
     if (!event?.id || !currentTemplate) return;
-    try {
-      await sendTestEmail(event.id, {
-        recipientEmail,
-        recipientName: recipientName || undefined,
-        subject: currentTemplate.subject || "",
-        body: currentTemplate.body || "",
-        templateId: currentTemplate.id,
-      });
-
-      toast.success("Test email dispatched successfully!");
-      // Reload logs to reflect freshly logged email
-      setIsLogsLoading(true);
-      const res = await getEmailLogs(event.id);
-      if (Array.isArray(res)) {
-        setLogs(res);
-      } else if (res && typeof res === "object" && "logs" in res) {
-        setLogs(res.logs);
-        setAnalytics(res.analytics || null);
-      }
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to send test email");
-    } finally {
-      setIsLogsLoading(false);
-    }
+    await sendTest(event.id, {
+      recipientEmail,
+      recipientName: recipientName || undefined,
+      subject: currentTemplate.subject || "",
+      body: currentTemplate.body || "",
+      templateId: currentTemplate.id,
+    });
   };
 
-  // Send Batch email
   const handleSendBatch = async (
     targetGroup: "all" | "checked_in" | "not_checked_in" | "custom",
     customEmails?: string[],
   ) => {
     if (!event?.id || !currentTemplate) return;
-    try {
-      const res = await sendBatchEmail(event.id, {
-        targetGroup,
-        customEmails,
-        subject: currentTemplate.subject || "",
-        body: currentTemplate.body || "",
-        templateId: currentTemplate.id,
-      });
-
-      toast.success(res.message);
-      // Reload logs to reflect freshly sent batch emails
-      setIsLogsLoading(true);
-      const updatedRes = await getEmailLogs(event.id);
-      if (Array.isArray(updatedRes)) {
-        setLogs(updatedRes);
-      } else if (updatedRes && typeof updatedRes === "object" && "logs" in updatedRes) {
-        setLogs(updatedRes.logs);
-        setAnalytics(updatedRes.analytics || null);
-      }
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to send batch email");
-    } finally {
-      setIsLogsLoading(false);
-    }
+    await sendBatch(event.id, {
+      targetGroup,
+      customEmails,
+      subject: currentTemplate.subject || "",
+      body: currentTemplate.body || "",
+      templateId: currentTemplate.id,
+    });
   };
 
-  // Resend single email log
   const handleResendEmail = async (logId: string) => {
     if (!event?.id) return;
-    try {
-      const updated = await resendEmailLog(event.id, logId);
-      setLogs((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
-      toast.success(
-        `Email resent successfully to ${updated.recipientEmail}!`,
-      );
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to resend email");
-      throw err;
-    }
+    await resendLog(event.id, logId);
   };
+
+  const isCustomSmtp = Boolean(smtpStatus?.custom);
 
   return (
     <div className={styles.page}>
@@ -409,46 +152,69 @@ export default function EditEmailsPage() {
         </div>
       </div>
 
-      {isInitialLoading ? (
+      {isLoading ? (
         <EmailPageSkeleton />
       ) : (
-        <>
-          <TemplateTypeSelector
-            activeType={activeType}
-            onSelectType={handleSelectType}
-            templates={templates}
-          />
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => setActiveTab(val as "editor" | "logs")}
+          className={styles.tabsRoot}
+        >
+          <TabsList className={styles.tabsList}>
+            <TabsTrigger
+              value="editor"
+              className={styles.tabTrigger}
+              onClick={() => setActiveTab("editor")}
+            >
+              Templates &amp; Editor
+            </TabsTrigger>
+            <TabsTrigger
+              value="logs"
+              className={styles.tabTrigger}
+              onClick={() => setActiveTab("logs")}
+            >
+              Delivery Logs &amp; Analytics
+            </TabsTrigger>
+          </TabsList>
 
-          {currentTemplate && (
-            <div className={styles.templateMetaBar}>
-              <div className={styles.templateMetaInfo}>
-                <h2 className={styles.currentTemplateName}>
-                  {currentTemplate.name}
-                </h2>
+          <TabsContent value="editor" className={styles.tabContent}>
+            <TemplateTypeSelector
+              activeType={activeType}
+              onSelectType={handleSelectType}
+              templates={templates}
+            />
+
+            {currentTemplate && (
+              <div className={styles.templateMetaBar}>
+                <div className={styles.templateMetaInfo}>
+                  <h2 className={styles.currentTemplateName}>
+                    {currentTemplate.name}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  className={styles.statusToggleBtn}
+                  data-active={currentTemplate.isActive}
+                  onClick={handleToggleActive}
+                  title={
+                    currentTemplate.isActive
+                      ? "Template is active (Click to deactivate)"
+                      : "Template is inactive (Click to activate)"
+                  }
+                >
+                  <Power size={14} />
+                  <span>
+                    {currentTemplate.isActive ? "Active" : "Inactive"}
+                  </span>
+                </button>
               </div>
-              <button
-                type="button"
-                className={styles.statusToggleBtn}
-                data-active={currentTemplate.isActive}
-                onClick={handleToggleActive}
-                title={
-                  currentTemplate.isActive
-                    ? "Template is active (Click to deactivate)"
-                    : "Template is inactive (Click to activate)"
-                }
-              >
-                <Power size={14} />
-                <span>{currentTemplate.isActive ? "Active" : "Inactive"}</span>
-              </button>
-            </div>
-          )}
+            )}
 
-          {isTemplateLoading ? (
-            <EmailEditorSkeleton />
-          ) : currentTemplate ? (
-            <>
+            {isTemplateLoading ? (
+              <EmailEditorSkeleton />
+            ) : currentTemplate ? (
               <EmailPaperCanvas
-                key={`${currentTemplate.id}-${currentTemplate.updatedAt}-${resetKey}`}
+                key={currentTemplate.id}
                 template={currentTemplate}
                 variables={variables}
                 onSave={handleSaveTemplate}
@@ -456,70 +222,60 @@ export default function EditEmailsPage() {
                 onOpenSendTest={() => setIsTestModalOpen(true)}
                 onOpenSendBatch={() => setIsBatchModalOpen(true)}
                 isSaving={isSaving}
+                eventId={event?.id}
               />
-
-              <div className={styles.workspaceGrid}>
-                <div className={styles.leftCol}>
-                  <VariablePicker
-                    variables={variables}
-                    onInsertVariable={handleInsertVariable}
-                  />
-                </div>
-                <div className={styles.rightCol}>
-                  <LivePreviewPane
-                    subject={currentTemplate.subject || ""}
-                    body={currentTemplate.body || ""}
-                    variables={variables}
-                  />
-                </div>
+            ) : (
+              <div className={styles.loadingCard}>
+                <p className={styles.loadingText}>
+                  No template found for this section.
+                </p>
               </div>
-            </>
-          ) : (
-            <div className={styles.loadingCard}>
-              <p className={styles.loadingText}>
-                No template found for this section.
-              </p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="logs" className={styles.tabContent}>
+            <div className={styles.logsSection}>
+              <EmailLogsTable
+                logs={logs}
+                analytics={analytics}
+                isLoading={isLogsLoading}
+                onResend={handleResendEmail}
+                eventId={event?.id}
+              />
             </div>
-          )}
+          </TabsContent>
+        </Tabs>
+      )}
 
-          <div className={styles.logsSection}>
-            <EmailLogsTable
-              logs={logs}
-              analytics={analytics}
-              isLoading={isLogsLoading}
-              onResend={handleResendEmail}
-              eventId={event?.id}
-            />
-          </div>
+      {currentTemplate && (
+        <>
+          <SendTestModal
+            isOpen={isTestModalOpen}
+            onClose={() => setIsTestModalOpen(false)}
+            onSendTest={handleSendTest}
+            templateName={currentTemplate.name}
+          />
 
-          {currentTemplate && (
-            <>
-              <SendTestModal
-                isOpen={isTestModalOpen}
-                onClose={() => setIsTestModalOpen(false)}
-                onSendTest={handleSendTest}
-                templateName={currentTemplate.name}
-              />
-
-              <SendBatchModal
-                isOpen={isBatchModalOpen}
-                onClose={() => setIsBatchModalOpen(false)}
-                onSendBatch={handleSendBatch}
-                templateName={currentTemplate.name}
-              />
-            </>
-          )}
-
-          {event?.id && (
-            <MailConnectionModal
-              isOpen={isMailModalOpen}
-              onClose={() => setIsMailModalOpen(false)}
-              eventId={event.id}
-              isCustom={isCustomSmtp}
-              onStatusChange={(custom) => setIsCustomSmtp(custom)}
-            />
-          )}
+          <SendBatchModal
+            isOpen={isBatchModalOpen}
+            onClose={() => setIsBatchModalOpen(false)}
+            onSendBatch={handleSendBatch}
+            templateName={currentTemplate.name}
+          />
         </>
+      )}
+
+      {event?.id && (
+        <MailConnectionModal
+          isOpen={isMailModalOpen}
+          onClose={() => setIsMailModalOpen(false)}
+          eventId={event.id}
+          isCustom={isCustomSmtp}
+          initialConfig={smtpStatus?.config}
+          onStatusChange={() => {
+            if (event?.id) loadInitialData(event.id);
+          }}
+        />
       )}
     </div>
   );

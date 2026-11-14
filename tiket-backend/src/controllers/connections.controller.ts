@@ -7,6 +7,7 @@ import { verifyEventPermission } from "../utils/permissions";
 import {
   deliverMail,
   saveMailConfig,
+  getStoredMailConfig,
   type MailConfig,
 } from "../services/mail.service";
 import { downloadUpload, finalizeUpload } from "../services/storage.service";
@@ -26,14 +27,29 @@ export async function getMailConnection(
   request: FastifyRequest<{ Params: { eventId: string } }>,
 ) {
   const actor = await owner(request, request.params.eventId);
-  const [connection] = await db
-    .select({ id: emailConnections.userId })
-    .from(emailConnections)
-    .where(eq(emailConnections.userId, actor));
-  return { custom: Boolean(connection), defaultProvider: "smtp" };
+  const stored = await getStoredMailConfig(actor);
+  if (stored) {
+    return {
+      custom: true,
+      defaultProvider: "smtp",
+      config: {
+        host: stored.host,
+        port: stored.port,
+        secure: stored.secure,
+        username: stored.username,
+        fromEmail: stored.fromEmail,
+        fromName: stored.fromName,
+        hasPassword: Boolean(stored.password),
+      },
+    };
+  }
+  return { custom: false, defaultProvider: "smtp" };
 }
 export async function putMailConnection(
-  request: FastifyRequest<{ Params: { eventId: string }; Body: MailConfig }>,
+  request: FastifyRequest<{
+    Params: { eventId: string };
+    Body: Omit<MailConfig, "password"> & { password?: string };
+  }>,
 ) {
   const actor = await owner(request, request.params.eventId);
   const config = {

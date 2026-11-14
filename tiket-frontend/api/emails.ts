@@ -7,7 +7,9 @@ import type {
   SendBatchEmailPayload,
   EmailLog,
   EmailLogsResponse,
+  SmtpConfigSummary,
 } from "@/types/email";
+import type { SmtpMailPayload } from "@/types/commerce";
 
 export const getEmailTemplates = async (
   eventId: string,
@@ -144,3 +146,45 @@ export const resendEmailLog = async (
   );
   return response.data;
 };
+
+export const getMailConnection = async (
+  eventId: string,
+): Promise<{
+  custom: boolean;
+  defaultProvider: string;
+  config?: SmtpConfigSummary;
+}> => {
+  const response = await api.get(API_ENDPOINTS.CONNECTIONS.MAIL(eventId));
+  return response.data;
+};
+
+export const saveMailConnection = async (
+  eventId: string,
+  payload: SmtpMailPayload,
+): Promise<{ custom: boolean }> => {
+  const response = await api.put(
+    API_ENDPOINTS.CONNECTIONS.MAIL(eventId),
+    payload,
+  );
+  return response.data;
+};
+
+export const testMailConnection = async (
+  eventId: string,
+  testRecipient: string,
+): Promise<{ success: boolean; message: string }> => {
+  const response = await api.post(
+    API_ENDPOINTS.CONNECTIONS.TEST_MAIL(eventId),
+    { testRecipient },
+  );
+  return response.data;
+};
+
+export const deleteMailConnection = async (
+  eventId: string,
+): Promise<{ custom: boolean }> => {
+  const response = await api.delete(API_ENDPOINTS.CONNECTIONS.MAIL(eventId));
+  return response.data;
+};
+
+export const resetMailConnection = deleteMailConnection;

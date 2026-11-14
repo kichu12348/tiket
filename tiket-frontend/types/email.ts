@@ -88,11 +88,22 @@ export interface EmailTimelinePoint {
   opened: number;
 }
 
+export interface SmtpConfigSummary {
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  fromEmail: string;
+  fromName?: string;
+  hasPassword?: boolean;
+}
+
 export interface EmailAnalytics {
   totalSent: number;
   totalFailed: number;
   totalOpened: number;
   totalUnopened: number;
+  queuedCount?: number;
   openRatePercent: number;
   byType: EmailTypeAnalytics[];
   timeline: EmailTimelinePoint[];

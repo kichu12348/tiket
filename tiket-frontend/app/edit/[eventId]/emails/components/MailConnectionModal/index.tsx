@@ -8,10 +8,15 @@ import {
   saveMailConnection,
   testMailConnection,
   deleteMailConnection,
-} from "@/api/commerce";
+} from "@/api/emails";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 import type { SmtpMailPayload } from "@/types/commerce";
+import type { SmtpConfigSummary } from "@/types/email";
+import {
+  validateSmtpConfig,
+  type SmtpConfigInput,
+} from "@/validators/email.validator";
 import styles from "./MailConnectionModal.module.css";
 
 interface MailConnectionModalProps {
@@ -19,23 +24,24 @@ interface MailConnectionModalProps {
   onClose: () => void;
   eventId: string;
   isCustom?: boolean;
+  initialConfig?: SmtpConfigSummary | null;
   onStatusChange?: (isCustom: boolean) => void;
 }
 
-export default function MailConnectionModal({
-  isOpen,
+function MailConnectionModalContent({
   onClose,
   eventId,
   isCustom = false,
+  initialConfig,
   onStatusChange,
-}: MailConnectionModalProps) {
-  const [host, setHost] = useState("");
-  const [port, setPort] = useState("587");
-  const [username, setUsername] = useState("");
+}: Omit<MailConnectionModalProps, "isOpen">) {
+  const [host, setHost] = useState(initialConfig?.host || "");
+  const [port, setPort] = useState(String(initialConfig?.port || 587));
+  const [username, setUsername] = useState(initialConfig?.username || "");
   const [password, setPassword] = useState("");
-  const [fromName, setFromName] = useState("");
-  const [fromEmail, setFromEmail] = useState("");
-  const [secure, setSecure] = useState(false);
+  const [fromName, setFromName] = useState(initialConfig?.fromName || "");
+  const [fromEmail, setFromEmail] = useState(initialConfig?.fromEmail || "");
+  const [secure, setSecure] = useState(Boolean(initialConfig?.secure));
   const [testRecipient, setTestRecipient] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
@@ -53,73 +59,49 @@ export default function MailConnectionModal({
   );
 
   useEffect(() => {
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, handleKeyDown]);
-
-  if (!isOpen) return null;
+  }, [handleKeyDown]);
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   const handleSave = async () => {
-    const trimmedHost = host.trim();
-    if (!trimmedHost) {
-      toast.error("SMTP Host is required.");
-      return;
-    }
-
     const parsedPort = parseInt(port, 10);
-    if (!parsedPort || isNaN(parsedPort)) {
-      toast.error("A valid SMTP Port is required (e.g. 587, 465, 2525).");
-      return;
-    }
+    const hasPassword = Boolean(initialConfig?.hasPassword);
 
-    if (![465, 587, 2525].includes(parsedPort)) {
-      toast.error("Port must be 465, 587, or 2525.");
-      return;
-    }
-
-    const trimmedUsername = username.trim();
-    if (!trimmedUsername) {
-      toast.error("SMTP Username is required.");
-      return;
-    }
-
-    if (!password) {
-      toast.error("Password or API Key is required.");
-      return;
-    }
-
-    const trimmedFromEmail = fromEmail.trim();
-    if (!trimmedFromEmail) {
-      toast.error("From Email address is required.");
-      return;
-    }
-
-    if (!validateEmail(trimmedFromEmail)) {
-      toast.error("Please enter a valid From Email address.");
-      return;
-    }
-
-    const payload: SmtpMailPayload = {
-      host: trimmedHost,
+    const payload: SmtpConfigInput = {
+      host: host.trim(),
       port: parsedPort,
       secure,
-      username: trimmedUsername,
-      password,
-      fromEmail: trimmedFromEmail,
+      username: username.trim(),
+      password: password.trim() ? password.trim() : undefined,
+      hasPassword,
+      fromEmail: fromEmail.trim(),
       fromName: fromName.trim() || undefined,
     };
 
+    const validation = validateSmtpConfig(payload);
+    if (!validation.success) {
+      toast.error(validation.error);
+      return;
+    }
+
     try {
       setIsSaving(true);
-      await saveMailConnection(eventId, payload);
+      const savePayload: SmtpMailPayload = {
+        host: validation.data.host,
+        port: validation.data.port,
+        secure: validation.data.secure,
+        username: validation.data.username,
+        password: validation.data.password,
+        fromEmail: validation.data.fromEmail,
+        fromName: validation.data.fromName,
+      };
+      await saveMailConnection(eventId, savePayload);
       toast.success("Custom SMTP settings saved successfully!");
       onStatusChange?.(true);
       onClose();
@@ -246,7 +228,11 @@ export default function MailConnectionModal({
               id="smtp-password"
               type="password"
               className={styles.input}
-              placeholder="••••••••••••"
+              placeholder={
+                initialConfig?.hasPassword
+                  ? "•••••••••••• (Leave blank to keep unchanged)"
+                  : "••••••••••••"
+              }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -359,5 +345,15 @@ export default function MailConnectionModal({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MailConnectionModal(props: MailConnectionModalProps) {
+  if (!props.isOpen) return null;
+  return (
+    <MailConnectionModalContent
+      key={props.initialConfig?.host || "new"}
+      {...props}
+    />
   );
 }

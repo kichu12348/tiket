@@ -41,7 +41,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import MailConnectionModal from "../components/MailConnectionModal";
 import type { SmtpMailPayload } from "@/types/commerce";
 
-// Mock @/api/commerce
+// Mock @/api/emails & @/api/commerce
 const fnSaveMailConnection = mock(
   async (_eventId: string, _config: SmtpMailPayload) => ({ custom: true }),
 );
@@ -57,6 +57,13 @@ const fnDeleteMailConnection = mock(async (_eventId: string) => ({
 const fnGetMailConnection = mock(async (_eventId: string) => ({
   custom: false,
   defaultProvider: "brevo",
+}));
+
+mock.module("@/api/emails", () => ({
+  saveMailConnection: fnSaveMailConnection,
+  testMailConnection: fnTestMailConnection,
+  deleteMailConnection: fnDeleteMailConnection,
+  getMailConnection: fnGetMailConnection,
 }));
 
 mock.module("@/api/commerce", () => ({
@@ -262,5 +269,60 @@ describe("MailConnectionModal Component", () => {
     expect(fnDeleteMailConnection).toHaveBeenCalledWith("evt-123");
     expect(onStatusChange).toHaveBeenCalledWith(false);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  test("7. Pre-populates non-secret config and preserves password when hasPassword is true", async () => {
+    const onClose = mock(() => {});
+    const onStatusChange = mock(() => {});
+
+    render(
+      <MailConnectionModal
+        isOpen={true}
+        onClose={onClose}
+        eventId="evt-123"
+        isCustom={true}
+        initialConfig={{
+          host: "smtp.mailgun.org",
+          port: 587,
+          secure: true,
+          username: "postmaster@mailgun.org",
+          fromEmail: "tickets@example.com",
+          fromName: "Tiket Organizer",
+          hasPassword: true,
+        }}
+        onStatusChange={onStatusChange}
+      />,
+    );
+
+    expect((screen.getByLabelText("SMTP Host") as HTMLInputElement).value).toBe(
+      "smtp.mailgun.org",
+    );
+    expect((screen.getByLabelText("Username") as HTMLInputElement).value).toBe(
+      "postmaster@mailgun.org",
+    );
+    expect((screen.getByLabelText("From Email") as HTMLInputElement).value).toBe(
+      "tickets@example.com",
+    );
+    expect(
+      (screen.getByLabelText("Password / API Key") as HTMLInputElement).placeholder,
+    ).toContain("Leave blank to keep unchanged");
+
+    // Click save without entering a password - should succeed and preserve existing password
+    const saveBtn = screen.getByText("Save SMTP Details");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(fnSaveMailConnection).toHaveBeenCalledTimes(1);
+    });
+
+    expect(fnSaveMailConnection).toHaveBeenCalledWith("evt-123", {
+      host: "smtp.mailgun.org",
+      port: 587,
+      secure: true,
+      username: "postmaster@mailgun.org",
+      fromEmail: "tickets@example.com",
+      fromName: "Tiket Organizer",
+      password: undefined,
+    });
   });
 });

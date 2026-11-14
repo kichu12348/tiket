@@ -50,15 +50,23 @@ export async function enqueueOrderEmail(
     .from(forms)
     .where(eq(forms.eventId, data.event.id));
 
+  const [organizer] = await tx
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, data.event.organizationId));
+
   const formFieldsMap = new Map(
     (formRow?.fields || []).map((f) => [f.id, f.label]),
   );
   const formMap: Record<string, string> = {};
   for (const t of orderTickets) {
     for (const resp of t.formResponses || []) {
-      const label = formFieldsMap.get(resp.fieldId);
-      if (label && resp.responseValue !== null && resp.responseValue !== undefined) {
-        formMap[label] = resp.responseValue;
+      if (resp.responseValue !== null && resp.responseValue !== undefined) {
+        formMap[resp.fieldId] = resp.responseValue;
+        const label = formFieldsMap.get(resp.fieldId);
+        if (label) {
+          formMap[label] = resp.responseValue;
+        }
       }
     }
   }
@@ -119,10 +127,12 @@ export async function enqueueOrderEmail(
         location: locationStr,
         url: `${origin}/${data.event.slug}`,
         passUrl,
+        organizerName: organizer?.name || "Organizer",
       },
       attendee: {
         name: data.user.name,
         email: data.user.email,
+        type: primaryTicket?.ticketTypeName || "Attendee",
       },
       ticket: {
         id: primaryTicket?.id,
@@ -206,14 +216,22 @@ export async function enqueueCheckInEmail(
     .from(forms)
     .where(eq(forms.eventId, data.event.id));
 
+  const [organizer] = await tx
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, data.event.organizationId));
+
   const formFieldsMap = new Map(
     (formRow?.fields || []).map((f) => [f.id, f.label]),
   );
   const formMap: Record<string, string> = {};
   for (const resp of data.ticket.formResponses || []) {
-    const label = formFieldsMap.get(resp.fieldId);
-    if (label && resp.responseValue !== null && resp.responseValue !== undefined) {
-      formMap[label] = resp.responseValue;
+    if (resp.responseValue !== null && resp.responseValue !== undefined) {
+      formMap[resp.fieldId] = resp.responseValue;
+      const label = formFieldsMap.get(resp.fieldId);
+      if (label) {
+        formMap[label] = resp.responseValue;
+      }
     }
   }
 
@@ -250,10 +268,12 @@ export async function enqueueCheckInEmail(
       location: locationStr,
       url: `${origin}/${data.event.slug}`,
       passUrl,
+      organizerName: organizer?.name || "Organizer",
     },
     attendee: {
       name: data.user.name,
       email: data.user.email,
+      type: data.ticketType.name || "Attendee",
     },
     ticket: {
       id: data.ticket.id,

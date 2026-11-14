@@ -31,7 +31,7 @@ export interface InterpolationData {
 }
 
 /**
- * Replaces placeholders like {{event.title}}, {{attendee.name}}, {{form.Company}} in template text
+ * Replaces placeholders like {{event.title}}, {{attendee.name}}, {{form.Company Name}} in template text
  */
 export function interpolateTemplate(
   templateStr: string,
@@ -39,39 +39,63 @@ export function interpolateTemplate(
 ): string {
   if (!templateStr) return "";
 
-  return templateStr.replace(
-    /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,
-    (match, path) => {
-      const parts = path.split(".");
-      if (parts.length === 1) {
-        // Direct root match or custom
-        return data.custom?.[parts[0]] ?? match;
-      }
+  const qrData = data.ticket?.qrCode || "TKT-SAMPLE-12345";
+  const qrUrl =
+    data.ticket?.qrCodeUrl ||
+    `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=300&margin=1`;
+  const qrImgTag = `<img src="${qrUrl}" alt="Ticket QR Code" width="160" height="160" style="display:block;margin:12px auto;border-radius:8px;" />`;
 
-      const [domain, key] = parts;
-      if (domain === "event" && data.event) {
-        return Reflect.get(data.event, key!) ?? match;
-      }
-      if (domain === "attendee" && data.attendee) {
-        return Reflect.get(data.attendee, key!) ?? match;
-      }
-      if (domain === "ticket" && data.ticket) {
-        if (key === "qrCodeUrl") {
-          if (data.ticket.qrCodeUrl) {
-            return data.ticket.qrCodeUrl;
-          }
-          const qrData = data.ticket.qrCode || "TKT-SAMPLE-12345";
-          return `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=300&margin=1`;
-        }
-        return Reflect.get(data.ticket, key!) ?? match;
-      }
-      if (domain === "form" && data.form) {
-        return data.form[key] ?? match;
-      }
+  const isHtml = /<[a-z][\s\S]*>/i.test(templateStr);
 
-      return match;
-    },
+  let result = templateStr;
+  // Handle {{ticket.qrCodeUrl}} in src attributes first
+  result = result.replace(
+    /(src\s*=\s*["']?)\{\{\s*ticket\.qrCodeUrl\s*\}\}(["']?)/gi,
+    `$1${qrUrl}$2`,
   );
+
+  // If in HTML text, replace standalone {{ticket.qrCodeUrl}} with an img tag; otherwise with qrUrl
+  if (isHtml) {
+    result = result.replace(/\{\{\s*ticket\.qrCodeUrl\s*\}\}/gi, qrImgTag);
+  } else {
+    result = result.replace(/\{\{\s*ticket\.qrCodeUrl\s*\}\}/gi, qrUrl);
+  }
+
+  // Replace placeholders including form fields with spaces, hyphens, slashes
+  return result.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, rawPath) => {
+    const path = rawPath.trim();
+    if (path.startsWith("form.")) {
+      const fieldKey = path.slice(5).trim();
+      return data.form?.[fieldKey] ?? match;
+    }
+
+    const parts = path.split(".");
+    if (parts.length === 1) {
+      // Direct root match or custom
+      return data.custom?.[parts[0]] ?? match;
+    }
+
+    const [domain, ...rest] = parts;
+    const key = rest.join(".");
+
+    if (domain === "event" && data.event) {
+      return Reflect.get(data.event, key) ?? match;
+    }
+    if (domain === "attendee" && data.attendee) {
+      return Reflect.get(data.attendee, key) ?? match;
+    }
+    if (domain === "ticket" && data.ticket) {
+      if (key === "qrCodeUrl") {
+        return qrUrl;
+      }
+      return Reflect.get(data.ticket, key) ?? match;
+    }
+    if (domain === "form" && data.form) {
+      return data.form[key] ?? match;
+    }
+
+    return match;
+  });
 }
 
 export interface SendEmailOptions {

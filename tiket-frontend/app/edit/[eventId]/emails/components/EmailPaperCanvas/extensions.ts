@@ -1,6 +1,7 @@
 import { Extension, Node } from "@tiptap/core";
 import { Image } from "@tiptap/extension-image";
 import { Link } from "@tiptap/extension-link";
+import { Plugin, NodeSelection } from "@tiptap/pm/state";
 
 // Custom Tiptap Extension for Block Inline Attributes
 export const BlockStyleExtension = Extension.create({
@@ -303,5 +304,250 @@ export const CustomImageExtension = Image.extend({
         },
       },
     };
+  },
+});
+
+// Custom CTA Button Node Extension (<div data-type="cta-button" style="..."><a>...</a></div>)
+export const CustomButtonExtension = Node.create({
+  name: "ctaButton",
+  group: "block",
+  atom: true,
+  selectable: true,
+  draggable: true,
+  isolating: true,
+
+  addAttributes() {
+    return {
+      label: {
+        default: "Click Here",
+        parseHTML: (element) => {
+          const anchor = element.querySelector("a");
+          return anchor
+            ? (anchor.textContent || "").trim()
+            : (element.textContent || "").trim() || "Click Here";
+        },
+      },
+      url: {
+        default: "#",
+        parseHTML: (element) => {
+          const anchor = element.querySelector("a");
+          return (
+            (anchor
+              ? anchor.getAttribute("href")
+              : element.getAttribute("data-url")) || "#"
+          );
+        },
+      },
+      buttonColor: {
+        default: "#000000",
+        parseHTML: (element) => {
+          const anchor = element.querySelector("a");
+          return (
+            element.getAttribute("data-button-color") ||
+            anchor?.style.backgroundColor ||
+            element.style.backgroundColor ||
+            "#000000"
+          );
+        },
+      },
+      textColor: {
+        default: "#ffffff",
+        parseHTML: (element) => {
+          const anchor = element.querySelector("a");
+          return (
+            element.getAttribute("data-text-color") ||
+            anchor?.style.color ||
+            element.style.color ||
+            "#ffffff"
+          );
+        },
+      },
+      borderRadius: {
+        default: "8px",
+        parseHTML: (element) => {
+          const anchor = element.querySelector("a");
+          return (
+            element.getAttribute("data-border-radius") ||
+            anchor?.style.borderRadius ||
+            element.style.borderRadius ||
+            "8px"
+          );
+        },
+      },
+      alignment: {
+        default: "center",
+        parseHTML: (element) => {
+          const align =
+            element.getAttribute("data-align") ||
+            element.style.textAlign ||
+            "center";
+          return align === "left" || align === "right" ? align : "center";
+        },
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'div[data-type="cta-button"]',
+      },
+      {
+        tag: 'a[data-type="cta-button"]',
+      },
+    ];
+  },
+
+  addNodeView() {
+    return ({ node, getPos, editor }) => {
+      const dom = document.createElement("div");
+      dom.setAttribute("data-type", "cta-button");
+      dom.setAttribute(
+        "data-button-color",
+        (node.attrs.buttonColor as string) || "#000000",
+      );
+      dom.setAttribute(
+        "data-text-color",
+        (node.attrs.textColor as string) || "#ffffff",
+      );
+      dom.setAttribute(
+        "data-border-radius",
+        (node.attrs.borderRadius as string) || "8px",
+      );
+      dom.setAttribute(
+        "data-align",
+        (node.attrs.alignment as string) || "center",
+      );
+      dom.setAttribute("data-url", (node.attrs.url as string) || "#");
+      dom.style.textAlign = (node.attrs.alignment as string) || "center";
+      dom.style.margin = "24px 0";
+
+      const a = document.createElement("a");
+      a.setAttribute("href", (node.attrs.url as string) || "#");
+      a.textContent = (node.attrs.label as string) || "Click Here";
+      a.style.backgroundColor =
+        (node.attrs.buttonColor as string) || "#000000";
+      a.style.color = (node.attrs.textColor as string) || "#ffffff";
+      a.style.padding = "12px 24px";
+      a.style.textDecoration = "none";
+      a.style.borderRadius =
+        (node.attrs.borderRadius as string) || "8px";
+      a.style.fontWeight = "600";
+      a.style.fontSize = "15px";
+      a.style.display = "inline-block";
+      a.style.cursor = "pointer";
+      a.style.userSelect = "none";
+      a.style.transition = "outline 0.15s ease, transform 0.15s ease";
+
+      const handleSelect = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof getPos === "function") {
+          const pos = getPos();
+          if (typeof pos === "number") {
+            const tr = editor.view.state.tr.setSelection(
+              NodeSelection.create(editor.view.state.doc, pos),
+            );
+            editor.view.dispatch(tr);
+            editor.view.focus();
+          }
+        }
+      };
+
+      a.addEventListener("click", handleSelect);
+      dom.addEventListener("click", handleSelect);
+
+      dom.appendChild(a);
+
+      return {
+        dom,
+        selectNode() {
+          dom.classList.add("ProseMirror-selectednode");
+          a.style.outline = "2px solid #3b82f6";
+          a.style.outlineOffset = "3px";
+        },
+        deselectNode() {
+          dom.classList.remove("ProseMirror-selectednode");
+          a.style.outline = "none";
+          a.style.outlineOffset = "0px";
+        },
+        update(newNode) {
+          if (newNode.type.name !== "ctaButton") return false;
+          const { label, url, buttonColor, textColor, borderRadius, alignment } =
+            newNode.attrs;
+          dom.setAttribute("data-button-color", buttonColor || "#000000");
+          dom.setAttribute("data-text-color", textColor || "#ffffff");
+          dom.setAttribute("data-border-radius", borderRadius || "8px");
+          dom.setAttribute("data-align", alignment || "center");
+          dom.setAttribute("data-url", url || "#");
+          dom.style.textAlign = alignment || "center";
+
+          a.setAttribute("href", url || "#");
+          a.textContent = label || "Click Here";
+          a.style.backgroundColor = buttonColor || "#000000";
+          a.style.color = textColor || "#ffffff";
+          a.style.borderRadius = borderRadius || "8px";
+          return true;
+        },
+        destroy() {
+          a.removeEventListener("click", handleSelect);
+          dom.removeEventListener("click", handleSelect);
+        },
+      };
+    };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          handleClickOn(view, _pos, node, nodePos, event) {
+            if (node.type.name === "ctaButton") {
+              event.preventDefault();
+              event.stopPropagation();
+              const tr = view.state.tr.setSelection(
+                NodeSelection.create(view.state.doc, nodePos),
+              );
+              view.dispatch(tr);
+              view.focus();
+              return true;
+            }
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    const {
+      label = "Click Here",
+      url = "#",
+      buttonColor = "#000000",
+      textColor = "#ffffff",
+      borderRadius = "8px",
+      alignment = "center",
+    } = HTMLAttributes;
+
+    return [
+      "div",
+      {
+        "data-type": "cta-button",
+        "data-button-color": buttonColor,
+        "data-text-color": textColor,
+        "data-border-radius": borderRadius,
+        "data-align": alignment,
+        "data-url": url,
+        style: `text-align: ${alignment}; margin: 24px 0;`,
+      },
+      [
+        "a",
+        {
+          href: url,
+          style: `background-color: ${buttonColor}; color: ${textColor}; padding: 12px 24px; text-decoration: none; border-radius: ${borderRadius}; font-weight: 600; font-size: 15px; display: inline-block; cursor: pointer; user-select: none;`,
+        },
+        label,
+      ],
+    ];
   },
 });

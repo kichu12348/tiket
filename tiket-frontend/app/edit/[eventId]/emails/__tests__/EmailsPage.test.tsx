@@ -47,6 +47,7 @@ import type {
 } from "@/types/email";
 import type { Event } from "@/types/event";
 import { useEventStore } from "@/store/useEventStore";
+import { useEmailStore } from "@/store/useEmailStore";
 
 // --- Mock API Layer ---
 const mockTemplates: EmailTemplate[] = [
@@ -271,6 +272,8 @@ describe("EditEmailsPage Component", () => {
       isLoading: false,
     });
 
+    useEmailStore.getState().resetStore();
+
     fnGetEmailTemplates.mockClear();
     fnGetEmailTemplateById.mockClear();
     fnGetAvailableVariables.mockClear();
@@ -290,25 +293,28 @@ describe("EditEmailsPage Component", () => {
       await screen.findByText("Event Email Management"),
     ).toBeInTheDocument();
 
+    // Verify tabs loaded
+    expect(
+      screen.getByRole("tab", { name: /Templates & Editor/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /Delivery Logs & Analytics/i }),
+    ).toBeInTheDocument();
+
     // Verify TemplateTypeSelector loaded
     expect(screen.getAllByText("Confirmation").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Check-in").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Invitation").length).toBeGreaterThanOrEqual(1);
 
-    // Verify VariablePicker loaded
-    expect(
-      screen.getByText("Dynamic Variable Placeholders"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Event Title")).toBeInTheDocument();
-    expect(screen.getByText("Attendee Name")).toBeInTheDocument();
-    expect(screen.getByText("Ticket Type")).toBeInTheDocument();
-
-    // Verify LivePreviewPane loaded
-    expect(screen.getByText("Live Email Preview")).toBeInTheDocument();
+    // Switch to Delivery Logs & Analytics tab
+    const logsTab = screen.getByRole("tab", {
+      name: /Delivery Logs & Analytics/i,
+    });
+    fireEvent.click(logsTab);
 
     // Verify EmailLogsTable loaded with delivery history
     expect(
-      screen.getByText("Email Delivery History Logs (1)"),
+      await screen.findByText("Email Delivery History Logs (1)"),
     ).toBeInTheDocument();
     expect(screen.getByText("attendee1@example.com")).toBeInTheDocument();
     expect(screen.getByText("John Doe")).toBeInTheDocument();
@@ -341,6 +347,10 @@ describe("EditEmailsPage Component", () => {
     render(<EditEmailsPage />);
 
     await screen.findByRole("button", { name: /Save Template/i });
+
+    // Switch canvas to preview mode
+    const previewModeBtn = screen.getByRole("button", { name: /^Preview$/i });
+    fireEvent.click(previewModeBtn);
 
     // The subject contains {{event.title}} which interpolates to "Tech Innovation Summit 2026"
     const matchingSubjects = await screen.findAllByText(
@@ -491,6 +501,12 @@ describe("EditEmailsPage Component", () => {
   test("9. Renders Email Analytics dashboard with KPI cards and charts", async () => {
     render(<EditEmailsPage />);
 
+    // Switch to Delivery Logs & Analytics tab
+    const logsTab = await screen.findByRole("tab", {
+      name: /Delivery Logs & Analytics/i,
+    });
+    fireEvent.click(logsTab);
+
     // KPI cards render
     expect(await screen.findByText("Total Sent")).toBeInTheDocument();
     expect(screen.getAllByText(/Opened/).length).toBeGreaterThanOrEqual(1);
@@ -507,6 +523,12 @@ describe("EditEmailsPage Component", () => {
 
   test("10. Opens the Sent Email Preview modal and renders email content safely", async () => {
     render(<EditEmailsPage />);
+
+    // Switch to Delivery Logs & Analytics tab
+    const logsTab = await screen.findByRole("tab", {
+      name: /Delivery Logs & Analytics/i,
+    });
+    fireEvent.click(logsTab);
 
     const previewBtn = await screen.findByRole("button", {
       name: /Preview Sent Email/i,
@@ -529,6 +551,12 @@ describe("EditEmailsPage Component", () => {
 
   test("11. Clicking 1-Click Resend calls resendEmailLog", async () => {
     render(<EditEmailsPage />);
+
+    // Switch to Delivery Logs & Analytics tab
+    const logsTab = await screen.findByRole("tab", {
+      name: /Delivery Logs & Analytics/i,
+    });
+    fireEvent.click(logsTab);
 
     const resendBtn = await screen.findByRole("button", {
       name: /Resend Email/i,

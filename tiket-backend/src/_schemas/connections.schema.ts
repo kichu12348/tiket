@@ -16,7 +16,6 @@ export const mailConfigSchema = {
         "port",
         "secure",
         "username",
-        "password",
       ],
       properties: {
         ...from,
@@ -29,7 +28,7 @@ export const mailConfigSchema = {
         port: { type: "integer", enum: [465, 587, 2525] },
         secure: { type: "boolean" },
         username: text,
-        password: text,
+        password: { type: "string", maxLength: 1000 },
       },
     },
   },

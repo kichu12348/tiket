@@ -6,7 +6,7 @@
 
 .modalSub {
   font-size: 0.88rem;
-  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
+  color: var(--color-text-soft);
   margin: 0;
 }
 
@@ -19,17 +19,17 @@
 .formLabel {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-primary, #ffffff);
+  color: var(--color-text-primary);
 }
 
 .formInput {
   width: 100%;
   box-sizing: border-box;
   padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-sm, 8px);
-  background-color: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-  color: var(--text-primary, #ffffff);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-soft-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--color-text-primary);
   font-size: 0.95rem;
   font-family: inherit;
   outline: none;
@@ -39,8 +39,8 @@
 }
 
 .formInput:focus {
-  border-color: var(--border-strong, rgba(255, 255, 255, 0.25));
-  background-color: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.1));
+  border-color: var(--border-strong);
+  background-color: var(--color-soft-bg-hover);
 }
 
 .modalActions {
@@ -51,11 +51,11 @@
 }
 
 .btnPrimary {
-  background: var(--btn-primary-bg, #ffffff);
-  color: var(--btn-primary-text, #000000);
+  background: var(--color-text-primary);
+  color: var(--color-background);
   border: none;
   padding: 0.55rem 1.4rem;
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--radius-sm);
   font-size: 0.95rem;
   font-weight: 600;
   font-family: inherit;
@@ -76,10 +76,10 @@
 }
 
 .btnSecondary {
-  background: var(--color-soft-bg, rgba(255, 255, 255, 0.05));
-  color: var(--color-text-soft, rgba(255, 255, 255, 0.65));
+  background: var(--color-soft-bg);
+  color: var(--color-text-soft);
   border: none;
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--radius-sm);
   padding: 0.55rem 1rem;
   font-size: 0.88rem;
   font-weight: 500;
@@ -92,6 +92,6 @@
 }
 
 .btnSecondary:hover {
-  background: var(--color-soft-bg-hover, rgba(255, 255, 255, 0.12));
-  color: var(--text-primary, #ffffff);
+  background: var(--color-soft-bg-hover);
+  color: var(--color-text-primary);
 }

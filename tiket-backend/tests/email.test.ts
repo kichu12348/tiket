@@ -62,6 +62,56 @@ Registered for company: {{form.Company}}.`;
     expect(result).toBe("Pass VIP (TKT-VIP-001)");
   });
 
+  test("interpolates form variables with spaces, hyphens, slashes, and dots", () => {
+    const template = `<p>Company: {{form.Company Name}} | Size: {{form.T-Shirt Size}} | Emergency: {{form.Emergency / Contact}} | Custom: {{form.q1.custom}}</p>`;
+    const data: InterpolationData = {
+      form: {
+        "Company Name": "Tiket Inc.",
+        "T-Shirt Size": "XL",
+        "Emergency / Contact": "+1 555-0199",
+        "q1.custom": "Answer 1",
+      },
+    };
+
+    const result = interpolateTemplate(template, data);
+    expect(result).toBe(
+      "<p>Company: Tiket Inc. | Size: XL | Emergency: +1 555-0199 | Custom: Answer 1</p>",
+    );
+  });
+
+  test("interpolates qrCodeUrl differently in src attribute vs standalone HTML body text", () => {
+    const htmlTemplate = `<div>
+      <img src="{{ticket.qrCodeUrl}}" alt="QR" />
+      <p>{{ticket.qrCodeUrl}}</p>
+    </div>`;
+
+    const data: InterpolationData = {
+      ticket: {
+        qrCode: "TKT-ABC-123",
+        qrCodeUrl: "https://cdn.example.com/qr/TKT-ABC-123.png",
+      },
+    };
+
+    const result = interpolateTemplate(htmlTemplate, data);
+    // Attribute src gets just the url string
+    expect(result).toContain('src="https://cdn.example.com/qr/TKT-ABC-123.png"');
+    // Standalone HTML body text gets an img tag with dimensions and styling
+    expect(result).toContain(
+      '<img src="https://cdn.example.com/qr/TKT-ABC-123.png" alt="Ticket QR Code" width="160" height="160" style="display:block;margin:12px auto;border-radius:8px;" />',
+    );
+  });
+
+  test("interpolates organizerName and attendee.type", () => {
+    const template = "Organized by {{event.organizerName}} for {{attendee.type}} pass holder {{attendee.name}}";
+    const data: InterpolationData = {
+      event: { organizerName: "Acme Events" },
+      attendee: { name: "Bob Smith", type: "VIP" },
+    };
+
+    const result = interpolateTemplate(template, data);
+    expect(result).toBe("Organized by Acme Events for VIP pass holder Bob Smith");
+  });
+
   test("leaves unmapped placeholders intact and handles empty strings", () => {
     expect(interpolateTemplate("")).toBe("");
     expect(interpolateTemplate("Missing {{unknown.key}}")).toBe(
@@ -206,6 +256,21 @@ describe("Email Analytics Calculation", () => {
     expect(analytics.totalOpened).toBe(2);
     expect(analytics.totalUnopened).toBe(1);
     expect(analytics.openRatePercent).toBe(67); // 2 / 3 * 100 = 66.66% -> 67%
+  });
+
+  test("aggregates queuedCount in email analytics", () => {
+    const fixtureLogs = [
+      {
+        templateType: "confirmation",
+        status: "sent",
+        openedAt: null,
+        openCount: 0,
+        sentAt: new Date("2026-11-01T09:00:00Z"),
+      },
+    ];
+
+    const analytics = calculateEmailAnalytics(fixtureLogs, 5);
+    expect(analytics.queuedCount).toBe(5);
   });
 
   test("calculates breakdown by template type across standard and custom types", () => {

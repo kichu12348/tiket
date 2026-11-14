@@ -27,11 +27,62 @@ function encryptionKey() {
     throw new HttpError(503, "Mail credential encryption is not configured.");
   return key;
 }
-export async function saveMailConfig(userId: string, config: MailConfig) {
+export async function getStoredMailConfig(
+  userId: string,
+): Promise<MailConfig | null> {
+  const [connection] = await db
+    .select()
+    .from(emailConnections)
+    .where(eq(emailConnections.userId, userId));
+  if (!connection) return null;
+  const [iv, tag, encrypted] = connection.encryptedConfig
+    .split(".")
+    .map((value) => Buffer.from(value, "base64"));
+  if (!iv || !tag || !encrypted)
+    throw new Error("Invalid encrypted mail configuration.");
+  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), iv);
+  decipher.setAuthTag(tag);
+  return JSON.parse(
+    Buffer.concat([decipher.update(encrypted), decipher.final()]).toString(
+      "utf8",
+    ),
+  ) as MailConfig;
+}
+
+export async function saveMailConfig(
+  userId: string,
+  config: Partial<MailConfig> & {
+    host: string;
+    port: number;
+    secure: boolean;
+    username: string;
+    fromEmail: string;
+    fromName?: string;
+    password?: string;
+  },
+) {
+  let password = config.password;
+  if (!password) {
+    const existing = await getStoredMailConfig(userId);
+    if (!existing?.password) {
+      throw new HttpError(400, "Password is required for new SMTP connection.");
+    }
+    password = existing.password;
+  }
+  const fullConfig: MailConfig = {
+    provider: "smtp",
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    username: config.username,
+    password,
+    fromEmail: config.fromEmail,
+    fromName: config.fromName,
+  };
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
   const encrypted = Buffer.concat([
-    cipher.update(JSON.stringify(config), "utf8"),
+    cipher.update(JSON.stringify(fullConfig), "utf8"),
     cipher.final(),
   ]);
   const encryptedConfig = [iv, cipher.getAuthTag(), encrypted]

@@ -12,12 +12,15 @@ import {
   checkIns,
   forms,
   ticketTypes,
+  deliveryJobs,
 } from "@db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
 import { deliverMail } from "../services/mail.service";
 import {
   sendEmail,
   DEFAULT_TEMPLATES,
+  interpolateTemplate,
   type InterpolationData,
 } from "../utils/emailService";
 
@@ -349,6 +352,12 @@ export const getAvailableVariables = async (
       .select({ fields: forms.fields })
       .from(forms)
       .where(eq(forms.eventId, eventId));
+    const [organizerUser] = eventObj?.organizationId
+      ? await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, eventObj.organizationId))
+      : [];
     const fields = formRow?.fields || [];
 
     const eventVariables = [
@@ -356,6 +365,11 @@ export const getAvailableVariables = async (
         key: "{{event.title}}",
         label: "Event Title",
         sample: eventObj?.title || "Tech Summit 2026",
+      },
+      {
+        key: "{{event.organizerName}}",
+        label: "Organizer Name",
+        sample: organizerUser?.name || "Organizer Name",
       },
       {
         key: "{{event.startDate}}",
@@ -401,6 +415,11 @@ export const getAvailableVariables = async (
         key: "{{attendee.email}}",
         label: "Attendee Email",
         sample: "alex@example.com",
+      },
+      {
+        key: "{{attendee.type}}",
+        label: "Attendee Type",
+        sample: "General",
       },
     ];
 
@@ -474,6 +493,24 @@ export const sendTestEmail = async (
       .from(events)
       .where(eq(events.id, eventId));
 
+    const [formRow] = await db
+      .select({ fields: forms.fields })
+      .from(forms)
+      .where(eq(forms.eventId, eventId));
+
+    const [organizerUser] = eventObj?.organizationId
+      ? await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, eventObj.organizationId))
+      : [];
+
+    const sampleForm: Record<string, string> = {};
+    for (const f of formRow?.fields || []) {
+      sampleForm[f.id] = `Sample ${f.label}`;
+      sampleForm[f.label] = `Sample ${f.label}`;
+    }
+
     const sampleData: InterpolationData = {
       event: {
         title: eventObj?.title || "Sample Event",
@@ -489,15 +526,18 @@ export const sendTestEmail = async (
             : "Main Auditorium",
         url: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/${eventObj?.slug || "sample-event"}`,
         passUrl: `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/sample-pass-id`,
+        organizerName: organizerUser?.name || "Organizer",
       },
       attendee: {
         name: recipientName || "Test Recipient",
         email: recipientEmail,
+        type: "General Admission (Test)",
       },
       ticket: {
         type: "General Admission (Test)",
         qrCode: "TEST-QR-123456",
       },
+      form: sampleForm,
     };
 
     const result = await sendEmail({
@@ -559,18 +599,35 @@ export const sendBatchEmail = async (
       .from(events)
       .where(eq(events.id, eventId));
 
+    const [formRow] = await db
+      .select({ fields: forms.fields })
+      .from(forms)
+      .where(eq(forms.eventId, eventId));
+    const formFieldsMap = new Map(
+      (formRow?.fields || []).map((f) => [f.id, f.label]),
+    );
+
+    const [organizerUser] = eventObj?.organizationId
+      ? await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, eventObj.organizationId))
+      : [];
+
     let recipients: {
       email: string;
       name?: string;
       ticketType?: string;
       passId?: string;
       qrCode?: string;
+      formMap?: Record<string, string>;
     }[] = [];
 
     if (targetGroup === "custom" && customEmails && customEmails.length > 0) {
       recipients = customEmails.map((e) => ({
         email: e,
         name: e.split("@")[0] || e,
+        formMap: {},
       }));
     } else {
       // Query ticket holders for the event
@@ -581,20 +638,34 @@ export const sendBatchEmail = async (
           userEmail: users.email,
           userName: users.name,
           ticketTypeName: ticketTypes.name,
+          formResponses: tickets.formResponses,
         })
         .from(tickets)
         .innerJoin(users, eq(tickets.userId, users.id))
         .innerJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
         .where(eq(tickets.eventId, eventId));
 
-      if (targetGroup === "all") {
-        recipients = ticketRecords.map((t) => ({
+      const mapTicket = (t: (typeof ticketRecords)[0]) => {
+        const formMap: Record<string, string> = {};
+        for (const resp of t.formResponses || []) {
+          if (resp.responseValue !== null && resp.responseValue !== undefined) {
+            formMap[resp.fieldId] = resp.responseValue;
+            const label = formFieldsMap.get(resp.fieldId);
+            if (label) formMap[label] = resp.responseValue;
+          }
+        }
+        return {
           email: t.userEmail,
           name: t.userName,
           ticketType: t.ticketTypeName,
           passId: t.ticketId,
           qrCode: t.qrCode,
-        }));
+          formMap,
+        };
+      };
+
+      if (targetGroup === "all") {
+        recipients = ticketRecords.map(mapTicket);
       } else {
         // Query check-ins
         const checkInRecords = await db
@@ -609,30 +680,16 @@ export const sendBatchEmail = async (
         if (targetGroup === "checked_in") {
           recipients = ticketRecords
             .filter((t) => checkedInTicketIds.has(t.ticketId))
-            .map((t) => ({
-              email: t.userEmail,
-              name: t.userName,
-              ticketType: t.ticketTypeName,
-              passId: t.ticketId,
-              qrCode: t.qrCode,
-            }));
+            .map(mapTicket);
         } else if (targetGroup === "not_checked_in") {
           recipients = ticketRecords
             .filter((t) => !checkedInTicketIds.has(t.ticketId))
-            .map((t) => ({
-              email: t.userEmail,
-              name: t.userName,
-              ticketType: t.ticketTypeName,
-              passId: t.ticketId,
-              qrCode: t.qrCode,
-            }));
+            .map(mapTicket);
         }
       }
     }
 
-    let sentCount = 0;
-
-    for (const r of recipients) {
+    const jobsToInsert = recipients.map((r) => {
       const data: InterpolationData = {
         event: {
           title: eventObj?.title || "Event",
@@ -648,34 +705,47 @@ export const sendBatchEmail = async (
           passUrl: r.passId
             ? `${(process.env.FRONTEND_URL || "http://localhost:3000").split(",")[0]}/passes/${r.passId}`
             : "",
+          organizerName: organizerUser?.name || "Organizer",
         },
         attendee: {
           name: r.name,
           email: r.email,
+          type: r.ticketType || "Attendee",
         },
         ticket: {
           type: r.ticketType || "Pass",
           id: r.passId,
           qrCode: r.qrCode,
         },
+        form: r.formMap,
       };
 
-      const result = await sendEmail({
-        eventId,
-        templateId,
-        recipientEmail: r.email,
-        recipientName: r.name,
-        subject,
-        body,
-        data,
-      });
+      const interpolatedSubject = interpolateTemplate(subject, data);
+      const interpolatedBody = interpolateTemplate(body, data);
 
-      if (result.success) sentCount++;
+      return {
+        key: `batch:${eventId}:${uuidv7()}`,
+        eventId,
+        payload: {
+          recipientEmail: r.email,
+          recipientName: r.name,
+          subject: interpolatedSubject,
+          body: interpolatedBody,
+          templateId,
+          templateType: "custom",
+        },
+        status: "queued" as const,
+      };
+    });
+
+    if (jobsToInsert.length > 0) {
+      await db.insert(deliveryJobs).values(jobsToInsert);
     }
 
     return reply.send({
-      message: `Batch email successfully dispatched to ${sentCount} recipients.`,
-      sentCount,
+      message: "Batch email queued for delivery",
+      sentCount: recipients.length,
+      queuedCount: recipients.length,
     });
   } catch (error) {
     return handleControllerError(request, reply, error);
@@ -690,6 +760,7 @@ export function calculateEmailAnalytics(
     openCount?: number | null;
     sentAt: Date | string;
   }[],
+  queuedCount = 0,
 ) {
   const totalSent = logs.filter((l) => l.status === "sent").length;
   const totalFailed = logs.filter((l) => l.status === "failed").length;
@@ -775,6 +846,7 @@ export function calculateEmailAnalytics(
     totalFailed,
     totalOpened,
     totalUnopened,
+    queuedCount,
     openRatePercent,
     byType,
     timeline,
@@ -805,7 +877,18 @@ export const getEmailLogs = async (
       .where(eq(emailLogs.eventId, eventId))
       .orderBy(desc(emailLogs.sentAt));
 
-    const analytics = calculateEmailAnalytics(logs);
+    const [queuedRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(deliveryJobs)
+      .where(
+        and(
+          eq(deliveryJobs.eventId, eventId),
+          eq(deliveryJobs.status, "queued"),
+        ),
+      );
+    const queuedCount = queuedRow?.count || 0;
+
+    const analytics = calculateEmailAnalytics(logs, queuedCount);
 
     return reply.send({ logs, analytics });
   } catch (error) {
