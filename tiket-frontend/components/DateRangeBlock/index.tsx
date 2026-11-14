@@ -57,11 +57,13 @@ export default function DateRangeBlock({
 
       {/* Right: timezone picker */}
       {!hideTimezone && onTimezoneChange && (
-        <TimezonePicker
-          value={timezone}
-          onChange={onTimezoneChange}
-          disabled={timezonePickerDisabled}
-        />
+        <div className={styles.timezoneCol}>
+          <TimezonePicker
+            value={timezone}
+            onChange={onTimezoneChange}
+            disabled={timezonePickerDisabled}
+          />
+        </div>
       )}
     </div>
   );

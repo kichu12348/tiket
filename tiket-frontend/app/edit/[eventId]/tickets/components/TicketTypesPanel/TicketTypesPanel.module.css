@@ -8,12 +8,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .title {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -44,24 +57,32 @@
 }
 
 .ticketCard {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 0.75rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   transition: all 0.2s ease;
   backdrop-filter: blur(12px);
   border: none;
 }
 
+@media (min-width: 640px) {
+  .ticketCard {
+    padding: 1rem;
+    gap: 1rem;
+  }
+}
+
 .ticketCard:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
 }
 
 .ticketCard[data-dragging="true"] {
   backdrop-filter: blur(10px);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px var(--color-overlay);
   z-index: 100;
 }
 
@@ -72,6 +93,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .dragHandle:active {
@@ -85,39 +107,151 @@
 .ticketInfo {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+  margin-left: 0.25rem;
+}
+
+@media (min-width: 640px) {
+  .ticketInfo {
+    gap: 0.4rem;
+    margin-left: 0.5rem;
+  }
 }
 
 .ticketHeader {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 640px) {
+  .ticketHeader {
+    gap: 0.6rem;
+  }
+}
+
+.ticketTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .ticketName {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
+  word-break: break-word;
 }
 
-.ticketPrice {
-  font-size: 0.9rem;
-  font-weight: 700;
-  background: var(--surface-elevated);
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
+@media (min-width: 640px) {
+  .ticketName {
+    font-size: 1.05rem;
+  }
+}
+
+.hiddenBadge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.feeBadge {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .feeBadge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.12rem 0.4rem;
+    border-radius: var(--radius-sm, 4px);
+    white-space: nowrap;
+  }
+}
+
+.feeBadgePassed {
+  background: var(--status-info-bg);
+  color: var(--status-info);
+}
+
+.feeBadgeAbsorbed {
+  background: var(--status-success-bg);
   color: var(--status-success);
 }
 
+.ticketPrice {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--surface-elevated);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  color: var(--status-success);
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .ticketPrice {
+    font-size: 0.82rem;
+    padding: 0.2rem 0.5rem;
+  }
+}
+
+.ticketDescription {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .ticketDescription {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+    margin-bottom: 0.2rem;
+    line-height: 1.4;
+  }
+}
+
 .ticketMeta {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .ticketMeta {
+    font-size: 0.82rem;
+    gap: 0;
+  }
 }
 
 .ticketActions {
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .ticketActions {
+    gap: 0.5rem;
+  }
 }
 
 .iconBtn {
@@ -132,6 +266,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .iconBtn:hover {
@@ -179,22 +314,40 @@
   background: var(--color-soft-bg);
   border: none;
   color: var(--color-text-soft);
+  width: 36px;
   height: 36px;
-  padding: 0 0.75rem;
+  padding: 0;
   border-radius: 8px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .designBtn:hover {
   background: var(--color-soft-bg-hover);
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: var(--color-border-light);
+}
+
+.designBtnText {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .designBtn {
+    width: auto;
+    padding: 0 0.75rem;
+  }
+
+  .designBtnText {
+    display: inline;
+  }
 }
 
 .designerOverlay {

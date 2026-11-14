@@ -68,8 +68,24 @@ const mockCoupons: Coupon[] = [
   },
 ];
 
+const mockTicketTypes = [
+  {
+    id: "tt-general",
+    eventId: "evt-test-101",
+    name: "General Admission",
+    price: "499",
+  },
+  {
+    id: "tt-vip",
+    eventId: "evt-test-101",
+    name: "VIP Pass",
+    price: "1499",
+  },
+];
+
 let currentCoupons: Coupon[] = [];
 
+const mockGetTicketTypes = mock(async () => [...mockTicketTypes]);
 const mockGetCoupons = mock(async () => [...currentCoupons]);
 const mockCreateCoupon = mock(async (_eventId: string, data: Coupon) => {
   const created: Coupon = { ...data, id: `cpn-${Date.now()}` };
@@ -116,7 +132,7 @@ const mockEvent = {
 };
 
 mock.module("@/api/tickets", () => ({
-  getTicketTypes: mock(async () => []),
+  getTicketTypes: mockGetTicketTypes,
   createTicketType: mock(async () => ({})),
   updateTicketType: mock(async () => ({})),
   deleteTicketType: mock(async () => ({})),
@@ -179,7 +195,7 @@ describe("CouponsPanel & Tickets Tabs Component", () => {
     expect(screen.getByText("FLAT100")).toBeDefined();
     expect(screen.getByText("₹100 OFF")).toBeDefined();
     expect(screen.getByText("/ 100")).toBeDefined();
-    expect(screen.getByText("No Expiry")).toBeDefined();
+    expect(screen.getByText("No expiry")).toBeDefined();
   });
 
   test("2. Opens Create Coupon modal and saves a new percentage coupon", async () => {
@@ -277,5 +293,160 @@ describe("CouponsPanel & Tickets Tabs Component", () => {
     await waitFor(() => {
       expect(screen.getByTestId("add-ticket-btn")).toBeDefined();
     });
+  });
+
+  test("6. Allows selecting specific tickets for a coupon", async () => {
+    render(<CouponsPanel eventId="evt-test-101" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("EARLYBIRD20")).toBeDefined();
+    });
+
+    const addBtn = screen.getByTestId("add-coupon-btn");
+    fireEvent.click(addBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Create Coupon" })).toBeDefined();
+    });
+
+    // Enter coupon details
+    fireEvent.change(screen.getByTestId("coupon-code-input"), {
+      target: { value: "VIPONLY" },
+    });
+    fireEvent.change(screen.getByTestId("coupon-value-input"), {
+      target: { value: "50" },
+    });
+
+    // Click Specific Tickets
+    const specificScopeBtn = screen.getByTestId("coupon-scope-specific");
+    fireEvent.click(specificScopeBtn);
+
+    // Open ticket picker popover
+    const pickerTrigger = screen.getByTestId("coupon-ticket-picker-trigger");
+    fireEvent.click(pickerTrigger);
+
+    // Select VIP Pass
+    const vipOption = screen.getByTestId("ticket-option-tt-vip");
+    fireEvent.click(vipOption);
+
+    // Verify chip rendered
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-ticket-chip-tt-vip")).toBeDefined();
+    });
+
+    // Save coupon
+    const saveBtn = screen.getByTestId("coupon-save-btn");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockCreateCoupon).toHaveBeenCalled();
+    });
+
+    const callArgs = mockCreateCoupon.mock.calls.find(
+      (c) => c[1].code === "VIPONLY",
+    );
+    expect(callArgs).toBeDefined();
+    expect(callArgs?.[1]?.ticketTypeIds).toEqual(["tt-vip"]);
+  });
+
+  test("7. Prevents submission with specific tickets selected but 0 tickets chosen", async () => {
+    render(<CouponsPanel eventId="evt-test-101" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("EARLYBIRD20")).toBeDefined();
+    });
+
+    const addBtn = screen.getByTestId("add-coupon-btn");
+    fireEvent.click(addBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Create Coupon" })).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByTestId("coupon-code-input"), {
+      target: { value: "INVALIDCODE" },
+    });
+    fireEvent.change(screen.getByTestId("coupon-value-input"), {
+      target: { value: "25" },
+    });
+
+    // Switch to Specific Tickets without selecting any
+    fireEvent.click(screen.getByTestId("coupon-scope-specific"));
+
+    const saveBtn = screen.getByTestId("coupon-save-btn");
+    mockCreateCoupon.mockClear();
+    fireEvent.click(saveBtn);
+
+    // Should not call createCoupon
+    expect(mockCreateCoupon).not.toHaveBeenCalled();
+  });
+
+  test("8. Correctly renders Usage cell states (unlimited, used up) and Expiry cell states (expired, starts future, relative time)", async () => {
+    const customCoupons: Coupon[] = [
+      {
+        id: "cpn-unlimited",
+        code: "UNLIMITED",
+        kind: "percent",
+        value: 1000,
+        ticketTypeIds: [],
+        maxUses: null, // Unlimited
+        startsAt: null,
+        endsAt: null,
+        isActive: true,
+      },
+      {
+        id: "cpn-full",
+        code: "FULL100",
+        kind: "fixed",
+        value: 5000,
+        ticketTypeIds: [],
+        maxUses: 10,
+        startsAt: null,
+        endsAt: "2020-01-01T12:00:00.000Z", // Expired
+        isActive: true,
+      },
+      {
+        id: "cpn-future",
+        code: "FUTURESTART",
+        kind: "percent",
+        value: 1500,
+        ticketTypeIds: [],
+        maxUses: 20,
+        startsAt: "2099-01-01T00:00:00.000Z", // Future start
+        endsAt: "2099-06-01T00:00:00.000Z",
+        isActive: true,
+      },
+    ];
+
+    // Mock usedCount for full coupon
+    (customCoupons[1] as Coupon & { usedCount?: number }).usedCount = 10;
+    (customCoupons[0] as Coupon & { usedCount?: number }).usedCount = 3;
+
+    currentCoupons = customCoupons;
+    render(<CouponsPanel eventId="evt-test-101" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("UNLIMITED")).toBeDefined();
+    });
+
+    // 1. Unlimited coupon shows 3 / ∞ and no progress bar
+    expect(screen.getByText("3")).toBeDefined();
+    expect(screen.getByText("/ ∞")).toBeDefined();
+
+    // 2. Full coupon shows "Used up" and progress bar at 100%
+    expect(screen.getByText("Used up")).toBeDefined();
+    const progressBars = screen.getAllByRole("progressbar");
+    expect(progressBars.length).toBeGreaterThan(0);
+    const fullBar = progressBars.find(
+      (b) => b.getAttribute("aria-valuenow") === "100",
+    );
+    expect(fullBar).toBeDefined();
+
+    // 3. Expired coupon shows dimmed date and Expired label
+    expect(screen.getByText("Expired")).toBeDefined();
+    expect(screen.getByText("Jan 1, 2020")).toBeDefined();
+
+    // 4. Future start coupon shows Starts Jan 1, 2099
+    expect(screen.getByText("Starts Jan 1, 2099")).toBeDefined();
   });
 });

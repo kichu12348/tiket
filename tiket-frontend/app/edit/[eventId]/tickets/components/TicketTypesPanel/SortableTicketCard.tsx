@@ -43,43 +43,22 @@ export default function SortableTicketCard({
         <div className={styles.dragHandle} {...attributes} {...listeners}>
           <GripVertical size={18} />
         </div>
-        <div
-          className={styles.ticketInfo}
-          style={{ flex: 1, marginLeft: "0.5rem" }}
-        >
+        <div className={styles.ticketInfo}>
           <div className={styles.ticketHeader}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div className={styles.ticketTitleGroup}>
               <span className={styles.ticketName}>{ticket.name}</span>
               {ticket.isHidden && (
-                <span
-                  style={{
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    padding: "0.15rem 0.45rem",
-                    borderRadius: "4px",
-                    background: "var(--status-warning-bg, rgba(255, 193, 7, 0.15))",
-                    color: "var(--status-warning, #ffc107)",
-                  }}
-                >
+                <span className={styles.hiddenBadge}>
                   Hidden
                 </span>
               )}
               {Number(ticket.price) > 0 && (
                 <span
-                  style={{
-                    fontSize: "0.75rem",
-                    fontWeight: 500,
-                    padding: "0.15rem 0.45rem",
-                    borderRadius: "4px",
-                    background:
-                      ticket.passFeeToCustomer !== false
-                        ? "rgba(59, 130, 246, 0.12)"
-                        : "rgba(16, 185, 129, 0.12)",
-                    color:
-                      ticket.passFeeToCustomer !== false
-                        ? "var(--color-primary, #60a5fa)"
-                        : "var(--status-success, #34d399)",
-                  }}
+                  className={`${styles.feeBadge} ${
+                    ticket.passFeeToCustomer !== false
+                      ? styles.feeBadgePassed
+                      : styles.feeBadgeAbsorbed
+                  }`}
                 >
                   {ticket.passFeeToCustomer !== false
                     ? "Fee passed to buyer"
@@ -92,14 +71,7 @@ export default function SortableTicketCard({
             </span>
           </div>
           {ticket.description && (
-            <div
-              style={{
-                fontSize: "0.9rem",
-                color: "var(--text-secondary)",
-                marginTop: "0.25rem",
-                marginBottom: "0.25rem",
-              }}
-            >
+            <div className={styles.ticketDescription}>
               {ticket.description}
             </div>
           )}
@@ -128,18 +100,28 @@ export default function SortableTicketCard({
               className={styles.designBtn}
               onClick={onDesign}
               title="Design Pass / Edit Layout"
+              aria-label="Design Pass"
               data-testid={`design-pass-btn-${ticket.id}`}
             >
               <Palette size={15} />
-              <span>Design Pass</span>
+              <span className={styles.designBtnText}>Design Pass</span>
             </button>
           )}
-          <button className={styles.iconBtn} onClick={onEdit}>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={onEdit}
+            title="Edit Ticket"
+            aria-label="Edit Ticket"
+          >
             <Edit2 size={16} />
           </button>
           <button
+            type="button"
             className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
             onClick={onDelete}
+            title="Delete Ticket"
+            aria-label="Delete Ticket"
           >
             <Trash2 size={16} />
           </button>

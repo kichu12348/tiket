@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Popover as PopoverPrimitive } from "radix-ui";
 import styles from "./DatePicker.module.css";
 import {
   format,
@@ -27,27 +28,12 @@ const DAYS_OF_WEEK = ["S", "M", "T", "W", "T", "F", "S"];
 
 export default function DatePicker({ date, onChange }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedDate = date ? new Date(date) : null;
   const [viewDate, setViewDate] = useState(() => selectedDate || new Date());
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handlePrevMonth = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Disable going back before the current month
     if (
       isSameMonth(viewDate, new Date()) ||
       isBefore(viewDate, startOfMonth(new Date()))
@@ -67,7 +53,7 @@ export default function DatePicker({ date, onChange }: DatePickerProps) {
   };
 
   const handleSelectDate = (day: Date) => {
-    if (isBefore(day, startOfDay(new Date()))) return; // Prevent selecting past dates
+    if (isBefore(day, startOfDay(new Date()))) return;
 
     let newDate = day;
     if (selectedDate) {
@@ -95,44 +81,24 @@ export default function DatePicker({ date, onChange }: DatePickerProps) {
     const today = startOfDay(new Date());
 
     while (day <= endDate) {
-      const isPast = isBefore(day, today);
-      const isSelected = selectedDate && isSameDay(day, selectedDate);
-      const isCurrentMonth = isSameMonth(day, monthStart);
-      const cloneDay = day;
-
-      let btnClass = styles.dayBtn;
-      if (!isCurrentMonth) {
-        btnClass += ` ${styles.dayDimmed}`;
-      } else if (isPast) {
-        btnClass += ` ${styles.dayDimmed}`;
-      } else if (isSelected) {
-        btnClass += ` ${styles.daySelected}`;
-      }
+      const currentDay = day;
+      const isPast = isBefore(currentDay, today);
+      const isSelected = selectedDate && isSameDay(currentDay, selectedDate);
+      const isCurrentMonth = isSameMonth(currentDay, monthStart);
 
       days.push(
         <button
-          key={day.toString()}
-          className={btnClass}
-          onClick={() =>
-            !isPast && isCurrentMonth && handleSelectDate(cloneDay)
-          }
-          disabled={isPast || !isCurrentMonth}
+          key={currentDay.toISOString()}
+          type="button"
+          onClick={() => handleSelectDate(currentDay)}
+          disabled={isPast}
+          className={`${styles.dayBtn} ${
+            !isCurrentMonth ? styles.dayDimmed : ""
+          } ${isSelected ? styles.daySelected : ""} ${
+            isSameDay(currentDay, today) ? styles.dayToday : ""
+          }`}
         >
-          {format(day, dateFormat)}
-        </button>,
-      );
-      day = addDays(day, 1);
-    }
-
-    // Always render 42 grid items so popup height doesn't shift
-    while (days.length < 42) {
-      days.push(
-        <button
-          key={day.toString()}
-          className={`${styles.dayBtn} ${styles.dayDimmed}`}
-          disabled
-        >
-          {format(day, dateFormat)}
+          {format(currentDay, dateFormat)}
         </button>,
       );
       day = addDays(day, 1);
@@ -150,17 +116,24 @@ export default function DatePicker({ date, onChange }: DatePickerProps) {
   };
 
   return (
-    <div className={styles.container} ref={containerRef}>
-      <button
-        type="button"
-        className={styles.triggerBtn}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {formatDateLabel()}
-      </button>
+    <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverPrimitive.Trigger asChild>
+        <button
+          type="button"
+          className={styles.triggerBtn}
+          data-empty={!selectedDate}
+        >
+          {formatDateLabel()}
+        </button>
+      </PopoverPrimitive.Trigger>
 
-      {isOpen && (
-        <div className={styles.popover}>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          className={styles.popover}
+          align="start"
+          side="bottom"
+          sideOffset={6}
+        >
           <div className={styles.header}>
             <span className={styles.monthLabel}>
               {format(viewDate, "MMMM")}
@@ -172,14 +145,23 @@ export default function DatePicker({ date, onChange }: DatePickerProps) {
               )}
             </span>
             <div className={styles.navBtns}>
-              <button onClick={handlePrevMonth} className={styles.navBtn}>
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className={styles.navBtn}
+              >
                 <ChevronLeft size={16} />
               </button>
               <button
+                type="button"
                 className={styles.dot}
                 onClick={bringToCurrentDay}
               ></button>
-              <button onClick={handleNextMonth} className={styles.navBtn}>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className={styles.navBtn}
+              >
                 <ChevronRight size={16} />
               </button>
             </div>
@@ -192,8 +174,8 @@ export default function DatePicker({ date, onChange }: DatePickerProps) {
           </div>
 
           <div className={styles.grid}>{renderCalendar()}</div>
-        </div>
-      )}
-    </div>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
   );
 }

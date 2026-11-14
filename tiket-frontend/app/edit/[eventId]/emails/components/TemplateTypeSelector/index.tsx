@@ -8,8 +8,6 @@ import {
   QrCode,
   Heart,
   AlertCircle,
-  Plus,
-  FileText,
 } from "lucide-react";
 import styles from "./TemplateTypeSelector.module.css";
 
@@ -17,7 +15,7 @@ interface TemplateTypeSelectorProps {
   activeType: EmailTemplateType;
   onSelectType: (type: EmailTemplateType) => void;
   templates: EmailTemplate[];
-  onCreateCustom: () => void;
+  onCreateCustom?: () => void;
 }
 
 const CATEGORIES: {
@@ -56,19 +54,12 @@ const CATEGORIES: {
     icon: AlertCircle,
     desc: "Post-event missed",
   },
-  {
-    type: "custom",
-    label: "Custom Templates",
-    icon: FileText,
-    desc: "Custom emails",
-  },
 ];
 
 export default function TemplateTypeSelector({
   activeType,
   onSelectType,
   templates,
-  onCreateCustom,
 }: TemplateTypeSelectorProps) {
   return (
     <div className={`${styles.container} scrollbar`}>
@@ -94,13 +85,6 @@ export default function TemplateTypeSelector({
             </button>
           );
         })}
-
-        {activeType === "custom" && (
-          <button className={styles.addCustomBtn} onClick={onCreateCustom}>
-            <Plus size={16} />
-            <span>New Custom</span>
-          </button>
-        )}
       </div>
     </div>
   );

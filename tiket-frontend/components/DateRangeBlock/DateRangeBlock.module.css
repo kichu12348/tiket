@@ -6,12 +6,13 @@
 
 /* Block container */
 .block {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   border-radius: var(--radius-md);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 1rem;
   padding: 1rem;
+  min-width: 0;
 }
 
 .noTimezone {
@@ -22,6 +23,7 @@
 .inputsWrapper {
   display: flex;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 /* Vertical timeline connector */
@@ -39,7 +41,7 @@
 .dotFilled {
   width: 8px;
   height: 8px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--text-secondary);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -47,7 +49,7 @@
 .dotEmpty {
   width: 8px;
   height: 8px;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border: 1.5px solid var(--text-muted);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -55,7 +57,7 @@
 .line {
   width: 0px;
   flex: 1;
-  border-left: 1px dashed rgba(255, 255, 255, 0.15);
+  border-left: 1px dashed var(--border-strong);
   margin: 0.25rem 0;
 }
 
@@ -64,6 +66,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
   /* Ensures the rows are spaced evenly to match dots */
   justify-content: space-between;
 }
@@ -73,6 +76,7 @@
   align-items: center;
   gap: 1rem;
   height: 36px; /* Fixed row height for consistent alignment */
+  min-width: 0;
 }
 
 .label {
@@ -80,18 +84,58 @@
   font-size: 0.9rem;
   min-width: 40px;
   font-weight: 450;
+  flex-shrink: 0;
 }
 
 .pickersBox {
   display: flex;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   border-radius: var(--radius-sm);
+  min-width: 0;
 }
 
-.pickersBox > div {
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+.pickersBox > button:not(:last-child),
+.pickersBox > div:not(:last-child) {
+  border-right: 1px solid var(--border-subtle);
 }
 
-.pickersBox > div:last-child {
-  border-right: none;
+.timezoneCol {
+  display: flex;
+  height: 100%;
+}
+
+@media (max-width: 640px) {
+  .block {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 0.85rem;
+  }
+
+  .inputsWrapper {
+    gap: 0.5rem;
+  }
+
+  .rows {
+    gap: 0.65rem;
+  }
+
+  .row {
+    gap: 0.5rem;
+  }
+
+  .label {
+    min-width: 36px;
+    font-size: 0.82rem;
+  }
+
+  .pickersBox {
+    flex: 1;
+    width: 100%;
+  }
+
+  .timezoneCol {
+    width: 100%;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--border-subtle);
+  }
 }

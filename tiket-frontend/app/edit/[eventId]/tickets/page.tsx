@@ -18,9 +18,9 @@ export default function EditTicketsPage() {
   const [couponCount, setCouponCount] = useState<number>(0);
   const [selectedTicketForDesign, setSelectedTicketForDesign] =
     useState<TicketType | null>(null);
-  const [studioMode, setStudioMode] = useState<
-    "edit" | "settings" | "preview"
-  >("edit");
+  const [studioMode, setStudioMode] = useState<"edit" | "settings" | "preview">(
+    "edit",
+  );
 
   useEffect(() => {
     if (!event?.id) return;
@@ -101,17 +101,6 @@ export default function EditTicketsPage() {
                 >
                   {couponCount}
                 </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="designer"
-                data-testid="tab-ticket-design"
-                className={styles.tabTrigger}
-                onClick={() => {
-                  setStudioMode("edit");
-                  setActiveTab("designer");
-                }}
-              >
-                Ticket Design
               </TabsTrigger>
             </TabsList>
           </Tabs>

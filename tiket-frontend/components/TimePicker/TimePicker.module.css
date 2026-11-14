@@ -23,63 +23,73 @@
   background: var(--color-soft-bg);
 }
 
+.triggerBtn[data-empty="true"],
+.triggerBtn:disabled {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4)) !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.triggerBtn:disabled:hover {
+  background: transparent;
+}
+
 .popover {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0.5rem;
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg);
+  background: var(--surface-base, #1c1c1e);
+  border-radius: var(--radius-md);
   backdrop-filter: blur(var(--blur-md));
   padding: 0.5rem 0.35rem;
   width: 140px;
   max-height: 250px;
-  z-index: 50;
-  border: 1px solid var(--color-border-light);
+  z-index: 9999;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+  outline: none;
 }
 
 .scrollArea {
   overflow-y: auto;
   display: flex;
+  scrollbar-width: thin;
   flex-direction: column;
   gap: 0.25rem;
-  padding-right: 0.25rem; /* Space for scrollbar */
-}
-
-/* Custom internal scrollbar for popovers */
-.scrollArea::-webkit-scrollbar {
-  width: 6px;
-}
-
-.scrollArea::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollArea::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  padding-right: 0.25rem;
 }
 
 .timeItem {
   background: transparent;
   border: none;
   color: var(--color-text-primary);
-  padding: 0.75rem 1rem;
-  text-align: left;
+  padding: 0.5rem 0.75rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: var(--font-weight-medium);
+  font-size: 0.9rem;
+  text-align: left;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
-.timeItem:hover:not(.selectedItem) {
-  background: var(--color-item-hover);
+.timeItem:hover {
+  background: var(--color-soft-bg-hover);
 }
 
 .selectedItem {
-  background: var(--color-item-selected);
+  background: var(--color-soft-bg-active);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
+}
+
+@media (max-width: 640px) {
+  .triggerBtn {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.5rem;
+    font-size: 0.85rem;
+    text-align: center;
+  }
 }

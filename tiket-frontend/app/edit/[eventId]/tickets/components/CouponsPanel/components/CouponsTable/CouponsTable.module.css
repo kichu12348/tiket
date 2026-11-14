@@ -1,0 +1,187 @@
+.card {
+  background: var(--surface);
+  backdrop-filter: blur(var(--blur-md));
+  border-radius: var(--radius-sm);
+  border: none;
+  overflow: hidden;
+}
+
+.emptyState {
+  padding: 3rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+}
+
+.emptyTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.emptyText {
+  font-size: 0.85rem;
+  max-width: 380px;
+  margin: 0;
+}
+
+.addBtn {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: opacity 0.15s ease;
+  margin-top: 0.5rem;
+}
+
+.addBtn:hover {
+  opacity: 0.9;
+}
+
+.tableHeader {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tableRow {
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.tableRow:hover {
+  background-color: var(--color-item-hover);
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+.iconBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.iconBtn:hover {
+  color: var(--text-primary);
+  background: var(--color-item-hover);
+}
+
+.deleteBtn:hover {
+  color: var(--status-danger);
+  background: var(--status-danger-bg);
+}
+
+/* Usage Cell */
+.usageColumn {
+  width: 140px;
+  max-width: 140px;
+  min-width: 140px;
+}
+
+.usageContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 140px;
+}
+
+.usageText {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.usedCount {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.usageLimit {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.usedUpText {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1;
+  font-weight: 400;
+}
+
+.progressTrack {
+  position: relative;
+  width: 100%;
+  height: 5px;
+  background: var(--surface-elevated);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--btn-primary-bg);
+  border-radius: var(--radius-sm);
+  transition: width 0.2s ease;
+}
+
+.progressFillFull {
+  background: var(--status-danger);
+}
+
+/* Expiry Cell */
+.expiryCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expiryDate {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.expiryDateDimmed {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.expirySubtext {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+  font-weight: 400;
+}
+
+.expirySubtextAmber {
+  color: var(--status-warning);
+  font-weight: 500;
+}
+
+.expirySubtextDanger {
+  color: var(--status-danger);
+  font-weight: 500;
+}

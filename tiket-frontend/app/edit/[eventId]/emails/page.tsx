@@ -16,8 +16,6 @@ import {
   getAvailableVariables,
   updateEmailTemplate,
   resetEmailTemplate,
-  deleteCustomEmailTemplate,
-  createCustomEmailTemplate,
   sendTestEmail,
   sendBatchEmail,
   getEmailLogs,
@@ -83,7 +81,8 @@ export default function EditEmailsPage() {
       getEmailLogs(eventId),
     ])
       .then(async ([tplData, varData, logData]) => {
-        setTemplates(tplData);
+        const standardTemplates = tplData.filter((t) => t.type !== "custom");
+        setTemplates(standardTemplates);
         setVariables(varData);
         if (Array.isArray(logData)) {
           setLogs(logData);
@@ -98,7 +97,8 @@ export default function EditEmailsPage() {
 
         // Select first template matching activeType
         const match =
-          tplData.find((t) => t.type === "confirmation") || tplData[0];
+          standardTemplates.find((t) => t.type === "confirmation") ||
+          standardTemplates[0];
         if (match) {
           setSelectedTemplateId(match.id);
           try {
@@ -152,25 +152,6 @@ export default function EditEmailsPage() {
       }
     } else {
       setSelectedTemplateId(null);
-    }
-  };
-
-  // When selecting a custom template tab
-  const handleSelectCustomTemplate = async (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    if (event?.id) {
-      try {
-        setIsTemplateLoading(true);
-        const full = await getEmailTemplateById(event.id, templateId);
-        setLoadedTemplatesMap((prev) => ({
-          ...prev,
-          [full.id]: full,
-        }));
-      } catch (err: unknown) {
-        toast.error(getErrorMessage(err) || "Failed to load template");
-      } finally {
-        setIsTemplateLoading(false);
-      }
     }
   };
 
@@ -245,62 +226,6 @@ export default function EditEmailsPage() {
       toast.error(getErrorMessage(err) || "Failed to reset template");
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  // Create Custom Template
-  const handleCreateCustom = async () => {
-    if (!event?.id) return;
-    try {
-      const newCustom = await createCustomEmailTemplate(event.id, {
-        name: "New Announcement Email",
-        subject: "Special Announcement for {{event.title}}",
-        body: `<div style="font-family: 'Inter', Arial, sans-serif; background-color: #ffffff; color: #111827; max-width: 600px; margin: 0 auto; padding: 32px; border-radius: 12px; border: 1px solid #e5e7eb;"><h2 style="color: #111827; margin-top: 0;">Special Announcement</h2><p style="color: #4b5563;">Hi {{attendee.name}},</p><p style="color: #4b5563;">We have an exciting update for {{event.title}}!</p></div>`,
-      });
-
-      setTemplates((prev) => [...prev, newCustom]);
-      setLoadedTemplatesMap((prev) => ({
-        ...prev,
-        [newCustom.id]: newCustom,
-      }));
-      setActiveType("custom");
-      setSelectedTemplateId(newCustom.id);
-      toast.success("New custom template created!");
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to create custom template");
-    }
-  };
-
-  // Delete Custom Template
-  const handleDeleteCustom = async () => {
-    if (
-      !event?.id ||
-      !selectedTemplateId ||
-      !currentTemplate ||
-      currentTemplate.type !== "custom"
-    )
-      return;
-    try {
-      await deleteCustomEmailTemplate(event.id, selectedTemplateId);
-      setTemplates((prev) => prev.filter((t) => t.id !== selectedTemplateId));
-      setLoadedTemplatesMap((prev) => {
-        const next = { ...prev };
-        delete next[selectedTemplateId];
-        return next;
-      });
-
-      const remainingCustom = templates.filter(
-        (t) => t.type === "custom" && t.id !== selectedTemplateId,
-      );
-      if (remainingCustom.length > 0) {
-        handleSelectCustomTemplate(remainingCustom[0].id);
-      } else {
-        handleSelectType("confirmation");
-      }
-
-      toast.success("Custom template deleted!");
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to delete template");
     }
   };
 
@@ -492,26 +417,7 @@ export default function EditEmailsPage() {
             activeType={activeType}
             onSelectType={handleSelectType}
             templates={templates}
-            onCreateCustom={handleCreateCustom}
           />
-
-          {/* Sub-selector if multiple custom templates exist under 'custom' type */}
-          {activeType === "custom" && (
-            <div className={`${styles.customSubBar} scrollbar`}>
-              {templates
-                .filter((t) => t.type === "custom")
-                .map((ct) => (
-                  <button
-                    key={ct.id}
-                    className={styles.subTab}
-                    data-active={ct.id === selectedTemplateId}
-                    onClick={() => handleSelectCustomTemplate(ct.id)}
-                  >
-                    {ct.name}
-                  </button>
-                ))}
-            </div>
-          )}
 
           {currentTemplate && (
             <div className={styles.templateMetaBar}>
@@ -547,7 +453,6 @@ export default function EditEmailsPage() {
                 variables={variables}
                 onSave={handleSaveTemplate}
                 onReset={handleResetTemplate}
-                onDelete={handleDeleteCustom}
                 onOpenSendTest={() => setIsTestModalOpen(true)}
                 onOpenSendBatch={() => setIsBatchModalOpen(true)}
                 isSaving={isSaving}

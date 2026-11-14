@@ -195,6 +195,11 @@ describe("TicketsPage Integration", () => {
     expect(screen.getByText("₹1999")).toBeDefined();
     expect(screen.getByText("Hidden")).toBeDefined();
     expect(screen.getByText("Limit: 200")).toBeDefined();
+    expect(
+      screen.getByText(
+        "Create and manage ticket tiers, pricing, and availability.",
+      ),
+    ).toBeDefined();
   });
 
   test("2. Opens TicketEditModal on Add Ticket click", async () => {

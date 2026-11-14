@@ -1,7 +1,8 @@
 import React from "react";
 import styles from "./Switch.module.css";
 
-interface SwitchProps {
+interface SwitchProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {
   checked: boolean;
   onChange: (checked: boolean) => void;
   className?: string;
@@ -13,6 +14,7 @@ export default function Switch({
   onChange,
   className,
   id,
+  ...props
 }: SwitchProps) {
   const state = checked ? "checked" : "unchecked";
 
@@ -26,6 +28,7 @@ export default function Switch({
       id={id}
       className={`${styles.container} ${className || ""}`}
       onClick={() => onChange(!checked)}
+      {...props}
     >
       <span className={styles.knob} data-state={state}></span>
     </button>

@@ -136,3 +136,33 @@
   font-size: 0.85rem;
   flex-shrink: 0;
 }
+
+@media (max-width: 640px) {
+  .container {
+    width: 100%;
+  }
+
+  .triggerBtn {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    height: auto;
+  }
+
+  .tzInfo {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0;
+  }
+
+  .popover {
+    width: 100%;
+    max-width: 320px;
+    right: auto;
+    left: 0;
+  }
+}

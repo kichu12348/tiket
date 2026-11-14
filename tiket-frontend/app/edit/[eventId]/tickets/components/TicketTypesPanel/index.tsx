@@ -142,7 +142,12 @@ export default function TicketTypesPanel({
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
-        <h3 className={styles.title}>Ticket Types</h3>
+        <div className={styles.headerInfo}>
+          <h2 className={styles.title}>Ticket Tiers</h2>
+          <p className={styles.subtitle}>
+            Create and manage ticket tiers, pricing, and availability.
+          </p>
+        </div>
         <button
           className={styles.createBtn}
           onClick={handleAddClick}

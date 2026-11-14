@@ -1,0 +1,305 @@
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  backdrop-filter: blur(var(--blur-md));
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modalShell {
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  width: min(540px, 90vw);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.5),
+    0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+.modalHeader {
+  padding: 1.15rem 1.25rem 0.65rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modalTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.closeBtn:hover {
+  color: var(--text-primary);
+  background: var(--color-item-hover);
+}
+
+.modalBody {
+  padding: 1rem 1.25rem;
+  max-height: min(70vh, 500px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalBody input,
+.modalBody button[role="combobox"] {
+  border-radius: var(--radius-md) !important;
+}
+
+.dropdownTrigger {
+  height: 36px;
+  width: 100% !important;
+  border: none !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0 0.75rem !important;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  outline: none;
+}
+
+.dropdownTrigger:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: none !important;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Validity Period Section */
+.validitySection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sectionHeaderLabel {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.segmentedControl {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: var(--radius-md);
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.segmentedControl:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.segmentedControl:focus-within {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.segmentedControlError {
+  border: 1px solid var(--status-danger) !important;
+}
+
+.dateSegment {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+}
+
+.dateSegment > div {
+  width: 100%;
+  height: 100%;
+}
+
+.dateSegment button {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 0.75rem !important;
+  font-size: 0.875rem !important;
+  color: var(--text-primary);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dateSegment button[data-empty="true"] {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4)) !important;
+}
+
+.segmentDivider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.timeSegment {
+  flex: 0 0 100px;
+  width: 100px;
+  height: 100%;
+  display: flex;
+}
+
+.timeSegment > div {
+  width: 100%;
+  height: 100%;
+}
+
+.timeSegment button {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 0.65rem !important;
+  font-size: 0.875rem !important;
+  color: var(--text-primary);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.timeSegment button[data-empty="true"],
+.timeSegment button:disabled {
+  color: var(--text-muted, rgba(255, 255, 255, 0.4)) !important;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.helperText {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0 0;
+}
+
+.inlineError {
+  font-size: 0.75rem;
+  color: var(--status-danger);
+  margin-top: 0.25rem;
+}
+
+/* Active Toggle Section */
+.switchRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+}
+
+.switchLabelBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.switchTitle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.switchSubtext {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+}
+
+.modalFooter {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.cancelBtn {
+  background: var(--color-soft-bg);
+  color: var(--color-text-soft);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.95rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.cancelBtn:hover {
+  background: var(--color-item-selected);
+}
+
+.saveBtn {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.saveBtn:hover {
+  opacity: 0.9;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

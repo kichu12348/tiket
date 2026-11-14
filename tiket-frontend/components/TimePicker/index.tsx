@@ -1,29 +1,26 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
+import { Popover as PopoverPrimitive } from "radix-ui";
 import styles from "./TimePicker.module.css";
+import { cn } from "@/lib/utils";
 
 interface TimePickerProps {
   date: string; // ISO string
   onChange: (date: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
-export default function TimePicker({ date, onChange }: TimePickerProps) {
+export default function TimePicker({
+  date,
+  onChange,
+  disabled = false,
+  placeholder = "--:-- --",
+}: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedDate = date ? new Date(date) : new Date();
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const hasDate = Boolean(date && !isNaN(new Date(date).getTime()));
+  const selectedDate = hasDate ? new Date(date) : new Date();
+  const isDisabled = disabled || !hasDate;
 
   const generateTimes = () => {
     const times = [];
@@ -52,34 +49,51 @@ export default function TimePicker({ date, onChange }: TimePickerProps) {
     setIsOpen(false);
   };
 
-  const formattedLabel = selectedDate.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedLabel = hasDate
+    ? selectedDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : placeholder;
 
-  // Find index of currently selected time (roughly)
   const selectedHour = selectedDate.getHours();
   const selectedMinute = selectedDate.getMinutes() < 30 ? 0 : 30;
 
   return (
-    <div className={styles.container} ref={containerRef}>
-      <button
-        type="button"
-        className={styles.triggerBtn}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {formattedLabel}
-      </button>
+    <PopoverPrimitive.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!isDisabled) setIsOpen(open);
+      }}
+    >
+      <PopoverPrimitive.Trigger asChild>
+        <button
+          type="button"
+          className={styles.triggerBtn}
+          disabled={isDisabled}
+          data-empty={!hasDate}
+        >
+          {formattedLabel}
+        </button>
+      </PopoverPrimitive.Trigger>
 
-      {isOpen && (
-        <div className={styles.popover}>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          className={cn(styles.popover, "scrollbar")}
+          align="start"
+          side="bottom"
+          sideOffset={6}
+        >
           <div className={styles.scrollArea}>
             {times.map((t, i) => {
               const isSelected = t.h === selectedHour && t.m === selectedMinute;
               return (
                 <button
                   key={i}
-                  className={`${styles.timeItem} ${isSelected ? styles.selectedItem : ""}`}
+                  type="button"
+                  className={`${styles.timeItem} ${
+                    isSelected ? styles.selectedItem : ""
+                  }`}
                   onClick={() => handleSelect(t.h, t.m)}
                 >
                   {t.timeStr}
@@ -87,8 +101,8 @@ export default function TimePicker({ date, onChange }: TimePickerProps) {
               );
             })}
           </div>
-        </div>
-      )}
-    </div>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
   );
 }
