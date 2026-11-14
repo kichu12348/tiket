@@ -31,3 +31,57 @@
   margin: 0;
 }
 
+.tabsRoot {
+  width: 100%;
+}
+
+.tabsList {
+  background: var(--color-soft-bg);
+  backdrop-filter: blur(var(--blur-md));
+  border-radius: var(--radius-sm);
+  border: none;
+  padding: 0.25rem;
+  display: inline-flex;
+  gap: 0.25rem;
+  width: fit-content;
+}
+
+.tabTrigger {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tabTrigger:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tabTrigger[data-state="active"] {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+
+.countBadge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+}
+
+.tabTrigger[data-state="active"] .countBadge {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--btn-primary-text);
+}
+

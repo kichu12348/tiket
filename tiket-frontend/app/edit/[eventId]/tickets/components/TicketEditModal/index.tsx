@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createTicketType, updateTicketType } from "@/api/tickets";
-import { getFinance } from "@/api/commerce";
+import { getBankAccount } from "@/api/commerce";
 import { getFormFields } from "@/api/forms";
 import type { TicketType } from "@/types/ticketType";
 import type {
@@ -11,16 +11,11 @@ import type {
 } from "@/types/form";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
-import { Globe, CalendarIcon, Clock, Copy, Check, Palette } from "lucide-react";
+import { Globe, Copy, Check, Palette } from "lucide-react";
 import Modal from "@/components/Modal";
 import Switch from "@/components/Switch";
 import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Select,
   SelectContent,
@@ -34,46 +29,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { format } from "date-fns";
-import Dropdown from "@/components/Dropdown";
 import { useEventStore } from "@/store/useEventStore";
 import ConditionBuilder from "@/components/ConditionBuilder";
 import RichTextEditor from "@/components/DescriptionModal/RichTextEditor";
 import styles from "./TicketEditModal.module.css";
 
-const TIME_OPTIONS = Array.from({ length: 48 }).map((_, i) => {
-  const hours = Math.floor(i / 2);
-  const minutes = i % 2 === 0 ? "00" : "30";
-  const label = `${hours.toString().padStart(2, "0")}:${minutes}`;
-  return { label, value: label, LeftComponent: <Clock size={14} /> };
-});
 
-const updateTime = (
-  dateStr: string,
-  timeValue: string,
-  setDate: (d: string) => void,
-) => {
-  if (!dateStr) return;
-  const [hours, minutes] = timeValue.split(":").map(Number);
-  const newDate = new Date(dateStr);
-  newDate.setHours(hours, minutes, 0, 0);
-  setDate(newDate.toISOString());
-};
-
-const updateDate = (
-  dateStr: string,
-  newDate: Date | undefined,
-  setDate: (d: string) => void,
-) => {
-  if (!newDate) return;
-  const currentDate = dateStr ? new Date(dateStr) : new Date();
-  currentDate.setFullYear(
-    newDate.getFullYear(),
-    newDate.getMonth(),
-    newDate.getDate(),
-  );
-  setDate(currentDate.toISOString());
-};
 
 interface TicketEditModalProps {
   isOpen: boolean;
@@ -248,9 +209,9 @@ function TicketEditModalContent({
     getFormFields(eventId)
       .then((fields) => setAvailableFields(fields || []))
       .catch(() => {});
-    getFinance(eventId)
+    getBankAccount(eventId)
       .then((res) => {
-        setHasBankAccount(Boolean(res?.bankAccount?.gatewayAccountId));
+        setHasBankAccount(Boolean(res?.bankAccount?.gatewayAccountId || res?.bankAccount));
       })
       .catch(() => {
         setHasBankAccount(false);
@@ -549,11 +510,33 @@ function TicketEditModalContent({
                 id="ticket-is-paid-switch"
                 checked={isPaid}
                 onChange={(checked) => {
+                  if (hasBankAccount === false && checked) {
+                    toast.error(
+                      "You must add a payout bank account in Finance settings before creating paid tickets.",
+                    );
+                    return;
+                  }
                   setIsPaid(checked);
                   if (!checked) setPrice("0");
                 }}
               />
             </div>
+
+            {hasBankAccount === false && (
+              <div className="p-3 my-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 flex items-center justify-between gap-2">
+                <span>
+                  Payout bank account not configured. A connected bank account is required to sell paid tickets.
+                </span>
+                <a
+                  href={`/edit/${eventId}/finance`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline font-medium text-amber-300 hover:text-amber-100 shrink-0"
+                >
+                  Configure in Finance
+                </a>
+              </div>
+            )}
 
             {isPaid && (
               <div className={styles.nestedSection}>
@@ -822,41 +805,12 @@ function TicketEditModalContent({
                 >
                   Start
                 </span>
-                <div className={styles.pickersBox}>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button type="button" className={styles.datePickerBtn}>
-                        <CalendarIcon size={14} />
-                        {saleStart ? (
-                          format(new Date(saleStart), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 z-[9999]"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={saleStart ? new Date(saleStart) : undefined}
-                        onSelect={(date) =>
-                          updateDate(saleStart, date, setSaleStart)
-                        }
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <Dropdown
-                    options={TIME_OPTIONS}
-                    value={
-                      saleStart ? format(new Date(saleStart), "HH:mm") : "00:00"
-                    }
-                    onChange={(val) =>
-                      updateTime(saleStart, val as string, setSaleStart)
-                    }
-                    btnColor="transparent"
-                    maxHeight="250px"
+                <div style={{ flex: 1 }}>
+                  <DateTimePicker
+                    value={saleStart}
+                    onChange={setSaleStart}
+                    timezone={timezone}
+                    placeholder="Pick sales start date & time"
                   />
                 </div>
               </div>
@@ -873,41 +827,12 @@ function TicketEditModalContent({
                 >
                   End
                 </span>
-                <div className={styles.pickersBox}>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button type="button" className={styles.datePickerBtn}>
-                        <CalendarIcon size={14} />
-                        {saleEnd ? (
-                          format(new Date(saleEnd), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 z-[9999]"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={saleEnd ? new Date(saleEnd) : undefined}
-                        onSelect={(date) =>
-                          updateDate(saleEnd, date, setSaleEnd)
-                        }
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <Dropdown
-                    options={TIME_OPTIONS}
-                    value={
-                      saleEnd ? format(new Date(saleEnd), "HH:mm") : "00:00"
-                    }
-                    onChange={(val) =>
-                      updateTime(saleEnd, val as string, setSaleEnd)
-                    }
-                    btnColor="transparent"
-                    maxHeight="250px"
+                <div style={{ flex: 1 }}>
+                  <DateTimePicker
+                    value={saleEnd}
+                    onChange={setSaleEnd}
+                    timezone={timezone}
+                    placeholder="Pick sales end date & time"
                   />
                 </div>
               </div>

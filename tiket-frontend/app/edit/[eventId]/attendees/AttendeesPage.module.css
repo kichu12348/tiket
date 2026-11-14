@@ -27,6 +27,53 @@
   max-width: 680px;
 }
 
+/* Tabs */
+.tabsRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.tabsList {
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  width: fit-content;
+  border: 1px solid var(--border-subtle);
+}
+
+.tabTrigger {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tabTrigger[data-state="active"] {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  font-weight: 600;
+}
+
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .page {
     padding: 1.25rem 0.85rem;

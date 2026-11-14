@@ -23,6 +23,7 @@ import {
   getEmailLogs,
   resendEmailLog,
 } from "@/api/emails";
+import { getMailConnection } from "@/api/commerce";
 import { toast } from "sonner";
 import { Power } from "lucide-react";
 import styles from "./EmailsPage.module.css";
@@ -33,6 +34,7 @@ import VariablePicker from "./components/VariablePicker";
 import LivePreviewPane from "./components/LivePreviewPane";
 import SendTestModal from "./components/SendTestModal";
 import SendBatchModal from "./components/SendBatchModal";
+import MailConnectionModal from "./components/MailConnectionModal";
 import EmailLogsTable from "./components/EmailLogsTable";
 import {
   EmailPageSkeleton,
@@ -62,9 +64,19 @@ export default function EditEmailsPage() {
 
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isMailModalOpen, setIsMailModalOpen] = useState(false);
+  const [isCustomSmtp, setIsCustomSmtp] = useState(false);
 
-  // 1. Initial load: Fetch template types list, variables & logs
+  // 1. Initial load: Fetch template types list, variables, logs & mail connection
   const loadInitialData = useCallback(async (eventId: string) => {
+    getMailConnection(eventId)
+      .then((mailRes) => {
+        setIsCustomSmtp(Boolean(mailRes?.custom));
+      })
+      .catch(() => {
+        setIsCustomSmtp(false);
+      });
+
     return Promise.all([
       getEmailTemplates(eventId),
       getAvailableVariables(eventId),
@@ -443,11 +455,33 @@ export default function EditEmailsPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Event Email Management</h1>
-        <p className={styles.subtitle}>
-          Design white-theme email templates and send automated booking
-          confirmations, check-ins, or targeted broadcasts.
-        </p>
+        <div className={styles.headerTop}>
+          <div>
+            <h1 className={styles.title}>Event Email Management</h1>
+            <p className={styles.subtitle}>
+              Design white-theme email templates and send automated booking
+              confirmations, check-ins, or targeted broadcasts.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={styles.smtpTriggerBtn}
+            onClick={() => setIsMailModalOpen(true)}
+            aria-label="Configure Custom SMTP Connection"
+          >
+            <span
+              className={styles.statusDot}
+              data-status={isCustomSmtp ? "connected" : "default"}
+            />
+            <span className={styles.smtpBtnLabel}>Custom SMTP</span>
+            <span
+              className={styles.statusBadge}
+              data-status={isCustomSmtp ? "connected" : "default"}
+            >
+              {isCustomSmtp ? "Connected" : "Default Mailer"}
+            </span>
+          </button>
+        </div>
       </div>
 
       {isInitialLoading ? (
@@ -569,6 +603,16 @@ export default function EditEmailsPage() {
                 templateName={currentTemplate.name}
               />
             </>
+          )}
+
+          {event?.id && (
+            <MailConnectionModal
+              isOpen={isMailModalOpen}
+              onClose={() => setIsMailModalOpen(false)}
+              eventId={event.id}
+              isCustom={isCustomSmtp}
+              onStatusChange={(custom) => setIsCustomSmtp(custom)}
+            />
           )}
         </>
       )}

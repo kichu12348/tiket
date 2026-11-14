@@ -1,7 +1,7 @@
 "use client";
 import { getErrorMessage } from "@/lib/errors";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 
 import Link from "next/link";
 import {
@@ -28,13 +28,19 @@ import { getSignedUrl, uploadToCDN, updateEvent } from "@/api/events";
 import { getBackgroundColor } from "@/lib/color";
 
 // Custom components
-// Custom components
-import DateRangeBlock from "@/components/DateRangeBlock";
 import FontPicker from "@/components/FontPicker";
 import ColorPicker from "@/components/ColorPicker";
 import LocationPicker from "@/components/LocationPicker";
 import DescriptionModal from "@/components/DescriptionModal";
 import DOMPurify from "isomorphic-dompurify";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import Switch from "@/components/Switch";
 import { toast } from "sonner";
@@ -44,6 +50,22 @@ import Image from "@/components/Image";
 import { getImageUrl } from "@/constants/config";
 import { TRANSPARENT_BG } from "@/constants/util";
 import type { Event, LocationDetails, EventSocialLinks } from "@/types/event";
+
+const COMMON_TIMEZONES = [
+  { value: "UTC", label: "UTC · GMT+00:00" },
+  { value: "America/New_York", label: "Eastern Time (New York) · GMT-05:00" },
+  { value: "America/Chicago", label: "Central Time (Chicago) · GMT-06:00" },
+  { value: "America/Denver", label: "Mountain Time (Denver) · GMT-07:00" },
+  { value: "America/Los_Angeles", label: "Pacific Time (Los Angeles) · GMT-08:00" },
+  { value: "Europe/London", label: "London (GMT / BST) · GMT+00:00" },
+  { value: "Europe/Paris", label: "Central European Time (Paris, Berlin) · GMT+01:00" },
+  { value: "Asia/Dubai", label: "Gulf Standard Time (Dubai) · GMT+04:00" },
+  { value: "Asia/Kolkata", label: "India Standard Time (IST) · GMT+05:30" },
+  { value: "Asia/Singapore", label: "Singapore / Hong Kong (SGT) · GMT+08:00" },
+  { value: "Asia/Tokyo", label: "Japan Standard Time (Tokyo) · GMT+09:00" },
+  { value: "Australia/Sydney", label: "Australian Eastern Time (Sydney) · GMT+10:00" },
+  { value: "Pacific/Auckland", label: "New Zealand Time (Auckland) · GMT+12:00" },
+];
 
 function DetailsForm({ event }: { event: Event }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +109,16 @@ function DetailsForm({ event }: { event: Event }) {
   const [socialLinks, setSocialLinks] = useState<EventSocialLinks>(
     event.socialLinks || {},
   );
+
+  const allTimezoneOptions = useMemo(() => {
+    const exists = COMMON_TIMEZONES.some(
+      (tz) => tz.value === timezone || tz.label.includes(timezone),
+    );
+    if (!exists && timezone) {
+      return [{ value: timezone, label: `${timezone}` }, ...COMMON_TIMEZONES];
+    }
+    return COMMON_TIMEZONES;
+  }, [timezone]);
 
   const handleSocialChange = (field: keyof EventSocialLinks, value: string) => {
     setSocialLinks((prev) => ({
@@ -134,6 +166,42 @@ function DetailsForm({ event }: { event: Event }) {
       setIsSubmitting(true);
 
       const normalizedSocial = normalizeSocialLinks(socialLinks);
+
+      // Validation ensuring endDate > startDate
+      if (!startDate || !endDate) {
+        toast.error("Event start and end dates are required.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+        toast.error("Event end date must be after the start date.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!regStartDate || !regEndDate) {
+        toast.error("Registration dates are required.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const rStart = new Date(regStartDate);
+      const rEnd = new Date(regEndDate);
+      if (isNaN(rStart.getTime()) || isNaN(rEnd.getTime()) || rEnd <= rStart) {
+        toast.error(
+          "Registration deadline must be after the registration start date.",
+        );
+        setIsSubmitting(false);
+        return;
+      }
+      if (rEnd > end) {
+        toast.error("Registration cannot end after the event has ended.");
+        setIsSubmitting(false);
+        return;
+      }
 
       const validationError = validateEventPayload({
         title,
@@ -316,29 +384,94 @@ function DetailsForm({ event }: { event: Event }) {
             <CalendarClock size={15} strokeWidth={1.8} />
             <span>Event Date & Time</span>
           </div>
-          <DateRangeBlock
-            startDate={startDate}
-            endDate={endDate}
-            timezone={timezone}
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
-            onTimezoneChange={setTimezone}
-          />
+          <div className={styles.dateTimeCard}>
+            <div className={styles.dateTimeRow}>
+              <DateTimePicker
+                id="event-start-date"
+                label="Event Start Date & Time"
+                value={startDate}
+                onChange={(val) => {
+                  setStartDate(val);
+                  if (endDate && new Date(val) >= new Date(endDate)) {
+                    const nextEnd = new Date(
+                      new Date(val).getTime() + 2 * 60 * 60 * 1000,
+                    );
+                    setEndDate(nextEnd.toISOString());
+                  }
+                }}
+                timezone={timezone}
+                placeholder="Pick start date & time"
+              />
+              <DateTimePicker
+                id="event-end-date"
+                label="Event End Date & Time"
+                value={endDate}
+                minDate={startDate ? new Date(startDate) : undefined}
+                onChange={(val) => {
+                  setEndDate(val);
+                  if (startDate && new Date(val) <= new Date(startDate)) {
+                    toast.error("Event end date must be after the start date.");
+                  }
+                }}
+                timezone={timezone}
+                placeholder="Pick end date & time"
+              />
+            </div>
+
+            {/* Timezone Select */}
+            <div className={styles.timezoneContainer}>
+              <label htmlFor="event-timezone" className={styles.timezoneLabel}>
+                <Globe size={14} />
+                <span>Timezone</span>
+              </label>
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger id="event-timezone" className={styles.timezoneTrigger}>
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 bg-[#1a1b20] border-white/10 text-xs">
+                  {allTimezoneOptions.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value} className="text-xs">
+                      {tz.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {/* Registration Period */}
           <div className={styles.sectionLabel}>
             <CalendarCheck size={15} strokeWidth={1.8} />
             <span>Registration Period</span>
           </div>
-          <DateRangeBlock
-            startDate={regStartDate}
-            endDate={regEndDate}
-            timezone={timezone}
-            onStartDateChange={setRegStartDate}
-            onEndDateChange={setRegEndDate}
-            onTimezoneChange={setTimezone}
-            timezonePickerDisabled={true}
-          />
+          <div className={styles.dateTimeCard}>
+            <div className={styles.dateTimeRow}>
+              <DateTimePicker
+                id="reg-start-date"
+                label="Registration Opens"
+                value={regStartDate}
+                onChange={setRegStartDate}
+                timezone={timezone}
+                placeholder="Pick opening date & time"
+              />
+              <DateTimePicker
+                id="reg-end-date"
+                label="Registration Deadline"
+                value={regEndDate}
+                minDate={regStartDate ? new Date(regStartDate) : undefined}
+                onChange={(val) => {
+                  setRegEndDate(val);
+                  if (regStartDate && new Date(val) <= new Date(regStartDate)) {
+                    toast.error(
+                      "Registration deadline must be after registration opens.",
+                    );
+                  }
+                }}
+                timezone={timezone}
+                placeholder="Pick registration deadline"
+              />
+            </div>
+          </div>
 
           {/* Location Block */}
           <div className={styles.sectionLabel}>

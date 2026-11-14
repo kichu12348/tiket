@@ -140,6 +140,54 @@
   flex-direction: column;
 }
 
+.dateTimeCard {
+  background: var(--surface-hover);
+  border-radius: var(--radius-md);
+  border: none;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.dateTimeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .dateTimeRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.timezoneContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.timezoneLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.timezoneTrigger {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  height: 38px;
+}
+
 .sectionLabel {
   display: flex;
   align-items: center;
