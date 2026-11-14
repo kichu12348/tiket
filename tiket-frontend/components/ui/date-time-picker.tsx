@@ -174,7 +174,10 @@ export function DateTimePicker({
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       {label && (
-        <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">
+        <Label
+          htmlFor={id}
+          className="text-xs font-medium text-muted-foreground"
+        >
           {label}
         </Label>
       )}
@@ -190,7 +193,10 @@ export function DateTimePicker({
               !parsedDate && "text-muted-foreground",
             )}
           >
-            <CalendarIcon size={15} className="shrink-0 text-muted-foreground" />
+            <CalendarIcon
+              size={15}
+              className="shrink-0 text-muted-foreground"
+            />
             <span className="flex-1 truncate">
               {parsedDate ? (
                 <>
@@ -212,7 +218,8 @@ export function DateTimePicker({
                 aria-label="Clear date"
                 onClick={handleClear}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") handleClear(e as unknown as React.MouseEvent);
+                  if (e.key === "Enter" || e.key === " ")
+                    handleClear(e as unknown as React.MouseEvent);
                 }}
                 className="shrink-0 rounded-sm p-0.5 hover:bg-white/10 text-muted-foreground hover:text-white"
               >
