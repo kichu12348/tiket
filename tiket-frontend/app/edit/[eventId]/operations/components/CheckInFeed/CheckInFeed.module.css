@@ -1,0 +1,197 @@
+.container {
+  background: var(--surface);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.searchWrapper {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  padding-left: 2.25rem !important;
+  background: var(--color-soft-bg-subtle) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-sm) !important;
+  height: 38px;
+}
+
+.searchInput:focus {
+  border-color: var(--border-strong) !important;
+}
+
+.filterWrapper {
+  width: 180px;
+  min-width: 160px;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.attendeeCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.attendeeName {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.attendeeEmail {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ticketCode {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: var(--color-soft-bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+.statusBadgeSuccess {
+  background: var(--status-success-bg) !important;
+  color: var(--status-success) !important;
+  border: none !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.statusBadgePrior {
+  background: var(--color-soft-bg) !important;
+  color: var(--text-secondary) !important;
+  border: none !important;
+  font-size: 0.75rem;
+}
+
+.statusBadgeMuted {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border-subtle) !important;
+  font-size: 0.75rem;
+}
+
+.btnCheckIn {
+  background: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+  border: none !important;
+  font-weight: 500 !important;
+  font-size: 0.825rem !important;
+  height: 32px !important;
+  padding: 0 0.75rem !important;
+  border-radius: var(--radius-sm) !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btnCheckIn:hover {
+  opacity: 0.9;
+}
+
+.btnUndo {
+  background: var(--color-soft-bg) !important;
+  color: var(--color-text-soft) !important;
+  border: none !important;
+  font-weight: 500 !important;
+  font-size: 0.825rem !important;
+  height: 32px !important;
+  padding: 0 0.75rem !important;
+  border-radius: var(--radius-sm) !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btnUndo:hover {
+  background: var(--color-soft-bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.emptyTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.emptySubtitle {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+}
