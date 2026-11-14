@@ -28,7 +28,7 @@ The project is structured as a monorepo-style split, with clear separation betwe
   - _Rule:_ Use this for routing, layouts, and assembling page components. Keep page-level CSS in corresponding `.module.css` files.
 - **`components/`**: Reusable React components.
   - Base UI components (e.g., `Dropdown`, `Switch`) and complex domain components (e.g., `LocationPicker`, `DateRangeBlock`).
-  - _Rule:_ Each complex component should have its own directory containing `index.tsx` and a `.module.css` file.
+  - _Rule:_ Each complex component should have its own directory containing `index.tsx` and a `.module.css` file. Nested child components must live in a dedicated `components/` subfolder, and helper/transformation functions must live in a dedicated `functions/` subfolder.
 - **`store/`**: Global state management using Zustand.
   - _Rule:_ Use Zustand for state that spans across decoupled parts of the application or requires optimistic local updates (e.g., `updateEventLocally` in `useEventStore`).
 - **`lib/`**: Utility functions and configurations.
@@ -44,6 +44,9 @@ The project is structured as a monorepo-style split, with clear separation betwe
 1. **Styling Approach:** Use CSS Modules (`styles.container`, `styles.header`) for structural styling of custom components. Use Tailwind for quick utilities and `cn()` from `clsx`/`tailwind-merge` to merge dynamic classes.
 2. **Prop Drilling:** Avoid deep prop drilling. Use Zustand if props need to go down more than 2-3 levels.
 3. **Data Mutation Pattern:** When mutating data (e.g., saving an event), validate the payload locally (`lib/validators`), call the API layer (`api/events`), and then optimistically update the Zustand store cache (`updateEventLocally`).
+4. **Component Modularity & Nesting:** Every component file must be modular and focused on rendering UI.
+   - If a component contains sub-components, modularize them into their own directory inside a nested `components/` directory (e.g., `ComponentName/components/SubComponent/index.tsx` + `SubComponent.module.css`).
+   - If a component has helper functions, calculations, or transformations, extract them into a dedicated `functions/` directory inside the component (e.g., `ComponentName/functions/calculateStats.ts`). Never bloat the main component file with inline sub-components or utility functions.
 
 ### SOLID Principles
 

@@ -51,7 +51,7 @@ Every new or fixed feature or page needs tests with `bun test`
 - Zustand stores (`store/`) hold state and optimistic updates only. No API calls inside actions.
 - Pages talk to hooks or stores, not `api/` directly.
 - Shared components in `components/` must not import `store/` or `api/`; take data via props or callbacks.
-- Complex components live in `PascalCase/index.tsx` + `PascalCase.module.css`.
+- Complex components live in `PascalCase/index.tsx` + `PascalCase.module.css`. Sub-components must be modularized into a nested `components/` directory (e.g. `PascalCase/components/SubComponent/`); helper functions must live in a nested `functions/` directory (e.g. `PascalCase/functions/`).
 - Mutation pattern: validate (`lib/validators`) → API wrapper → update store.
 
 ## UI rules
