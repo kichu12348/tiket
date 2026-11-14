@@ -36,8 +36,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
+import DateRangeBlock from "@/components/DateRangeBlock";
 import { format } from "date-fns";
+import { createPortal } from "react-dom";
 import styles from "./CouponsPanel.module.css";
 
 interface CouponsPanelProps {
@@ -439,166 +440,190 @@ export default function CouponsPanel({
         )}
       </div>
 
-      {/* Create / Edit Coupon Modal (Forms Page Standard) */}
-      {isModalOpen && (
-        <div className={styles.modalOverlay} onClick={handleCloseModal}>
-          <div
-            className={styles.modalShell}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            {/* Modal Header */}
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>
-                {editingCoupon ? "Edit Coupon" : "Create Coupon"}
-              </h3>
-              <button
-                type="button"
-                className={styles.closeBtn}
-                onClick={handleCloseModal}
-                aria-label="Close modal"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className={`${styles.modalBody} scrollbar`}>
-              {/* Coupon Code */}
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Coupon Code</label>
-                <Input
-                  type="text"
-                  placeholder="e.g. EARLYBIRD20"
-                  value={code}
-                  onChange={(e) =>
-                    setCode(
-                      e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""),
-                    )
-                  }
-                  className="font-mono uppercase tracking-wider"
-                  data-testid="coupon-code-input"
-                />
-              </div>
-
-              {/* Discount Type & Value */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Discount Type</label>
-                  <Select
-                    value={kind}
-                    onValueChange={(val) =>
-                      setKind(val as "percent" | "fixed")
-                    }
-                  >
-                    <SelectTrigger
-                      className="w-full"
-                      data-testid="coupon-kind-select"
+      {/* Create / Edit Coupon Modal (Forms Page Standard, Portaled to Body) */}
+      {isModalOpen &&
+        (typeof document !== "undefined"
+          ? createPortal(
+              <div className={styles.modalOverlay} onClick={handleCloseModal}>
+                <div
+                  className={styles.modalShell}
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  {/* Modal Header */}
+                  <div className={styles.modalHeader}>
+                    <h3 className={styles.modalTitle}>
+                      {editingCoupon ? "Edit Coupon" : "Create Coupon"}
+                    </h3>
+                    <button
+                      type="button"
+                      className={styles.closeBtn}
+                      onClick={handleCloseModal}
+                      aria-label="Close modal"
                     >
-                      <SelectValue placeholder="Discount Type" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1c1c1e] border-white/10 text-white z-[9999]">
-                      <SelectItem value="percent">Percentage (%)</SelectItem>
-                      <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                      <X size={18} />
+                    </button>
+                  </div>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>
-                    {kind === "percent"
-                      ? "Discount Value (%)"
-                      : "Discount Amount (₹)"}
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder={kind === "percent" ? "e.g. 20" : "e.g. 100"}
-                    value={discountValue}
-                    onChange={(e) => setDiscountValue(e.target.value)}
-                    data-testid="coupon-value-input"
-                  />
-                </div>
-              </div>
+                  {/* Modal Body */}
+                  <div className={`${styles.modalBody} scrollbar`}>
+                    {/* Coupon Code */}
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Coupon Code</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. EARLYBIRD20"
+                        value={code}
+                        onChange={(e) =>
+                          setCode(
+                            e.target.value
+                              .toUpperCase()
+                              .replace(/[^A-Z0-9_-]/g, ""),
+                          )
+                        }
+                        className="font-mono uppercase tracking-wider !rounded-[var(--radius-md)]"
+                        data-testid="coupon-code-input"
+                      />
+                    </div>
 
-              {/* Usage Limit */}
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Usage Limit (Optional)</label>
-                <Input
-                  type="number"
-                  min="1"
-                  placeholder="Leave empty for unlimited redemptions"
-                  value={maxUses}
-                  onChange={(e) => setMaxUses(e.target.value)}
-                  data-testid="coupon-max-uses-input"
-                />
-              </div>
+                    {/* Discount Type & Value */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className={styles.formGroup}>
+                        <label className={styles.label}>Discount Type</label>
+                        <Select
+                          value={kind}
+                          onValueChange={(val) =>
+                            setKind(val as "percent" | "fixed")
+                          }
+                        >
+                          <SelectTrigger
+                            className="w-full !rounded-[var(--radius-md)]"
+                            data-testid="coupon-kind-select"
+                          >
+                            <SelectValue placeholder="Discount Type" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#1c1c1e] border-white/10 text-white z-[9999]">
+                            <SelectItem value="percent">
+                              Percentage (%)
+                            </SelectItem>
+                            <SelectItem value="fixed">
+                              Fixed Amount (₹)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-              {/* Validity Period */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Valid From</label>
-                  <DateTimePicker
-                    value={startsAt}
-                    onChange={setStartsAt}
-                    placeholder="Start date & time"
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Valid Until</label>
-                  <DateTimePicker
-                    value={endsAt}
-                    onChange={setEndsAt}
-                    placeholder="Expiry date & time"
-                  />
-                </div>
-              </div>
+                      <div className={styles.formGroup}>
+                        <label className={styles.label}>
+                          {kind === "percent"
+                            ? "Discount Value (%)"
+                            : "Discount Amount (₹)"}
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder={
+                            kind === "percent" ? "e.g. 20" : "e.g. 100"
+                          }
+                          value={discountValue}
+                          onChange={(e) => setDiscountValue(e.target.value)}
+                          className="!rounded-[var(--radius-md)]"
+                          data-testid="coupon-value-input"
+                        />
+                      </div>
+                    </div>
 
-              {/* Active Toggle */}
-              <div className={styles.switchRow}>
-                <div className={styles.switchLabelBlock}>
-                  <span className={styles.switchTitle}>Active</span>
-                  <span className={styles.switchSubtext}>
-                    Enable attendees to redeem this code at checkout
-                  </span>
-                </div>
-                <Switch
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                  data-testid="coupon-active-switch"
-                />
-              </div>
-            </div>
+                    {/* Usage Limit */}
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>
+                        Usage Limit (Optional)
+                      </label>
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="Leave empty for unlimited redemptions"
+                        value={maxUses}
+                        onChange={(e) => setMaxUses(e.target.value)}
+                        className="!rounded-[var(--radius-md)]"
+                        data-testid="coupon-max-uses-input"
+                      />
+                    </div>
 
-            {/* Modal Footer */}
-            <div className={styles.modalFooter}>
-              <button
-                type="button"
-                className={styles.cancelBtn}
-                onClick={handleCloseModal}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.saveBtn}
-                onClick={handleSaveModal}
-                disabled={isSubmitting}
-                data-testid="coupon-save-btn"
-              >
-                {isSubmitting
-                  ? "Saving..."
-                  : editingCoupon
-                    ? "Update Coupon"
-                    : "Create Coupon"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                    {/* Validity Period (DateRangeBlock design from details page) */}
+                    <div className={styles.formGroup}>
+                      <div className="flex justify-between items-center">
+                        <label className={styles.label}>
+                          Validity Period (Optional)
+                        </label>
+                        {(startsAt || endsAt) && (
+                          <button
+                            type="button"
+                            className="text-xs text-white/50 hover:text-white transition-colors"
+                            onClick={() => {
+                              setStartsAt("");
+                              setEndsAt("");
+                            }}
+                          >
+                            Clear dates
+                          </button>
+                        )}
+                      </div>
+                      <DateRangeBlock
+                        startDate={startsAt}
+                        endDate={endsAt}
+                        hideTimezone={true}
+                        onStartDateChange={setStartsAt}
+                        onEndDateChange={setEndsAt}
+                      />
+                    </div>
+
+                    {/* Active Toggle */}
+                    <div className={styles.switchRow}>
+                      <div className={styles.switchLabelBlock}>
+                        <span className={styles.switchTitle}>Active</span>
+                        <span className={styles.switchSubtext}>
+                          Enable attendees to redeem this code at checkout
+                        </span>
+                      </div>
+                      <Switch
+                        checked={isActive}
+                        onCheckedChange={setIsActive}
+                        data-testid="coupon-active-switch"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className={styles.modalFooter}>
+                    <button
+                      type="button"
+                      className={styles.cancelBtn}
+                      onClick={handleCloseModal}
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.saveBtn}
+                      onClick={handleSaveModal}
+                      disabled={isSubmitting}
+                      data-testid="coupon-save-btn"
+                    >
+                      {isSubmitting
+                        ? "Saving..."
+                        : editingCoupon
+                          ? "Update Coupon"
+                          : "Create Coupon"}
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            )
+          : null)}
     </div>
   );
 }

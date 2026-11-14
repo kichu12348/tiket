@@ -184,6 +184,11 @@
   gap: 1rem;
 }
 
+.modalBody input,
+.modalBody button[role="combobox"] {
+  border-radius: var(--radius-md) !important;
+}
+
 .formGroup {
   display: flex;
   flex-direction: column;

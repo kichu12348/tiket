@@ -117,15 +117,12 @@ describe("EditDetailsPage Component", () => {
     mockToast.error.mockClear();
   });
 
-  test("1. Renders event title and DateTimePicker triggers for dates & times", () => {
+  test("1. Renders event title and DateRangeBlock for dates & times", () => {
     render(<EditDetailsPage />);
 
     expect(screen.getByPlaceholderText("Event Name")).toHaveValue("Tech Summit 2026");
-    expect(screen.getByText("Event Start Date & Time")).toBeInTheDocument();
-    expect(screen.getByText("Event End Date & Time")).toBeInTheDocument();
-    expect(screen.getByText("Registration Opens")).toBeInTheDocument();
-    expect(screen.getByText("Registration Deadline")).toBeInTheDocument();
-    expect(screen.getByText("Timezone")).toBeInTheDocument();
+    expect(screen.getByText("Event Date & Time")).toBeInTheDocument();
+    expect(screen.getByText("Registration Period")).toBeInTheDocument();
   });
 
   test("2. Successfully saves details when dates are valid", async () => {
@@ -148,13 +145,11 @@ describe("EditDetailsPage Component", () => {
     });
   });
 
-  test("3. Blocks save and shows error toast when endDate is before startDate", async () => {
+  test("3. Blocks save and shows error toast when required field is invalid", async () => {
     render(<EditDetailsPage />);
 
-    // Clear event-end-date via its clear button or manually trigger onChange to an earlier date
-    const clearBtns = screen.getAllByLabelText("Clear date");
-    // Clear the end date (second date picker)
-    fireEvent.click(clearBtns[1]);
+    const titleInput = screen.getByPlaceholderText("Event Name");
+    fireEvent.change(titleInput, { target: { value: "" } });
 
     const saveBtn = screen.getByRole("button", { name: /Save Changes/i });
     fireEvent.click(saveBtn);

@@ -6,24 +6,26 @@ import styles from "./DateRangeBlock.module.css";
 interface DateRangeBlockProps {
   startDate: string;
   endDate: string;
-  timezone: string;
+  timezone?: string;
   timezonePickerDisabled?: boolean;
+  hideTimezone?: boolean;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
-  onTimezoneChange: (tz: string) => void;
+  onTimezoneChange?: (tz: string) => void;
 }
 
 export default function DateRangeBlock({
   startDate,
   endDate,
-  timezone,
+  timezone = "UTC",
   timezonePickerDisabled = false,
+  hideTimezone = false,
   onStartDateChange,
   onEndDateChange,
   onTimezoneChange,
 }: DateRangeBlockProps) {
   return (
-    <div className={styles.block}>
+    <div className={`${styles.block} ${hideTimezone ? styles.noTimezone : ""}`}>
       {/* Left: timeline + inputs */}
       <div className={styles.inputsWrapper}>
         {/* Vertical connector */}
@@ -54,11 +56,13 @@ export default function DateRangeBlock({
       </div>
 
       {/* Right: timezone picker */}
-      <TimezonePicker
-        value={timezone}
-        onChange={onTimezoneChange}
-        disabled={timezonePickerDisabled}
-      />
+      {!hideTimezone && onTimezoneChange && (
+        <TimezonePicker
+          value={timezone}
+          onChange={onTimezoneChange}
+          disabled={timezonePickerDisabled}
+        />
+      )}
     </div>
   );
 }
