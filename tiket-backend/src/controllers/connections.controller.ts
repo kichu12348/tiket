@@ -4,7 +4,11 @@ import { emailConnections, events, uploads } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
 import { verifyEventPermission } from "../utils/permissions";
-import { deliverMail, saveMailConfig, type MailConfig } from "../services/mail.service";
+import {
+  deliverMail,
+  saveMailConfig,
+  type MailConfig,
+} from "../services/mail.service";
 import { downloadUpload, finalizeUpload } from "../services/storage.service";
 
 async function owner(request: FastifyRequest, eventId: string) {
