@@ -10,11 +10,17 @@ export const mailConfigSchema = {
     body: {
       type: "object",
       additionalProperties: false,
-      required: ["fromEmail"],
+      required: [
+        "fromEmail",
+        "host",
+        "port",
+        "secure",
+        "username",
+        "password",
+      ],
       properties: {
         ...from,
-        provider: { type: "string", enum: ["brevo", "smtp"], default: "smtp" },
-        apiKey: text,
+        provider: { type: "string", enum: ["smtp"], default: "smtp" },
         host: {
           type: "string",
           pattern: "^[a-zA-Z0-9][a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
@@ -25,17 +31,6 @@ export const mailConfigSchema = {
         username: text,
         password: text,
       },
-      allOf: [
-        {
-          if: { properties: { provider: { const: "brevo" } } },
-          then: {
-            required: ["apiKey"],
-          },
-          else: {
-            required: ["host", "port", "secure", "username", "password"],
-          },
-        },
-      ],
     },
   },
 };

@@ -30,7 +30,7 @@ export async function getMailConnection(
     .select({ id: emailConnections.userId })
     .from(emailConnections)
     .where(eq(emailConnections.userId, actor));
-  return { custom: Boolean(connection), defaultProvider: "brevo" };
+  return { custom: Boolean(connection), defaultProvider: "smtp" };
 }
 export async function putMailConnection(
   request: FastifyRequest<{ Params: { eventId: string }; Body: MailConfig }>,
@@ -38,8 +38,8 @@ export async function putMailConnection(
   const actor = await owner(request, request.params.eventId);
   const config = {
     ...request.body,
-    provider: request.body.provider || "smtp",
-  } as MailConfig;
+    provider: "smtp" as const,
+  };
   await saveMailConfig(actor, config);
   return { custom: true };
 }

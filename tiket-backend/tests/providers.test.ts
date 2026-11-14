@@ -1,4 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
+import nodemailer from "nodemailer";
 import { deliverMail } from "../src/services/mail.service";
 import { presignUpload } from "../src/services/storage.service";
 import {
@@ -14,36 +15,71 @@ import {
 import { HttpError } from "../src/utils/errors";
 
 describe("provider transport contracts without external delivery", () => {
-  test("Brevo uses provider delivery and a stable UUID mail key", async () => {
-    const oldKey = process.env.BREVO_API_KEY;
+  test("SMTP uses nodemailer delivery and a stable UUID mail key", async () => {
+    const oldServer = process.env.EMAIL_SMTP_SERVER;
+    const oldLogin = process.env.EMAIL_SMTP_LOGIN;
+    const oldKey = process.env.EMAIL_SMTP_KEY;
+    const oldPort = process.env.EMAIL_SMTP_PORT;
     const oldFrom = process.env.EMAIL_FROM;
-    process.env.BREVO_API_KEY = "fixture-brevo";
+
+    // Use a public IPv4 directly to avoid external DNS dependency during unit test
+    process.env.EMAIL_SMTP_SERVER = "1.2.3.4";
+    process.env.EMAIL_SMTP_LOGIN = "fixture-user";
+    process.env.EMAIL_SMTP_KEY = "fixture-pass";
+    process.env.EMAIL_SMTP_PORT = "587";
     process.env.EMAIL_FROM = "fixture@example.test";
-    const fetcher = spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ messageId: "fixture" }), { status: 201 }),
-    );
+
+    let sendMailCalled = false;
+    let mailOptions: any = null;
+    let transportClosed = false;
+
+    const createTransportSpy = spyOn(
+      nodemailer,
+      "createTransport",
+    ).mockReturnValue({
+      sendMail: async (options: any) => {
+        sendMailCalled = true;
+        mailOptions = options;
+        return { messageId: "fixture-msg-id" };
+      },
+      close: () => {
+        transportClosed = true;
+      },
+    } as any);
+
     try {
       await deliverMail(
         {
           recipientEmail: "attendee@example.test",
+          recipientName: "Attendee Name",
           subject: "Fixture",
           body: "<p>Fixture</p>",
         },
         undefined,
         "order:fixture:confirmation",
       );
-      const call = fetcher.mock.calls[0]!;
-      expect(call[0]).toBe("https://api.brevo.com/v3/smtp/email");
-      const body = JSON.parse(String(call[1]?.body)) as {
-        headers: { idempotencyKey: string };
-        to: { email: string }[];
-      };
-      expect(body.headers.idempotencyKey).toMatch(/^[a-f0-9-]{36}$/);
-      expect(body.to[0]?.email).toBe("attendee@example.test");
+
+      expect(createTransportSpy).toHaveBeenCalled();
+      expect(sendMailCalled).toBe(true);
+      expect(transportClosed).toBe(true);
+      expect(mailOptions.to).toBe("Attendee Name <attendee@example.test>");
+      expect(mailOptions.from).toEqual({
+        name: "Tiket",
+        address: "fixture@example.test",
+      });
+      expect(mailOptions.subject).toBe("Fixture");
+      expect(mailOptions.html).toBe("<p>Fixture</p>");
+      expect(mailOptions.messageId).toMatch(/^<[a-f0-9-]{36}@tiket\.local>$/);
     } finally {
-      fetcher.mockRestore();
-      if (oldKey === undefined) delete process.env.BREVO_API_KEY;
-      else process.env.BREVO_API_KEY = oldKey;
+      createTransportSpy.mockRestore();
+      if (oldServer === undefined) delete process.env.EMAIL_SMTP_SERVER;
+      else process.env.EMAIL_SMTP_SERVER = oldServer;
+      if (oldLogin === undefined) delete process.env.EMAIL_SMTP_LOGIN;
+      else process.env.EMAIL_SMTP_LOGIN = oldLogin;
+      if (oldKey === undefined) delete process.env.EMAIL_SMTP_KEY;
+      else process.env.EMAIL_SMTP_KEY = oldKey;
+      if (oldPort === undefined) delete process.env.EMAIL_SMTP_PORT;
+      else process.env.EMAIL_SMTP_PORT = oldPort;
       if (oldFrom === undefined) delete process.env.EMAIL_FROM;
       else process.env.EMAIL_FROM = oldFrom;
     }

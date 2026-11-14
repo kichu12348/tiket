@@ -387,13 +387,15 @@ describe("MVP Lifecycle & Backend Feature Gaps", () => {
   });
 
   describe("5. Dev Mode Mail Fallback in deliverMail", () => {
-    test("logs to console and completes cleanly without throwing 503 when BREVO_API_KEY is unset in dev/test", async () => {
+    test("logs to console and completes cleanly without throwing 503 when SMTP credentials are unset in dev/test", async () => {
       const originalEnv = process.env.NODE_ENV;
-      const originalApiKey = process.env.BREVO_API_KEY;
+      const originalServer = process.env.EMAIL_SMTP_SERVER;
+      const originalKey = process.env.EMAIL_SMTP_KEY;
 
       try {
         process.env.NODE_ENV = "development";
-        delete process.env.BREVO_API_KEY;
+        delete process.env.EMAIL_SMTP_SERVER;
+        delete process.env.EMAIL_SMTP_KEY;
 
         let loggedOutput = "";
         const originalLog = console.log;
@@ -417,7 +419,8 @@ describe("MVP Lifecycle & Backend Feature Gaps", () => {
         expect(loggedOutput).toContain("Your OTP is 123456");
       } finally {
         process.env.NODE_ENV = originalEnv;
-        if (originalApiKey) process.env.BREVO_API_KEY = originalApiKey;
+        if (originalServer) process.env.EMAIL_SMTP_SERVER = originalServer;
+        if (originalKey) process.env.EMAIL_SMTP_KEY = originalKey;
       }
     });
   });

@@ -25,8 +25,6 @@ export default function MailConnection({
   save,
   reset,
 }: MailConnectionProps) {
-  const [provider, setProvider] = useState<"brevo" | "smtp">("brevo");
-  const [apiKey, setApiKey] = useState("");
   const [fromEmail, setFromEmail] = useState("");
   const [fromName, setFromName] = useState("");
   const [host, setHost] = useState("");
@@ -51,56 +49,40 @@ export default function MailConnection({
       return;
     }
 
-    if (provider === "brevo") {
-      if (!apiKey.trim()) {
-        setError("Brevo API key is required.");
-        return;
-      }
-    } else {
-      const hostTrimmed = host.trim();
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(hostTrimmed)) {
-        setError("SMTP host must be a valid domain (e.g. smtp.postmarkapp.com).");
-        return;
-      }
-      const portNum = Number(port);
-      if (![465, 587, 2525].includes(portNum)) {
-        setError("SMTP port must be 465, 587, or 2525.");
-        return;
-      }
-      if (!username.trim()) {
-        setError("SMTP username is required.");
-        return;
-      }
-      if (!password) {
-        setError("SMTP password is required.");
-        return;
-      }
+    const hostTrimmed = host.trim();
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(hostTrimmed)) {
+      setError("SMTP host must be a valid domain (e.g. smtp.postmarkapp.com).");
+      return;
+    }
+    const portNum = Number(port);
+    if (![465, 587, 2525].includes(portNum)) {
+      setError("SMTP port must be 465, 587, or 2525.");
+      return;
+    }
+    if (!username.trim()) {
+      setError("SMTP username is required.");
+      return;
+    }
+    if (!password) {
+      setError("SMTP password is required.");
+      return;
     }
 
-    const config: MailConfig =
-      provider === "brevo"
-        ? {
-            provider,
-            apiKey: apiKey.trim(),
-            fromEmail: emailTrimmed,
-            fromName: fromName.trim() || undefined,
-          }
-        : {
-            provider,
-            host: host.trim(),
-            port: Number(port),
-            secure: port === "465",
-            username: username.trim(),
-            password,
-            fromEmail: emailTrimmed,
-            fromName: fromName.trim() || undefined,
-          };
+    const config: MailConfig = {
+      provider: "smtp",
+      host: host.trim(),
+      port: Number(port),
+      secure: port === "465",
+      username: username.trim(),
+      password,
+      fromEmail: emailTrimmed,
+      fromName: fromName.trim() || undefined,
+    };
 
     try {
       setIsSubmitting(true);
       const success = await save(config);
       if (success) {
-        setApiKey("");
         setPassword("");
         setError("");
       }
@@ -135,7 +117,7 @@ export default function MailConnection({
         </div>
         <div className={styles.statusBadge} data-custom={custom}>
           <span>
-            {custom ? "Custom SMTP / Brevo" : "Platform Brevo Default"}
+            {custom ? "Custom SMTP Connected" : "Platform Default SMTP"}
           </span>
         </div>
       </div>
@@ -154,24 +136,59 @@ export default function MailConnection({
       <form className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.formGrid}>
           <div className={styles.inputGroup}>
-            <label className={styles.inputLabel}>Delivery Provider</label>
+            <label className={styles.inputLabel}>SMTP Host</label>
+            <input
+              required
+              className={styles.input}
+              placeholder="e.g. smtp.postmarkapp.com"
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+              disabled={disabled || isSubmitting}
+            />
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label className={styles.inputLabel}>SMTP Port</label>
             <Select
-              value={provider}
-              onValueChange={(val) => {
-                if (val === "brevo" || val === "smtp") {
-                  setProvider(val);
-                }
-              }}
+              value={port}
+              onValueChange={setPort}
               disabled={disabled || isSubmitting}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="brevo">Brevo (Recommended)</SelectItem>
-                <SelectItem value="smtp">Custom SMTP Server</SelectItem>
+                <SelectItem value="587">587 · STARTTLS</SelectItem>
+                <SelectItem value="465">465 · TLS (SSL)</SelectItem>
+                <SelectItem value="2525">2525 · Alternative STARTTLS</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label className={styles.inputLabel}>SMTP Username</label>
+            <input
+              required
+              className={styles.input}
+              placeholder="Username / API login"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={disabled || isSubmitting}
+            />
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label className={styles.inputLabel}>SMTP Password</label>
+            <input
+              required
+              type="password"
+              autoComplete="new-password"
+              className={styles.input}
+              placeholder="••••••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={disabled || isSubmitting}
+            />
           </div>
 
           <div className={styles.inputGroup}>
@@ -197,82 +214,6 @@ export default function MailConnection({
               disabled={disabled || isSubmitting}
             />
           </div>
-
-          {provider === "brevo" ? (
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Brevo API Key</label>
-              <input
-                type="password"
-                autoComplete="new-password"
-                required
-                className={styles.input}
-                placeholder="xkeysib-..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                disabled={disabled || isSubmitting}
-              />
-            </div>
-          ) : (
-            <>
-              <div className={styles.inputGroup}>
-                <label className={styles.inputLabel}>SMTP Host</label>
-                <input
-                  required
-                  className={styles.input}
-                  placeholder="e.g. smtp.postmarkapp.com"
-                  value={host}
-                  onChange={(e) => setHost(e.target.value)}
-                  disabled={disabled || isSubmitting}
-                />
-              </div>
-
-              <div className={styles.inputGroup}>
-                <label className={styles.inputLabel}>SMTP Port</label>
-                <Select
-                  value={port}
-                  onValueChange={setPort}
-                  disabled={disabled || isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="587">587 · STARTTLS</SelectItem>
-                    <SelectItem value="465">465 · TLS (SSL)</SelectItem>
-                    <SelectItem value="2525">
-                      2525 · Alternative STARTTLS
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className={styles.inputGroup}>
-                <label className={styles.inputLabel}>SMTP Username</label>
-                <input
-                  required
-                  className={styles.input}
-                  placeholder="Username / API login"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={disabled || isSubmitting}
-                />
-              </div>
-
-              <div className={styles.inputGroup}>
-                <label className={styles.inputLabel}>SMTP Password</label>
-                <input
-                  required
-                  type="password"
-                  autoComplete="new-password"
-                  className={styles.input}
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={disabled || isSubmitting}
-                />
-              </div>
-            </>
-          )}
         </div>
 
         {error && (
@@ -301,7 +242,7 @@ export default function MailConnection({
             >
               <RotateCcw size={15} />
               <span>
-                {isResetting ? "Restoring..." : "Restore Platform Brevo"}
+                {isResetting ? "Restoring..." : "Restore Default SMTP"}
               </span>
             </button>
           )}

@@ -129,18 +129,16 @@ export interface SmtpMailPayload {
   fromEmail: string;
   fromName?: string;
 }
-export type MailConfig =
-  | { provider: "brevo"; apiKey: string; fromEmail: string; fromName?: string }
-  | {
-      provider: "smtp";
-      host: string;
-      port: number;
-      secure: boolean;
-      username: string;
-      password: string;
-      fromEmail: string;
-      fromName?: string;
-    };
+export type MailConfig = {
+  provider?: "smtp";
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName?: string;
+};
 
 export interface BlacklistEntry {
   id: string;
