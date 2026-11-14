@@ -109,6 +109,7 @@ export interface RequestPayoutPayload {
   notes?: string | null;
 }
 export interface Coupon {
+  id?: string;
   code: string;
   kind: "percent" | "fixed" | "access";
   value: number;
@@ -117,6 +118,16 @@ export interface Coupon {
   startsAt?: string | null;
   endsAt?: string | null;
   isActive: boolean;
+}
+
+export interface SmtpMailPayload {
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName?: string;
 }
 export type MailConfig =
   | { provider: "brevo"; apiKey: string; fromEmail: string; fromName?: string }

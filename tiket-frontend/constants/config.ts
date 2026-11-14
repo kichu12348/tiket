@@ -18,6 +18,8 @@ export const API_ENDPOINTS = {
     BANK_ACCOUNT: (id: string) => `/api/commerce/${id}/bank-account`,
     PAYOUTS: (id: string) => `/api/commerce/${id}/payouts`,
     COUPONS: (id: string) => `/api/commerce/${id}/coupons`,
+    COUPON_DELETE: (id: string, couponId: string) =>
+      `/api/commerce/${id}/coupons/${couponId}`,
     REFUND: (id: string, order: string) =>
       `/api/commerce/${id}/orders/${order}/refunds`,
     DECISION: (id: string, order: string) =>
@@ -31,6 +33,8 @@ export const API_ENDPOINTS = {
   },
   CONNECTIONS: {
     MAIL: (id: string) => `/api/connections/events/${id}/mail`,
+    EMAIL: (id: string) => `/api/connections/events/${id}/email`,
+    TEST_MAIL: (id: string) => `/api/connections/events/${id}/mail/test`,
     UPLOAD: "/api/connections/uploads",
     COMPLETE_UPLOAD: (id: string) => `/api/connections/uploads/${id}/complete`,
     FILE: (id: string) => `/api/connections/uploads/${id}`,

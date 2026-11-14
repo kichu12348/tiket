@@ -4,7 +4,7 @@ import { emailConnections, events, uploads } from "@db/schema";
 import { and, eq } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
 import { verifyEventPermission } from "../utils/permissions";
-import { saveMailConfig, type MailConfig } from "../services/mail.service";
+import { deliverMail, saveMailConfig, type MailConfig } from "../services/mail.service";
 import { downloadUpload, finalizeUpload } from "../services/storage.service";
 
 async function owner(request: FastifyRequest, eventId: string) {
@@ -32,8 +32,32 @@ export async function putMailConnection(
   request: FastifyRequest<{ Params: { eventId: string }; Body: MailConfig }>,
 ) {
   const actor = await owner(request, request.params.eventId);
-  await saveMailConfig(actor, request.body);
+  const config = {
+    ...request.body,
+    provider: request.body.provider || "smtp",
+  } as MailConfig;
+  await saveMailConfig(actor, config);
   return { custom: true };
+}
+export async function testMailConnection(
+  request: FastifyRequest<{
+    Params: { eventId: string };
+    Body: { testRecipient: string };
+  }>,
+) {
+  await owner(request, request.params.eventId);
+  const { eventId } = request.params;
+  const { testRecipient } = request.body;
+  await deliverMail(
+    {
+      recipientEmail: testRecipient,
+      recipientName: "Test Recipient",
+      subject: "Test Email from Tiket SMTP Connection",
+      body: "<p>Your custom SMTP connection has been verified successfully!</p>",
+    },
+    eventId,
+  );
+  return { success: true, message: "Test email delivered successfully." };
 }
 export async function deleteMailConnection(
   request: FastifyRequest<{ Params: { eventId: string } }>,

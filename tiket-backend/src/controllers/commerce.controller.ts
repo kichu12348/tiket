@@ -314,6 +314,36 @@ export async function getFinance(request: EventRequest) {
   };
 }
 
+export async function getBankAccount(request: EventRequest) {
+  const actor = await authorize(
+    request,
+    request.params.eventId,
+    "view_payments",
+  );
+  const [event] = await db
+    .select({ organizationId: events.organizationId })
+    .from(events)
+    .where(eq(events.id, request.params.eventId));
+  if (!event) throw new HttpError(404, "Event not found.");
+
+  const [bankRecord] = await db
+    .select()
+    .from(organizerBankAccounts)
+    .where(eq(organizerBankAccounts.userId, event.organizationId));
+
+  const isOwner = event.organizationId === actor;
+  const bankAccount = bankRecord
+    ? {
+        ...bankRecord,
+        accountNumber: isOwner
+          ? bankRecord.accountNumber
+          : maskAccountNumber(bankRecord.accountNumber),
+      }
+    : null;
+
+  return { bankAccount };
+}
+
 export async function updateBankAccount(
   request: FastifyRequest<{
     Params: { eventId: string };
@@ -771,6 +801,42 @@ export async function saveCoupon(
       .returning();
     await emitEvent(tx, request.params.eventId, "tickets.changed");
     return result;
+  });
+}
+
+export async function deleteCoupon(
+  request: FastifyRequest<{ Params: { eventId: string; couponId: string } }>,
+) {
+  await authorize(request, request.params.eventId, "manage_tickets");
+  const { eventId, couponId } = request.params;
+  return db.transaction(async (tx) => {
+    await lockEvent(tx, eventId);
+    let deletedRow = null;
+    const isUuid = /^[0-9a-fA-F-]{36}$/.test(couponId);
+    if (isUuid) {
+      const [d] = await tx
+        .delete(coupons)
+        .where(and(eq(coupons.id, couponId), eq(coupons.eventId, eventId)))
+        .returning();
+      deletedRow = d;
+    }
+    if (!deletedRow) {
+      const [dByCode] = await tx
+        .delete(coupons)
+        .where(
+          and(
+            eq(coupons.code, couponId.trim().toUpperCase()),
+            eq(coupons.eventId, eventId),
+          ),
+        )
+        .returning();
+      deletedRow = dByCode;
+    }
+    if (!deletedRow) {
+      throw new HttpError(404, "Coupon not found.");
+    }
+    await emitEvent(tx, eventId, "tickets.changed");
+    return { success: true };
   });
 }
 export async function getAvailability(

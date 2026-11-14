@@ -157,4 +157,18 @@ export const payoutSchema = {
   },
 };
 
+export const deleteCouponSchema = {
+  schema: {
+    params: {
+      type: "object",
+      required: ["eventId", "couponId"],
+      additionalProperties: false,
+      properties: {
+        eventId: uuid,
+        couponId: { type: "string", minLength: 1, maxLength: 64 },
+      },
+    },
+  },
+};
+
 

@@ -10,10 +10,10 @@ export const mailConfigSchema = {
     body: {
       type: "object",
       additionalProperties: false,
-      required: ["provider", "fromEmail"],
+      required: ["fromEmail"],
       properties: {
         ...from,
-        provider: { type: "string", enum: ["brevo", "smtp"] },
+        provider: { type: "string", enum: ["brevo", "smtp"], default: "smtp" },
         apiKey: text,
         host: {
           type: "string",
@@ -27,13 +27,28 @@ export const mailConfigSchema = {
       },
       allOf: [
         {
-          if: { properties: { provider: { const: "smtp" } } },
+          if: { properties: { provider: { const: "brevo" } } },
           then: {
+            required: ["apiKey"],
+          },
+          else: {
             required: ["host", "port", "secure", "username", "password"],
           },
-          else: { required: ["apiKey"] },
         },
       ],
+    },
+  },
+};
+export const testMailSchema = {
+  schema: {
+    params: eventParams,
+    body: {
+      type: "object",
+      additionalProperties: false,
+      required: ["testRecipient"],
+      properties: {
+        testRecipient: { type: "string", format: "email" },
+      },
     },
   },
 };

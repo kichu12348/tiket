@@ -29,7 +29,17 @@ Authoritative specification based on `tickets` and `forms` edit pages. All custo
 | **Modals** | `border: 1px solid var(--color-border-light);` | `background: var(--color-soft-bg); backdrop-filter: blur(var(--blur-lg));` |
 | **Inputs & Dividers** | `border: 1px solid rgba(255, 255, 255, 0.1);` | `background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm);` |
 
-### 4. Color & Status Tokens (`app/globals.css`)
+### 4. Modal Pattern (Forms Page Standard)
+| Modal Component | CSS Module Properties | Token / Description |
+| :--- | :--- | :--- |
+| **Overlay** | `position: fixed; inset: 0; background: var(--color-overlay); backdrop-filter: blur(var(--blur-md)); z-index: 1000;` | Dark blur backdrop |
+| **Shell** | `background: var(--color-soft-bg); backdrop-filter: blur(var(--blur-lg)); border: 1px solid var(--color-border-light); border-radius: var(--radius-lg); width: min(540px, 90vw); overflow: hidden;` | Translucent soft container |
+| **Header** | `padding: 1.15rem 1.25rem 0.65rem; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;` | Title (`1.15rem`) + close btn (`X size={18}`) |
+| **Body (Scroll)** | `padding: 1rem 1.25rem; max-height: min(70vh, 500px); overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;` | Form fields using `.scrollbar` |
+| **Input Groups** | `display: flex; flex-direction: column; gap: 0.45rem;` label: `0.85rem var(--color-text-secondary);` input: `background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;` | Standardized form field styling |
+| **Footer (Sticky)** | `padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.2); backdrop-filter: blur(var(--blur-md)); display: flex; justify-content: flex-end; gap: 0.75rem;` | Primary action (`solid white`), Secondary (`soft`) |
+
+### 5. Color & Status Tokens (`app/globals.css`)
 | Token | Variable | Value / Description | Usage |
 | :--- | :--- | :--- | :--- |
 | **Base Background** | `var(--color-bg-base)` | `#121316` | Body & page root background |
@@ -40,21 +50,13 @@ Authoritative specification based on `tickets` and `forms` edit pages. All custo
 | **Warning Status** | `var(--status-warning)` / `var(--status-warning-bg)` | `#ffc107` / `rgba(255, 193, 7, 0.15)` | Pending approval, custom questions icon |
 | **Danger Status** | `var(--status-danger)` / `var(--status-danger-bg)` | `rgba(255, 80, 80, 1)` / `rgba(255, 80, 80, 0.15)` | Declined, rejected, delete button hover |
 
-### 5. Typography Scale
-| Role | CSS Properties | Usage |
+### 6. Typography Scale & Allowed UI Primitives
+| Role | Tokens & Primitives | Usage & Rules |
 | :--- | :--- | :--- |
-| **Page Title** | `font-size: 1.5rem; font-weight: 600; color: var(--text-primary);` | Top view title (`.title`) |
-| **Page Subtitle** | `font-size: 0.95rem; font-weight: 400; color: var(--text-muted);` | Header description (`.subtitle`) |
-| **Section Header** | `font-size: 1.05rem; font-weight: 600; color: var(--text-primary);` | Section headers (`.sectionHeader`) |
-| **Body & Labels** | `font-size: 0.875rem - 0.925rem; color: var(--text-secondary);` | Inputs, table cells, descriptions |
-| **Monospace** | `font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase;` | Ticket codes (`EXO-482910`), UUIDs |
-
-### 6. Allowed UI Primitives & Icons
-| Category | Allowed Items | Rule |
-| :--- | :--- | :--- |
-| **Shadcn UI** | `Card`, `Badge`, `Button`, `Input`, `Tabs`, `Progress`, `Table`, `Select`, `Switch`, `Alert`, `Skeleton`, `Sheet`, `Popover`, `DropdownMenu` | Import strictly from `@/components/ui/*` |
-| **Icons** | `Coins`, `ShieldCheck`, `Check`, `X`, `ChevronLeft`, `ChevronDown`, `Clock`, `Calendar`, `Search`, `Filter`, `Download`, `User`, `QrCode`, `AlertCircle` | Import strictly from `lucide-react` |
-| **Back Nav** | `<ChevronLeft size={18} />` from `lucide-react` | NEVER use `ArrowLeft` |
+| **Headings** | `Page: 1.5rem 600; Section: 1.05rem 600; Modal: 1.15rem 600;` | Color: `var(--text-primary)` |
+| **Body / Mono** | `Body: 0.875rem-0.925rem; Mono: font-family: var(--font-mono); 0.75rem uppercase;` | Ticket codes (`EXO-482910`), UUIDs |
+| **Shadcn UI** | `Card, Badge, Button, Input, Tabs, Progress, Table, Select, Switch, Alert, Skeleton, Sheet, Popover, DropdownMenu, Dialog, Calendar` | Import strictly from `@/components/ui/*` |
+| **Icons & Nav** | `Coins, ShieldCheck, Check, X, ChevronLeft, ChevronDown, Clock, Calendar, Search, Filter, Download, User, QrCode, AlertCircle` | `lucide-react` only; Back: `<ChevronLeft size={18} />` (NEVER `ArrowLeft`) |
 
 ### 7. Hard "NEVER DO THIS" Rules for Sub-Agents
 - **NEVER create monolithic component files** — split sub-components into `components/` and helper logic into `functions/`.
