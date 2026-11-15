@@ -2,6 +2,10 @@
 
 import React from "react";
 import type { EmailTemplate } from "@/types/email";
+import {
+  compileEmailJsonToHtml,
+  createDefaultEmailDocument,
+} from "@/utils/emailJsonCompiler";
 import { Save, RotateCcw, Send, Users, Power, Trash2 } from "lucide-react";
 import type { EmailRichEditorRef } from "../EmailRichEditor";
 import EmailRichEditor from "../EmailRichEditor";
@@ -36,14 +40,25 @@ function EmailEditorContent({
 }: EmailEditorProps) {
   const [name, setName] = React.useState(template.name);
   const [subject, setSubject] = React.useState(template.subject);
-  const [body, setBody] = React.useState(template.body);
+  const initialHtml =
+    typeof template.body === "string"
+      ? template.body
+      : compileEmailJsonToHtml(template.body);
+  const [body, setBody] = React.useState(initialHtml);
   const [isActive, setIsActive] = React.useState(template.isActive);
 
   // Sync internal state when template changes
 
   const handleSave = async (e: React.SubmitEvent) => {
     e.preventDefault();
-    await onSave({ name, subject, body, isActive });
+    const defaultDoc = createDefaultEmailDocument();
+    defaultDoc.doc.content = [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: body }],
+      },
+    ];
+    await onSave({ name, subject, body: defaultDoc, isActive });
   };
 
   return (

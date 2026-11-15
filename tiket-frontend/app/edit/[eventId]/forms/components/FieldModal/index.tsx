@@ -479,8 +479,9 @@ function FieldModalContent({
 
           {/* Question input */}
           <div className={styles.formGroup}>
-            <label>Question</label>
+            <label htmlFor="field-modal-question">Question</label>
             <input
+              id="field-modal-question"
               type="text"
               className={styles.input}
               value={label}

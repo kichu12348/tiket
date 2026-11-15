@@ -1,218 +1,271 @@
-import { useState, useEffect, useCallback } from "react";
-import { useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
-import { TextStyle, Color, FontFamily } from "@tiptap/extension-text-style";
-import { Highlight } from "@tiptap/extension-highlight";
-import { Underline } from "@tiptap/extension-underline";
-import { TextAlign } from "@tiptap/extension-text-align";
-import { Placeholder } from "@tiptap/extension-placeholder";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import type { Editor } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
-import { EmailModelSerializer } from "@/lib/emailModelSerializer";
-import {
-  BlockStyleExtension,
-  ContainerExtension,
-  CustomLinkExtension,
-  CustomImageExtension,
-  CustomButtonExtension,
-} from "@/app/edit/[eventId]/emails/components/EmailPaperCanvas/extensions";
+import type { StyleObject } from "@/types/email";
 
-interface UseTipTapSyncProps {
-  initialContent: string;
+export interface TipTapSyncSnapshot {
+  activeBlockType: string;
+  activeContainerAttrs: Record<string, unknown> | null;
+  activeContainerPos: number | null;
+  activeNodeAttrs: Record<string, unknown>;
+  activeNodePos: number | null;
+  activeTextStyle: StyleObject;
+  isBold: boolean;
+  isItalic: boolean;
+  isUnderline: boolean;
+  activeLinkHref: string;
 }
 
-export function useTipTapSync({ initialContent }: UseTipTapSyncProps) {
-  const [, setSelectionTick] = useState(0);
+function computeSnapshot(editor: Editor | null): TipTapSyncSnapshot {
+  if (!editor || editor.isDestroyed) {
+    return {
+      activeBlockType: "paragraph",
+      activeContainerAttrs: null,
+      activeContainerPos: null,
+      activeNodeAttrs: {},
+      activeNodePos: null,
+      activeTextStyle: {},
+      isBold: false,
+      isItalic: false,
+      isUnderline: false,
+      activeLinkHref: "",
+    };
+  }
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        link: false,
-        underline: false,
-      }),
-      TextStyle,
-      Color,
-      FontFamily,
-      Highlight.configure({ multicolor: true }),
-      Underline,
-      TextAlign.configure({
-        types: ["heading", "paragraph", "container"],
-      }),
-      CustomLinkExtension.configure({
-        openOnClick: false,
-      }),
-      ContainerExtension,
-      CustomImageExtension,
-      CustomButtonExtension,
-      Placeholder.configure({
-        placeholder: "Click or select text here to start editing your email template...",
-      }),
-      BlockStyleExtension,
-    ],
-    content: EmailModelSerializer.deserializeHtmlToJson(initialContent),
-    immediatelyRender: false,
-    onTransaction: () => {
-      setSelectionTick((tick) => tick + 1);
-    },
-  });
+  const { state } = editor;
+  const { selection } = state;
+  const { $from } = selection;
 
-  // Safely sync external content updates
+  // 1. Resolve active block and container
+  let activeType = "paragraph";
+  let nodeAttrs: Record<string, unknown> = {};
+  let nodePos: number | null = null;
+  let containerAttrs: Record<string, unknown> | null = null;
+  let containerPos: number | null = null;
+
+  if (selection instanceof NodeSelection) {
+    activeType = selection.node.type.name;
+    nodeAttrs = selection.node.attrs || {};
+    nodePos = selection.from;
+  } else {
+    // Find deepest block node
+    for (let depth = $from.depth; depth > 0; depth--) {
+      const node = $from.node(depth);
+      const typeName = node.type.name;
+
+      if (typeName === "containerBlock" || typeName === "container") {
+        if (!containerAttrs) {
+          containerAttrs = node.attrs;
+          containerPos = $from.before(depth);
+        }
+      } else if (!nodePos && node.isBlock) {
+        activeType = typeName;
+        nodeAttrs = node.attrs;
+        nodePos = $from.before(depth);
+      }
+    }
+
+    if (!nodePos && $from.parent.isBlock) {
+      activeType = $from.parent.type.name;
+      nodeAttrs = $from.parent.attrs;
+      nodePos = $from.before();
+    }
+  }
+
+  // 2. Resolve text styles & marks
+  const textStyleAttrs = editor.getAttributes("textStyle") || {};
+  const textStyle: StyleObject = {
+    fontFamily: textStyleAttrs.fontFamily || undefined,
+    fontSize: textStyleAttrs.fontSize || undefined,
+    fontWeight: textStyleAttrs.fontWeight || undefined,
+    color: textStyleAttrs.color || undefined,
+    backgroundColor: textStyleAttrs.backgroundColor || undefined,
+    ...((textStyleAttrs.style as StyleObject) || {}),
+  };
+
+  const isBold =
+    String(textStyle.fontWeight || textStyleAttrs.fontWeight) === "700" ||
+    Number(textStyle.fontWeight || textStyleAttrs.fontWeight) >= 700 ||
+    editor.isActive("bold");
+
+  const isItalic = editor.isActive("italic");
+  const isUnderline = editor.isActive("underline");
+  const linkAttrs = editor.getAttributes("link") || {};
+  const activeLinkHref = linkAttrs.href || "";
+
+  return {
+    activeBlockType: activeType,
+    activeContainerAttrs: containerAttrs,
+    activeContainerPos: containerPos,
+    activeNodeAttrs: nodeAttrs,
+    activeNodePos: nodePos,
+    activeTextStyle: textStyle,
+    isBold,
+    isItalic,
+    isUnderline,
+    activeLinkHref,
+  };
+}
+
+export function useTipTapSync(editor: Editor | null) {
+  const [snapshot, setSnapshot] = useState<TipTapSyncSnapshot>(() =>
+    computeSnapshot(editor),
+  );
+
+  const refreshSnapshot = useCallback(() => {
+    setSnapshot(computeSnapshot(editor));
+  }, [editor]);
+
   useEffect(() => {
-    if (editor && initialContent) {
-      const currentSerialized = EmailModelSerializer.serializeJsonToHtml(
-        editor.getJSON(),
-      );
-      if (currentSerialized !== initialContent) {
-        const deserialized =
-          EmailModelSerializer.deserializeHtmlToJson(initialContent);
-        editor.commands.setContent(deserialized);
-      }
-    }
-  }, [initialContent, editor]);
-
-  // Active element attributes
-  const currentFontFamily =
-    (editor?.getAttributes("textStyle").fontFamily as string) || "__default__";
-  const currentFontWeight =
-    (editor?.getAttributes("textStyle").fontWeight as string) || "400";
-  const currentTextColor =
-    (editor?.getAttributes("textStyle").color as string) || "#111827";
-  const currentHighlightColor =
-    (editor?.getAttributes("highlight").color as string) || "";
-
-  // Bidirectional Bold <-> 700 Font Weight Sync
-  const isBoldActive =
-    Boolean(editor?.isActive("bold")) ||
-    currentFontWeight === "700" ||
-    currentFontWeight === "bold";
-
-  const toggleBoldAndWeight = useCallback(() => {
     if (!editor) return;
-    if (isBoldActive) {
-      editor
-        .chain()
-        .focus()
-        .unsetMark("bold")
-        .setMark("textStyle", { fontWeight: "400" })
-        .run();
-    } else {
-      editor
-        .chain()
-        .focus()
-        .setMark("bold")
-        .setMark("textStyle", { fontWeight: "700" })
-        .run();
-    }
-  }, [editor, isBoldActive]);
 
-  const setFontWeight = useCallback(
-    (val: string) => {
-      if (!editor) return;
-      const chain = editor.chain().focus().setMark("textStyle", { fontWeight: val });
-      if (val === "700" || val === "800" || val === "900") {
-        chain.setMark("bold");
-      } else {
-        chain.unsetMark("bold");
+    const handleUpdate = () => {
+      setSnapshot(computeSnapshot(editor));
+    };
+
+    editor.on("selectionUpdate", handleUpdate);
+    editor.on("transaction", handleUpdate);
+    editor.on("update", handleUpdate);
+
+    return () => {
+      editor.off("selectionUpdate", handleUpdate);
+      editor.off("transaction", handleUpdate);
+      editor.off("update", handleUpdate);
+    };
+  }, [editor]);
+
+  // Focus-safe mutator: updates style on active block or specified node type without stealing input focus
+  const updateBlockStyleLive = useCallback(
+    (stylePatch: StyleObject, targetNodeType?: string) => {
+      if (!editor || editor.isDestroyed) return;
+
+      const { state, view } = editor;
+      const { selection } = state;
+      const { tr } = state;
+
+      // Check if current NodeSelection matches
+      if (selection instanceof NodeSelection) {
+        if (!targetNodeType || selection.node.type.name === targetNodeType) {
+          const currentAttrs = selection.node.attrs;
+          const mergedStyle = {
+            ...((currentAttrs.style as StyleObject) || {}),
+            ...stylePatch,
+          };
+          tr.setNodeMarkup(selection.from, undefined, {
+            ...currentAttrs,
+            style: mergedStyle,
+          });
+          view.dispatch(tr);
+          return;
+        }
       }
-      chain.run();
+
+      // Look up tree for matching node
+      const { $from } = selection;
+      for (let depth = $from.depth; depth > 0; depth--) {
+        const node = $from.node(depth);
+        if (!targetNodeType || node.type.name === targetNodeType) {
+          const pos = $from.before(depth);
+          const currentAttrs = node.attrs;
+          const mergedStyle = {
+            ...((currentAttrs.style as StyleObject) || {}),
+            ...stylePatch,
+          };
+          tr.setNodeMarkup(pos, undefined, {
+            ...currentAttrs,
+            style: mergedStyle,
+          });
+          view.dispatch(tr);
+          return;
+        }
+      }
     },
     [editor],
   );
 
-  // Active CTA Button Detection
-  const isCtaSelected =
-    Boolean(editor?.state.selection instanceof NodeSelection) &&
-    (editor?.state.selection as NodeSelection).node.type.name === "ctaButton";
-  const isCtaActive = Boolean(editor?.isActive("ctaButton")) || isCtaSelected;
-  const activeCtaAttrs = editor?.getAttributes("ctaButton") || {};
+  // Focus-safe mutator: updates attributes without stealing input focus
+  const updateBlockAttrsLive = useCallback(
+    (attrsPatch: Record<string, unknown>, targetNodeType?: string) => {
+      if (!editor || editor.isDestroyed) return;
 
-  const currentCtaLabel = (activeCtaAttrs.label as string) || "";
-  const currentCtaUrl = (activeCtaAttrs.url as string) || "";
-  const currentCtaButtonColor = (activeCtaAttrs.buttonColor as string) || "#000000";
-  const currentCtaTextColor = (activeCtaAttrs.textColor as string) || "#ffffff";
-  const currentCtaBorderRadius = (activeCtaAttrs.borderRadius as string) || "8px";
-  const currentCtaAlignment =
-    (activeCtaAttrs.alignment as "left" | "center" | "right") || "center";
+      const { state, view } = editor;
+      const { selection } = state;
+      const { tr } = state;
 
-  const updateCtaAttributes = useCallback(
-    (attrs: Record<string, string>) => {
-      if (!editor) return;
-      editor.chain().focus().updateAttributes("ctaButton", attrs).run();
+      if (selection instanceof NodeSelection) {
+        if (!targetNodeType || selection.node.type.name === targetNodeType) {
+          tr.setNodeMarkup(selection.from, undefined, {
+            ...selection.node.attrs,
+            ...attrsPatch,
+          });
+          view.dispatch(tr);
+          return;
+        }
+      }
+
+      const { $from } = selection;
+      for (let depth = $from.depth; depth > 0; depth--) {
+        const node = $from.node(depth);
+        if (!targetNodeType || node.type.name === targetNodeType) {
+          const pos = $from.before(depth);
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            ...attrsPatch,
+          });
+          view.dispatch(tr);
+          return;
+        }
+      }
     },
     [editor],
   );
 
-  const insertCtaButton = useCallback(
-    (label: string, url: string) => {
-      if (!editor) return;
-      editor
-        .chain()
-        .focus()
-        .insertContent({
-          type: "ctaButton",
-          attrs: {
-            label: label.trim() || "Click Here",
-            url: url.trim() || "#",
-            buttonColor: "#000000",
-            textColor: "#ffffff",
-            borderRadius: "8px",
-            alignment: "center",
-          },
+  // Updates inline text style (or focuses editor if discrete button click)
+  const updateInlineStyleLive = useCallback(
+    (stylePatch: StyleObject, refocusEditor = false) => {
+      if (!editor || editor.isDestroyed) return;
+
+      const currentAttrs = editor.getAttributes("textStyle") || {};
+      const currentStyle = (currentAttrs.style as StyleObject) || {};
+      const mergedStyle = { ...currentStyle, ...stylePatch };
+
+      const chain = editor.chain();
+      if (refocusEditor) {
+        chain.focus();
+      }
+
+      chain
+        .setMark("textStyle", {
+          ...stylePatch,
+          style: mergedStyle,
         })
         .run();
     },
     [editor],
   );
 
-  // Active Image Detection
-  const isImageSelected =
-    Boolean(editor?.state.selection instanceof NodeSelection) &&
-    (editor?.state.selection as NodeSelection).node.type.name === "image";
-  const isImageActive = Boolean(editor?.isActive("image")) || isImageSelected;
-  const activeImageAttrs = editor?.getAttributes("image") || {};
-  const activeLinkAttrs = editor?.getAttributes("link") || {};
+  // Toggles bold weight between 700 and 400
+  const toggleBoldUnified = useCallback(() => {
+    const nextWeight = snapshot.isBold ? "400" : "700";
+    updateInlineStyleLive({ fontWeight: nextWeight }, true);
+  }, [snapshot.isBold, updateInlineStyleLive]);
 
-  const currentImageSrc = (activeImageAttrs.src as string) || "";
-  const currentImageAlt = (activeImageAttrs.alt as string) || "";
-  const currentImageWidth = (activeImageAttrs.width as string) || "";
-  const currentImageHref =
-    (activeImageAttrs.href as string) || (activeLinkAttrs.href as string) || "";
-  const currentImageAlignment =
-    (activeImageAttrs.alignment as "left" | "center" | "right") || "center";
-
-  const insertVariable = useCallback(
-    (varKey: string) => {
-      if (!editor) return;
-      editor.chain().focus().insertContent(` ${varKey} `).run();
-    },
-    [editor],
+  return useMemo(
+    () => ({
+      ...snapshot,
+      updateBlockStyleLive,
+      updateBlockAttrsLive,
+      updateInlineStyleLive,
+      toggleBoldUnified,
+      refreshSnapshot,
+    }),
+    [
+      snapshot,
+      updateBlockStyleLive,
+      updateBlockAttrsLive,
+      updateInlineStyleLive,
+      toggleBoldUnified,
+      refreshSnapshot,
+    ],
   );
-
-  return {
-    editor,
-    isBoldActive,
-    toggleBoldAndWeight,
-    setFontWeight,
-    currentFontFamily,
-    currentFontWeight,
-    currentTextColor,
-    currentHighlightColor,
-    isCtaActive,
-    currentCtaLabel,
-    currentCtaUrl,
-    currentCtaButtonColor,
-    currentCtaTextColor,
-    currentCtaBorderRadius,
-    currentCtaAlignment,
-    updateCtaAttributes,
-    insertCtaButton,
-    isImageActive,
-    currentImageSrc,
-    currentImageAlt,
-    currentImageWidth,
-    currentImageHref,
-    currentImageAlignment,
-    insertVariable,
-  };
 }
-
-export type TipTapSyncResult = ReturnType<typeof useTipTapSync>;

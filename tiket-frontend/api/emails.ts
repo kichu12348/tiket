@@ -94,7 +94,7 @@ export const sendTestEmail = async (
 export const sendBatchEmail = async (
   eventId: string,
   payload: SendBatchEmailPayload,
-): Promise<{ message: string; sentCount: number }> => {
+): Promise<{ message: string; sentCount?: number; queuedCount?: number }> => {
   const response = await api.post(
     API_ENDPOINTS.EMAILS.SEND_BATCH(eventId),
     payload,

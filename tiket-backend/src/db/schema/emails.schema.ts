@@ -16,6 +16,62 @@ import {
 import { users } from "./users.schema";
 import { events } from "./events.schema";
 
+export type StyleObject = Record<string, string | number | null | undefined>;
+
+export interface EmailNodeJSON {
+  type:
+    | "doc"
+    | "paragraph"
+    | "heading"
+    | "blockquote"
+    | "bulletList"
+    | "orderedList"
+    | "listItem"
+    | "containerBlock"
+    | "buttonBlock"
+    | "imageBlock"
+    | "variable"
+    | "text"
+    | "hardBreak";
+  attrs?: {
+    style?: StyleObject;
+    level?: 1 | 2 | 3;
+    href?: string;
+    src?: string;
+    alt?: string;
+    alignment?: "left" | "center" | "right" | "justify";
+    key?: string;
+    label?: string;
+    [key: string]: unknown;
+  };
+  marks?: Array<{
+    type:
+      | "textStyle"
+      | "link"
+      | "italic"
+      | "underline"
+      | "bold"
+      | "strike"
+      | "code"
+      | "highlight";
+    attrs?: {
+      style?: StyleObject;
+      href?: string;
+      target?: string;
+      color?: string;
+      [key: string]: unknown;
+    };
+  }>;
+  content?: EmailNodeJSON[];
+  text?: string;
+}
+
+export interface EmailDocumentJSON {
+  version: 1;
+  canvasStyle?: StyleObject;
+  doc: EmailNodeJSON;
+}
+
 export const emailTemplates = pgTable("email_templates", {
   id: uuid("id").primaryKey().$defaultFn(uuidv7),
   eventId: uuid("event_id")
@@ -24,7 +80,7 @@ export const emailTemplates = pgTable("email_templates", {
   name: varchar("name", { length: 255 }).notNull(),
   type: emailTemplateTypeEnum("type").notNull().default("custom"),
   subject: text("subject").notNull(),
-  body: text("body").notNull(),
+  body: jsonb("body").$type<EmailDocumentJSON>().notNull(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

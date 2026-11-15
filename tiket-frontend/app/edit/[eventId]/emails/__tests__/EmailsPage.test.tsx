@@ -57,7 +57,30 @@ const mockTemplates: EmailTemplate[] = [
     name: "Order Confirmation",
     type: "confirmation",
     subject: "Confirmed: Your Ticket to {{event.title}}",
-    body: `<div style="font-family: Arial, sans-serif; padding: 20px;"><p>Hello {{attendee.name}},</p><p>Your ticket for {{event.title}} is ready!</p><p>{{ticket.qrCodeUrl}}</p></div>`,
+    body: {
+      version: 1,
+      canvasStyle: { backgroundColor: "#ffffff", padding: "20px" },
+      doc: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Hello {{attendee.name}}, Your ticket for {{event.title}} is ready!",
+              },
+            ],
+          },
+          {
+            type: "paragraph",
+            content: [
+              { type: "variable", attrs: { key: "ticket.qrCodeUrl" } },
+            ],
+          },
+        ],
+      },
+    },
     isActive: true,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -68,7 +91,24 @@ const mockTemplates: EmailTemplate[] = [
     name: "Check-in Pass",
     type: "checkin",
     subject: "Welcome to {{event.title}}! You are checked in.",
-    body: `<div style="font-family: Arial, sans-serif; padding: 20px;"><p>Hi {{attendee.name}}, welcome to {{event.title}}!</p></div>`,
+    body: {
+      version: 1,
+      canvasStyle: { backgroundColor: "#ffffff", padding: "20px" },
+      doc: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Hi {{attendee.name}}, welcome to {{event.title}}!",
+              },
+            ],
+          },
+        ],
+      },
+    },
     isActive: true,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -79,7 +119,24 @@ const mockTemplates: EmailTemplate[] = [
     name: "VIP Invitation",
     type: "invitation",
     subject: "Special Invitation: {{event.title}}",
-    body: `<div style="font-family: Arial, sans-serif; padding: 20px;"><p>Join us at {{event.title}}</p></div>`,
+    body: {
+      version: 1,
+      canvasStyle: { backgroundColor: "#ffffff", padding: "20px" },
+      doc: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Join us at {{event.title}}",
+              },
+            ],
+          },
+        ],
+      },
+    },
     isActive: false,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -187,7 +244,19 @@ const fnResetEmailTemplate = mock(async (_evtId: string, tplId: string) => {
   return {
     ...original,
     subject: "Reset Subject Default",
-    body: "<p>Reset body default</p>",
+    body: {
+      version: 1,
+      canvasStyle: { backgroundColor: "#ffffff", padding: "20px" },
+      doc: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Reset body default" }],
+          },
+        ],
+      },
+    },
     updatedAt: new Date().toISOString(),
   };
 });
@@ -220,7 +289,19 @@ const fnCreateCustomEmailTemplate = mock(
     name: payload.name || "Custom Template",
     type: "custom" as const,
     subject: payload.subject || "Custom Subject",
-    body: payload.body || "<p>Custom Body</p>",
+    body: payload.body || {
+      version: 1,
+      canvasStyle: { backgroundColor: "#ffffff", padding: "20px" },
+      doc: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Custom Body" }],
+          },
+        ],
+      },
+    },
     isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -458,7 +539,7 @@ describe("EditEmailsPage Component", () => {
         recipientEmail: "developer@test.com",
         recipientName: "Dev Tester",
         subject: "Confirmed: Your Ticket to {{event.title}}",
-        body: expect.any(String),
+        body: expect.objectContaining({ version: 1 }),
         templateId: "tpl-confirm-1",
       });
       // Verifies logs were reloaded
@@ -492,7 +573,7 @@ describe("EditEmailsPage Component", () => {
         targetGroup: "checked_in",
         customEmails: [],
         subject: "Confirmed: Your Ticket to {{event.title}}",
-        body: expect.any(String),
+        body: expect.objectContaining({ version: 1 }),
         templateId: "tpl-confirm-1",
       });
     });

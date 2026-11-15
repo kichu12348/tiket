@@ -10,8 +10,15 @@ import { Underline } from "@tiptap/extension-underline";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { Placeholder } from "@tiptap/extension-placeholder";
 
-import type { EmailTemplate, AvailableVariables } from "@/types/email";
+import type {
+  EmailTemplate,
+  AvailableVariables,
+  EmailDocumentJSON,
+  EmailNodeJSON,
+  EmailDocumentNode,
+} from "@/types/email";
 import { EmailModelSerializer } from "@/lib/emailModelSerializer";
+import { createDefaultEmailDocument } from "@/utils/emailJsonCompiler";
 import {
   BlockStyleExtension,
   ContainerExtension,
@@ -19,6 +26,7 @@ import {
   CustomImageExtension,
   CustomButtonExtension,
   CustomTextStyleExtension,
+  VariableNodeExtension,
 } from "./extensions";
 import TopControlBar from "./components/TopControlBar";
 import SubjectBox from "./components/SubjectBox";
@@ -42,14 +50,6 @@ interface EmailPaperCanvasProps {
   isSaving: boolean;
   eventId?: string;
 }
-
-const DEFAULT_EMAIL_BODY = `
-<div style="font-family: Arial, Helvetica, sans-serif; background-color: #ffffff; color: #111827; max-width: 600px; margin: 0 auto; padding: 32px; border-radius: 12px; border: 1px solid #e5e7eb; box-sizing: border-box;">
-  <h1 style="font-size: 24px; color: #111827; margin-bottom: 20px;">You're invited to {{event.title}}!</h1>
-  <p style="font-size: 15px; color: #374151;">Hi {{attendee.name}},</p>
-  <p style="font-size: 15px; color: #374151;">We are delighted to invite you to join us at <strong>{{event.title}}</strong>.</p>
-</div>
-`.trim();
 
 function EmailPaperCanvasContent({
   template,
@@ -108,6 +108,7 @@ function EmailPaperCanvasContent({
       CustomImageExtension,
       CustomButtonExtension,
       CustomTextStyleExtension,
+      VariableNodeExtension,
       Placeholder.configure({
         placeholder: "Click or select text here to start editing your email template...",
       }),
@@ -126,9 +127,14 @@ function EmailPaperCanvasContent({
         },
       },
     },
-    content: EmailModelSerializer.deserializeHtmlToJson(
-      template.body || DEFAULT_EMAIL_BODY,
-    ),
+    content:
+      template.body &&
+      typeof template.body === "object" &&
+      "doc" in template.body
+        ? template.body.doc
+        : typeof template.body === "string"
+          ? EmailModelSerializer.deserializeHtmlToJson(template.body)
+          : createDefaultEmailDocument().doc,
     immediatelyRender: false,
     onTransaction: () => {
       setSelectionTick((tick) => tick + 1);
@@ -146,10 +152,18 @@ function EmailPaperCanvasContent({
   // Sync external template updates safely
   useEffect(() => {
     if (editor && template.body) {
-      const currentSerialized = EmailModelSerializer.serializeJsonToHtml(editor.getJSON());
-      if (currentSerialized !== template.body) {
-        const deserialized = EmailModelSerializer.deserializeHtmlToJson(template.body);
-        editor.commands.setContent(deserialized);
+      if (typeof template.body === "object" && "doc" in template.body) {
+        editor.commands.setContent(template.body.doc);
+      } else if (typeof template.body === "string") {
+        const currentSerialized = EmailModelSerializer.serializeJsonToHtml(
+          editor.getJSON() as unknown as EmailDocumentNode,
+        );
+        if (currentSerialized !== template.body) {
+          const deserialized = EmailModelSerializer.deserializeHtmlToJson(
+            template.body,
+          );
+          editor.commands.setContent(deserialized);
+        }
       }
     }
   }, [template.body, editor]);
@@ -158,12 +172,27 @@ function EmailPaperCanvasContent({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const compiledHtml = EmailModelSerializer.serializeJsonToHtml(editor.getJSON());
+    const docJson = editor.getJSON() as EmailNodeJSON;
+    const documentJson: EmailDocumentJSON = {
+      version: 1,
+      canvasStyle:
+        template.body &&
+        typeof template.body === "object" &&
+        "canvasStyle" in template.body
+          ? template.body.canvasStyle
+          : {
+              backgroundColor: "#f4f4f5",
+              contentBackgroundColor: "#ffffff",
+              contentWidth: "600px",
+              padding: "32px",
+            },
+      doc: docJson,
+    };
 
     await onSave({
       name,
       subject,
-      body: compiledHtml,
+      body: documentJson,
       isActive,
     });
   };
@@ -397,7 +426,9 @@ function EmailPaperCanvasContent({
   };
 
   const previewSubject = renderInterpolated(subject, false) || "(No Subject)";
-  const compiledRawHtml = EmailModelSerializer.serializeJsonToHtml(editor.getJSON());
+  const compiledRawHtml = EmailModelSerializer.serializeJsonToHtml(
+    editor.getJSON() as unknown as EmailDocumentNode,
+  );
   const previewBodyHtml =
     renderInterpolated(compiledRawHtml, true) ||
     "<p style='color:#9ca3af;'>No content written yet...</p>";

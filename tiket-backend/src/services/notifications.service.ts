@@ -18,8 +18,10 @@ import { v7 as uuidv7 } from "uuid";
 import {
   DEFAULT_TEMPLATES,
   interpolateTemplate,
+  compileEmailJsonToHtml,
   type InterpolationData,
 } from "../utils/emailService";
+import type { EmailDocumentJSON } from "@db/schema";
 
 export async function enqueueOrderEmail(
   tx: Transaction,
@@ -145,11 +147,25 @@ export async function enqueueOrderEmail(
 
     const rawSubject =
       template?.subject || `Registration confirmation: ${data.event.title}`;
-    const rawBody =
-      template?.body || `<p>Your registration is confirmed.</p>`;
+    let renderedBody = "";
+    if (
+      template?.body &&
+      typeof template.body === "object" &&
+      "doc" in (template.body as object)
+    ) {
+      renderedBody = compileEmailJsonToHtml(
+        template.body as EmailDocumentJSON,
+        interpolationData,
+      );
+    } else {
+      renderedBody = interpolateTemplate(
+        String(template?.body || "<p>Your registration is confirmed.</p>"),
+        interpolationData,
+      );
+    }
 
     subject = interpolateTemplate(rawSubject, interpolationData);
-    body = sanitizeEmailHtml(interpolateTemplate(rawBody, interpolationData));
+    body = sanitizeEmailHtml(renderedBody);
   } else {
     const status =
       kind === "pending"
@@ -286,11 +302,25 @@ export async function enqueueCheckInEmail(
 
   const rawSubject =
     activeTemplate.subject || `Welcome to ${data.event.title}!`;
-  const rawBody =
-    activeTemplate.body || `<p>Welcome! You have been checked in.</p>`;
+  let renderedBody = "";
+  if (
+    activeTemplate.body &&
+    typeof activeTemplate.body === "object" &&
+    "doc" in (activeTemplate.body as object)
+  ) {
+    renderedBody = compileEmailJsonToHtml(
+      activeTemplate.body as EmailDocumentJSON,
+      interpolationData,
+    );
+  } else {
+    renderedBody = interpolateTemplate(
+      String(activeTemplate.body || "<p>Welcome! You have been checked in.</p>"),
+      interpolationData,
+    );
+  }
 
   const subject = interpolateTemplate(rawSubject, interpolationData);
-  const body = sanitizeEmailHtml(interpolateTemplate(rawBody, interpolationData));
+  const body = sanitizeEmailHtml(renderedBody);
 
   await tx
     .insert(deliveryJobs)

@@ -5,6 +5,7 @@ import { useEmailStore } from "@/store/useEmailStore";
 import type {
   EmailTemplate,
   EmailTemplateType,
+  EmailDocumentJSON,
 } from "@/types/email";
 import {
   getEmailTemplates,
@@ -12,6 +13,8 @@ import {
   getAvailableVariables,
   updateEmailTemplate,
   resetEmailTemplate,
+  createEmailTemplate,
+  deleteEmailTemplate,
   sendTestEmail,
   sendBatchEmail,
   getEmailLogs,
@@ -30,6 +33,23 @@ import {
   type SmtpConfigInput,
 } from "@/validators/email.validator";
 import type { SmtpMailPayload } from "@/types/commerce";
+import { createDefaultEmailDocument } from "@/utils/emailJsonCompiler";
+
+function normalizeTemplateBody(body: unknown): EmailDocumentJSON {
+  if (body && typeof body === "object" && "doc" in body && "version" in body) {
+    return body as EmailDocumentJSON;
+  }
+  const defaultDoc = createDefaultEmailDocument();
+  if (typeof body === "string" && body.trim()) {
+    defaultDoc.doc.content = [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: body.trim() }],
+      },
+    ];
+  }
+  return defaultDoc;
+}
 
 export function useEmailManagement() {
   const {
@@ -46,6 +66,7 @@ export function useEmailManagement() {
     setSaving,
     setLogsLoading,
     setError,
+    markClean,
   } = useEmailStore();
 
   const loadInitialData = useCallback(
@@ -70,7 +91,16 @@ export function useEmailManagement() {
           getEmailLogs(eventId),
         ]);
 
-        const standardTemplates = tplData.filter((t) => t.type !== "custom");
+        const normalizedTemplates: EmailTemplate[] = (tplData || []).map(
+          (tpl) => ({
+            ...tpl,
+            body: normalizeTemplateBody(tpl.body),
+          }),
+        );
+
+        const standardTemplates = normalizedTemplates.filter(
+          (t) => t.type !== "custom",
+        );
         setTemplates(standardTemplates);
         setVariables(varData);
 
@@ -92,7 +122,10 @@ export function useEmailManagement() {
           setActiveType(match.type);
           try {
             const full = await getEmailTemplateById(eventId, match.id);
-            setLoadedTemplate(full);
+            setLoadedTemplate({
+              ...full,
+              body: normalizeTemplateBody(full.body),
+            });
           } catch {
             setLoadedTemplate(match);
           }
@@ -132,7 +165,10 @@ export function useEmailManagement() {
           try {
             setTemplateLoading(true);
             const full = await getEmailTemplateById(eventId, target.id);
-            setLoadedTemplate(full);
+            setLoadedTemplate({
+              ...full,
+              body: normalizeTemplateBody(full.body),
+            });
           } catch (err: unknown) {
             toast.error(getErrorMessage(err) || "Failed to load template");
           } finally {
@@ -143,7 +179,12 @@ export function useEmailManagement() {
         setSelectedTemplateId(null);
       }
     },
-    [setActiveType, setSelectedTemplateId, setTemplateLoading, setLoadedTemplate],
+    [
+      setActiveType,
+      setSelectedTemplateId,
+      setTemplateLoading,
+      setLoadedTemplate,
+    ],
   );
 
   const saveTemplate = useCallback(
@@ -152,11 +193,14 @@ export function useEmailManagement() {
       templateId: string,
       fields: Partial<EmailTemplate>,
     ) => {
+      const { loadedTemplatesMap } = useEmailStore.getState();
+      const existing = loadedTemplatesMap[templateId];
+
       const validation = validateEmailTemplateSave({
-        name: fields.name || "Template",
-        subject: fields.subject || "",
-        body: fields.body || "",
-        isActive: fields.isActive,
+        name: fields.name || existing?.name || "Template",
+        subject: fields.subject ?? existing?.subject ?? "",
+        body: fields.body || existing?.body || createDefaultEmailDocument(),
+        isActive: fields.isActive !== undefined ? fields.isActive : existing?.isActive,
       });
 
       if (!validation.success) {
@@ -171,7 +215,12 @@ export function useEmailManagement() {
           templateId,
           validation.data,
         );
-        updateTemplateLocally(updated.id, updated);
+        const normalized = {
+          ...updated,
+          body: normalizeTemplateBody(updated.body),
+        };
+        updateTemplateLocally(normalized.id, normalized);
+        markClean();
         toast.success("Email template saved successfully!");
         return true;
       } catch (err: unknown) {
@@ -181,7 +230,7 @@ export function useEmailManagement() {
         setSaving(false);
       }
     },
-    [setSaving, updateTemplateLocally],
+    [setSaving, updateTemplateLocally, markClean],
   );
 
   const toggleTemplateActive = useCallback(
@@ -195,9 +244,13 @@ export function useEmailManagement() {
         const updated = await updateEmailTemplate(eventId, templateId, {
           isActive: nextActive,
         });
-        updateTemplateLocally(updated.id, updated);
+        const normalized = {
+          ...updated,
+          body: normalizeTemplateBody(updated.body),
+        };
+        updateTemplateLocally(normalized.id, normalized);
         toast.success(
-          `Template marked as ${updated.isActive ? "active" : "inactive"}!`,
+          `Template marked as ${normalized.isActive ? "active" : "inactive"}!`,
         );
       } catch (err: unknown) {
         toast.error(
@@ -213,7 +266,12 @@ export function useEmailManagement() {
       try {
         setSaving(true);
         const resetted = await resetEmailTemplate(eventId, templateId);
-        updateTemplateLocally(resetted.id, resetted);
+        const normalized = {
+          ...resetted,
+          body: normalizeTemplateBody(resetted.body),
+        };
+        updateTemplateLocally(normalized.id, normalized);
+        markClean();
         toast.success("Template reset to system default email layout!");
         return true;
       } catch (err: unknown) {
@@ -223,7 +281,78 @@ export function useEmailManagement() {
         setSaving(false);
       }
     },
-    [setSaving, updateTemplateLocally],
+    [setSaving, updateTemplateLocally, markClean],
+  );
+
+  const createTemplate = useCallback(
+    async (eventId: string, type: EmailTemplateType, name: string) => {
+      try {
+        setSaving(true);
+        const defaultDoc = createDefaultEmailDocument();
+        const created = await createEmailTemplate(eventId, {
+          name,
+          type,
+          subject: `${name} - Update`,
+          body: defaultDoc,
+          isActive: true,
+        });
+        const normalized = {
+          ...created,
+          body: normalizeTemplateBody(created.body),
+        };
+        const { templates } = useEmailStore.getState();
+        setTemplates([...templates, normalized]);
+        setSelectedTemplateId(normalized.id);
+        setLoadedTemplate(normalized);
+        toast.success("New template created!");
+        return normalized;
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || "Failed to create template");
+        return null;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      setSaving,
+      setTemplates,
+      setSelectedTemplateId,
+      setLoadedTemplate,
+    ],
+  );
+
+  const deleteTemplate = useCallback(
+    async (eventId: string, templateId: string) => {
+      try {
+        setSaving(true);
+        await deleteEmailTemplate(eventId, templateId);
+        const { templates } = useEmailStore.getState();
+        const remaining = templates.filter((t) => t.id !== templateId);
+        setTemplates(remaining);
+        if (remaining.length > 0) {
+          const next = remaining[0]!;
+          setSelectedTemplateId(next.id);
+          setActiveType(next.type);
+        } else {
+          setSelectedTemplateId(null);
+        }
+        markClean();
+        toast.success("Template deleted successfully!");
+        return true;
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || "Failed to delete template");
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      setSaving,
+      setTemplates,
+      setSelectedTemplateId,
+      setActiveType,
+      markClean,
+    ],
   );
 
   const refetchLogs = useCallback(
@@ -349,6 +478,8 @@ export function useEmailManagement() {
     saveTemplate,
     toggleTemplateActive,
     resetTemplate,
+    createTemplate,
+    deleteTemplate,
     sendTest,
     sendBatch,
     resendLog,

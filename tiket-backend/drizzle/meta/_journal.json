@@ -57,6 +57,13 @@
       "when": 1794588924550,
       "tag": "0007_cool_micromacro",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794754991052,
+      "tag": "0008_slim_stryfe",
+      "breakpoints": true
     }
   ]
 }

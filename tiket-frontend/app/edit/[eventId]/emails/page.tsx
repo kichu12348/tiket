@@ -94,7 +94,7 @@ export default function EditEmailsPage() {
       recipientEmail,
       recipientName: recipientName || undefined,
       subject: currentTemplate.subject || "",
-      body: currentTemplate.body || "",
+      body: currentTemplate.body,
       templateId: currentTemplate.id,
     });
   };
@@ -108,7 +108,7 @@ export default function EditEmailsPage() {
       targetGroup,
       customEmails,
       subject: currentTemplate.subject || "",
-      body: currentTemplate.body || "",
+      body: currentTemplate.body,
       templateId: currentTemplate.id,
     });
   };

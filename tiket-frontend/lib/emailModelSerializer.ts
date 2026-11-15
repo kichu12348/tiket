@@ -696,6 +696,11 @@ export class EmailModelSerializer {
       return text;
     }
 
+    if (node.type === "variable") {
+      const key = (node.attrs?.key as string) || "";
+      return `{{${key}}}`;
+    }
+
     if (node.type === "ctaButton") {
       const label = (node.attrs?.label as string) || "Click Here";
       const url = (node.attrs?.url as string) || "#";

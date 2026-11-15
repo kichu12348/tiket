@@ -1,6 +1,7 @@
 import { describe, expect, test, spyOn } from "bun:test";
 import {
   interpolateTemplate,
+  compileEmailJsonToHtml,
   DEFAULT_TEMPLATES,
   type InterpolationData,
 } from "../src/utils/emailService";
@@ -197,7 +198,8 @@ describe("Email HTML Sanitization", () => {
 
   test("preserves all system default email templates styles and markup", () => {
     for (const template of DEFAULT_TEMPLATES) {
-      const sanitized = sanitizeEmailHtml(template.body);
+      const html = compileEmailJsonToHtml(template.body);
+      const sanitized = sanitizeEmailHtml(html);
       expect(sanitized.length).toBeGreaterThan(0);
       expect(sanitized).toContain("style=");
       expect(sanitized).not.toContain("<script");

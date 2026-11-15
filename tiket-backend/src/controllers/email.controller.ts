@@ -1,5 +1,4 @@
 import { verifyEventPermission } from "../utils/permissions";
-import { sanitizeEmailHtml } from "../utils/html";
 import { handleControllerError } from "../utils/errors";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import db from "@db";
@@ -21,8 +20,11 @@ import {
   sendEmail,
   DEFAULT_TEMPLATES,
   interpolateTemplate,
+  compileEmailJsonToHtml,
+  seedDefaultTemplatesForEvent,
   type InterpolationData,
 } from "../utils/emailService";
+import type { EmailDocumentJSON } from "@db/schema";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,6 +53,9 @@ export const getEmailTemplates = async (
         .status(403)
         .send({ error: "Unauthorized access to event templates." });
     }
+
+    // Seed default templates if missing or needing repair in the database
+    await seedDefaultTemplatesForEvent(eventId);
 
     const templateHeaders = await db
       .select({
@@ -124,7 +129,7 @@ export const createEmailTemplate = async (
         | "sorry"
         | "custom";
       subject: string;
-      body: string;
+      body: EmailDocumentJSON;
       isActive?: boolean;
     };
   }>,
@@ -152,7 +157,7 @@ export const createEmailTemplate = async (
         name: body.name,
         type: body.type || "custom",
         subject: body.subject,
-        body: sanitizeEmailHtml(body.body),
+        body: body.body,
         isActive: body.isActive !== undefined ? body.isActive : true,
       })
       .returning();
@@ -176,7 +181,7 @@ export const updateEmailTemplate = async (
         | "sorry"
         | "custom";
       subject?: string;
-      body?: string;
+      body?: EmailDocumentJSON;
       isActive?: boolean;
     };
   }>,
@@ -203,7 +208,7 @@ export const updateEmailTemplate = async (
     if (body.name !== undefined) payload.name = body.name;
     if (body.type !== undefined) payload.type = body.type;
     if (body.subject !== undefined) payload.subject = body.subject;
-    if (body.body !== undefined) payload.body = sanitizeEmailHtml(body.body);
+    if (body.body !== undefined) payload.body = body.body;
     if (body.isActive !== undefined) payload.isActive = body.isActive;
 
     const [updated] = await db
@@ -466,7 +471,7 @@ export const sendTestEmail = async (
       recipientEmail: string;
       recipientName?: string;
       subject: string;
-      body: string;
+      body: string | EmailDocumentJSON;
       templateId?: string;
     };
   }>,
@@ -536,6 +541,8 @@ export const sendTestEmail = async (
       ticket: {
         type: "General Admission (Test)",
         qrCode: "TEST-QR-123456",
+        qrCodeUrl:
+          "https://quickchart.io/qr?text=TEST-QR-123456&size=300&margin=1",
       },
       form: sampleForm,
     };
@@ -572,7 +579,7 @@ export const sendBatchEmail = async (
       targetGroup: "all" | "checked_in" | "not_checked_in" | "custom";
       customEmails?: string[];
       subject: string;
-      body: string;
+      body: string | EmailDocumentJSON;
       templateId?: string;
     };
   }>,
@@ -690,6 +697,9 @@ export const sendBatchEmail = async (
     }
 
     const jobsToInsert = recipients.map((r) => {
+      const qrUrl = r.qrCode
+        ? `https://quickchart.io/qr?text=${encodeURIComponent(r.qrCode)}&size=300&margin=1`
+        : "";
       const data: InterpolationData = {
         event: {
           title: eventObj?.title || "Event",
@@ -716,12 +726,21 @@ export const sendBatchEmail = async (
           type: r.ticketType || "Pass",
           id: r.passId,
           qrCode: r.qrCode,
+          qrCodeUrl: qrUrl,
         },
         form: r.formMap,
       };
 
       const interpolatedSubject = interpolateTemplate(subject, data);
-      const interpolatedBody = interpolateTemplate(body, data);
+      let interpolatedBody = "";
+      if (body && typeof body === "object" && "doc" in (body as object)) {
+        interpolatedBody = compileEmailJsonToHtml(
+          body as unknown as EmailDocumentJSON,
+          data,
+        );
+      } else {
+        interpolatedBody = interpolateTemplate(String(body), data);
+      }
 
       return {
         key: `batch:${eventId}:${uuidv7()}`,

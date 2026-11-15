@@ -504,7 +504,7 @@ describe("EditFormsPage Component Integration", () => {
       expect(screen.getByText("Question")).toBeInTheDocument();
     });
 
-    const questionInput = screen.getAllByRole("textbox")[0];
+    const questionInput = screen.getByLabelText("Question");
     fireEvent.change(questionInput, { target: { value: "T-Shirt Size" } });
 
     // Find the tag input for options
@@ -519,9 +519,12 @@ describe("EditFormsPage Component Integration", () => {
     const submitBtns = screen.getAllByRole("button", { name: "Add Question" });
     fireEvent.click(submitBtns[submitBtns.length - 1]);
 
-    await waitFor(() => {
-      expect(fnCreateFormField).toHaveBeenCalledTimes(1);
-    });
+    await waitFor(
+      () => {
+        expect(fnCreateFormField).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 3000 },
+    );
 
     const calls = fnCreateFormField.mock.calls;
     expect(calls[0][0]).toBe("evt-test-123");

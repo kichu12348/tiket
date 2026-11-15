@@ -1,13 +1,14 @@
 "use client";
 
 import React from "react";
-import type { AvailableVariables } from "@/types/email";
+import type { AvailableVariables, EmailDocumentJSON } from "@/types/email";
+import { compileEmailJsonToHtml } from "@/utils/emailJsonCompiler";
 import { Eye, Smartphone, Monitor } from "lucide-react";
 import styles from "./LivePreviewPane.module.css";
 
 interface LivePreviewPaneProps {
   subject: string;
-  body: string;
+  body: string | EmailDocumentJSON;
   variables: AvailableVariables | null;
 }
 
@@ -38,43 +39,54 @@ export default function LivePreviewPane({
     sampleValues["ticket.qrCodeUrl"] ||
     "https://quickchart.io/qr?text=TKT-884920-XYZ&size=300&margin=1";
 
-  const renderInterpolated = (templateStr: string, isBody = false) => {
+  const renderInterpolatedText = (templateStr: string) => {
     if (!templateStr) return "";
+    return templateStr.replace(
+      /\{\{\s*([^}]+?)\s*\}\}/g,
+      (match, key: string) => {
+        const trimmed = key.trim();
+        const fullKey = `{{${trimmed}}}`;
+        const val = sampleValues[fullKey] || sampleValues[trimmed];
+        return val !== undefined ? val : match;
+      },
+    );
+  };
 
-    // 1. Replace variables in src attributes first
-    let result = templateStr.replace(
-      /src=["']\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}["']/g,
-      (match, key) => {
-        const fullKey = `{{${key}}}`;
-        const val = sampleValues[fullKey] || sampleValues[key];
+  const previewSubject = renderInterpolatedText(subject) || "(No Subject)";
+
+  let previewBodyHtml = "";
+  if (body && typeof body === "object" && "doc" in body) {
+    previewBodyHtml = compileEmailJsonToHtml(body as EmailDocumentJSON, sampleValues);
+  } else if (typeof body === "string") {
+    let result = body.replace(
+      /src=["']\{\{\s*([^}]+?)\s*\}\}["']/g,
+      (_match, key: string) => {
+        const trimmed = key.trim();
+        const fullKey = `{{${trimmed}}}`;
+        const val = sampleValues[fullKey] || sampleValues[trimmed];
         return `src="${val || qrUrl}"`;
       },
     );
 
-    // 2. Replace general {{variable}} placeholders
     result = result.replace(
-      /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g,
-      (match, key) => {
-        if (key === "ticket.qrCodeUrl") {
-          // If in body outside an img tag, render as an actual QR code image
-          if (isBody) {
-            return `<img src="${qrUrl}" alt="Ticket QR Code" width="160" height="160" style="display: block; margin: 16px auto; max-width: 160px; border-radius: 8px;" />`;
-          }
-          return qrUrl;
+      /\{\{\s*([^}]+?)\s*\}\}/g,
+      (match, key: string) => {
+        const trimmed = key.trim();
+        if (trimmed === "ticket.qrCodeUrl") {
+          return `<img src="${qrUrl}" alt="Ticket QR Code" width="160" height="160" style="display: block; margin: 16px auto; max-width: 160px; border-radius: 8px;" />`;
         }
-        const fullKey = `{{${key}}}`;
-        const val = sampleValues[fullKey] || sampleValues[key];
+        const fullKey = `{{${trimmed}}}`;
+        const val = sampleValues[fullKey] || sampleValues[trimmed];
         return val !== undefined ? val : match;
       },
     );
-
-    return result;
-  };
-
-  const previewSubject = renderInterpolated(subject, false) || "(No Subject)";
-  const previewBodyHtml =
-    renderInterpolated(body, true) ||
-    "<p style='color: rgba(255,255,255,0.4);'>No template content written yet...</p>";
+    previewBodyHtml =
+      result ||
+      "<p style='color: rgba(255,255,255,0.4);'>No template content written yet...</p>";
+  } else {
+    previewBodyHtml =
+      "<p style='color: rgba(255,255,255,0.4);'>No template content written yet...</p>";
+  }
 
   return (
     <div className={styles.container}>
