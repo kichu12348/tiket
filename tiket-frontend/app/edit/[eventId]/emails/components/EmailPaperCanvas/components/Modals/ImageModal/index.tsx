@@ -71,6 +71,16 @@ export default function ImageModal({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (imageUrl.trim()) {
+        handleInsertImage();
+      }
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -116,6 +126,7 @@ export default function ImageModal({
             placeholder="e.g. https://example.com/banner.png"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
             autoFocus
             required
           />
@@ -131,6 +142,7 @@ export default function ImageModal({
             placeholder="e.g. https://example.com or {{event.url}}"
             value={imageLinkUrl}
             onChange={(e) => setImageLinkUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
           <span className={styles.inspectorInstructionText}>
             When set, recipients clicking this image in their email will open
@@ -149,6 +161,7 @@ export default function ImageModal({
               placeholder="e.g. Event Header Banner"
               value={imageAlt}
               onChange={(e) => setImageAlt(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
           </div>
           <div className={styles.formGroup}>
@@ -159,6 +172,7 @@ export default function ImageModal({
               placeholder="e.g. 100% or 300px"
               value={imageWidth}
               onChange={(e) => setImageWidth(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
           </div>
         </div>

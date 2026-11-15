@@ -23,6 +23,16 @@ export default function CtaModal({
   setCtaUrl,
   handleInsertCtaButton,
 }: CtaModalProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (ctaLabel.trim() && ctaUrl.trim()) {
+        handleInsertCtaButton();
+      }
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -44,6 +54,7 @@ export default function CtaModal({
             placeholder="e.g. View Your Digital Pass"
             value={ctaLabel}
             onChange={(e) => setCtaLabel(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </div>
 
@@ -55,6 +66,7 @@ export default function CtaModal({
             placeholder="e.g. {{event.passUrl}} or https://..."
             value={ctaUrl}
             onChange={(e) => setCtaUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </div>
 

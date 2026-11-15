@@ -181,6 +181,14 @@
   margin-bottom: 0.5rem;
 }
 
+.tiptapEditor :global(.ProseMirror h3) {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+
 .tiptapEditor :global(.ProseMirror blockquote) {
   border-left: 3px solid #e5e7eb;
   padding-left: 1rem;

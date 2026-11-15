@@ -6,7 +6,7 @@ export class EmailModelSerializer {
   /**
    * Compiles a structured JSON Document Tree into email-ready inline HTML with permanent footer.
    */
-  public static serializeJsonToHtml(node: EmailDocumentNode): string {
+  public static serializeJsonToHtml(node: EmailDocumentNode, supportEmail: string = "support@tiket.com"): string {
     if (!node) return "";
 
     if (node.type === "doc" && node.content) {
@@ -15,11 +15,11 @@ export class EmailModelSerializer {
         .join("");
 
       return `
-<div style="font-family: Arial, Helvetica, sans-serif; background-color: #ffffff; color: #111827; max-width: 600px; margin: 0 auto; padding: 32px; border-radius: 12px; border: 1px solid #e5e7eb; box-sizing: border-box;">
+<div data-tiket-wrapper="true" style="font-family: Arial, Helvetica, sans-serif; background-color: #ffffff; color: #111827; max-width: 600px; margin: 0 auto; padding: 32px; border-radius: 12px; border: 1px solid #e5e7eb; box-sizing: border-box;">
   ${innerHtml}
-  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0 20px 0;" />
-  <div style="text-align: center; color: #6b7280; font-size: 13px; line-height: 1.5;">
-    <p style="margin: 0 0 8px 0;">If you have any questions or queries regarding this event, feel free to reply directly to this email or reach out to us at <a href="mailto:support@tiket.com" style="color: #2563eb; text-decoration: underline;">support@tiket.com</a>.</p>
+  <hr data-tiket-footer="true" style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0 20px 0;" />
+  <div data-tiket-footer="true" style="text-align: center; color: #6b7280; font-size: 13px; line-height: 1.5;">
+    <p style="margin: 0 0 8px 0;">If you have any questions or queries regarding this event, feel free to reply directly to this email or reach out to us at <a href="mailto:${this.escapeAttribute(supportEmail)}" style="color: #2563eb; text-decoration: underline;">${this.escapeHtml(supportEmail)}</a>.</p>
     <p style="margin: 0; font-size: 12px; color: #9ca3af;">Sent via <strong>Tiket Event Platform</strong></p>
   </div>
 </div>
@@ -81,10 +81,9 @@ export class EmailModelSerializer {
         this.isOuterEmailWrapper(singleChild)
       ) {
         if (singleChild.tagName === "TABLE") {
-          const cells = singleChild.querySelectorAll("td");
-          if (cells.length > 0) {
-            const innermost = cells[cells.length - 1];
-            if (innermost) targetContainer = innermost;
+          const cells = Array.from(singleChild.querySelectorAll("td"));
+          if (cells.length === 1) {
+            targetContainer = cells[0];
           } else {
             targetContainer = singleChild;
           }
@@ -130,18 +129,27 @@ export class EmailModelSerializer {
   }
 
   private static isOuterEmailWrapper(el: HTMLElement): boolean {
+    if (el.getAttribute("data-tiket-wrapper") === "true") return true;
     const style = (el.getAttribute("style") || "").toLowerCase();
     const hasMaxWidth = style.includes("max-width") || style.includes("width: 600") || style.includes("width:600");
     const hasCenterMargin = style.includes("margin: 0 auto") || style.includes("margin:0 auto");
-    return hasMaxWidth || hasCenterMargin;
+    return hasMaxWidth && hasCenterMargin;
   }
 
   private static isPermanentFooterElement(el: HTMLElement): boolean {
+    if (el.getAttribute("data-tiket-footer") === "true") {
+      return true;
+    }
     const text = el.textContent || "";
-    if (
+    const hasBranding =
       text.includes("Sent via Tiket Event Platform") ||
-      (text.includes("support@tiket.com") && text.includes("feel free to reply directly"))
-    ) {
+      text.includes("Tiket Event Platform");
+    const hasSupport =
+      (text.includes("support@tiket.com") &&
+        text.includes("feel free to reply directly")) ||
+      !!el.querySelector('a[href*="support@tiket.com"]');
+
+    if (hasBranding && hasSupport) {
       return true;
     }
     // Also ignore hr right before the footer
@@ -155,12 +163,10 @@ export class EmailModelSerializer {
   }
 
   private static parseElementToNode(el: HTMLElement): EmailDocumentNode | EmailDocumentNode[] | null {
-    // Check if element is a CTA button container or anchor
-    const isExplicitCta =
-      el.getAttribute("data-type") === "cta-button" ||
-      el.querySelector('[data-type="cta-button"]') !== null;
-
-    const anchorChild = el.tagName === "A" ? el : el.querySelector("a");
+    // Check if element itself is a CTA button container or anchor
+    const hasExplicitCtaAttr = el.getAttribute("data-type") === "cta-button";
+    const isAnchorTag = el.tagName === "A";
+    const anchorChild = isAnchorTag ? el : el.querySelector("a");
     const isButtonStyledAnchor =
       anchorChild &&
       (anchorChild.getAttribute("data-type") === "cta-button" ||
@@ -168,7 +174,26 @@ export class EmailModelSerializer {
         (anchorChild.style.padding &&
           (anchorChild.style.backgroundColor || anchorChild.style.color)));
 
-    if (isExplicitCta || isButtonStyledAnchor) {
+    // Only treat el directly as a CTA button if:
+    // 1. el explicitly has data-type="cta-button"
+    // 2. el is an <a> tag that is button-styled
+    // 3. el is a wrapper div or p whose ONLY element child is a button-styled anchor and has no other block children or text
+    let isCtaButtonNode = false;
+    if (hasExplicitCtaAttr) {
+      isCtaButtonNode = true;
+    } else if (isAnchorTag && isButtonStyledAnchor) {
+      isCtaButtonNode = true;
+    } else if (
+      (el.tagName === "DIV" || el.tagName === "P") &&
+      isButtonStyledAnchor &&
+      el.children.length === 1 &&
+      el.firstElementChild === anchorChild &&
+      !el.textContent?.replace(anchorChild.textContent || "", "").trim()
+    ) {
+      isCtaButtonNode = true;
+    }
+
+    if (isCtaButtonNode) {
       const anchor = anchorChild || el;
       const label =
         anchor.textContent?.trim() ||
@@ -193,6 +218,14 @@ export class EmailModelSerializer {
       const alignment = (el.getAttribute("data-align") ||
         el.style.textAlign ||
         "center") as "left" | "center" | "right";
+      const fontSize =
+        el.getAttribute("data-font-size") ||
+        anchor.style.fontSize ||
+        "15px";
+      const fontWeight =
+        el.getAttribute("data-font-weight") ||
+        anchor.style.fontWeight ||
+        "600";
 
       return {
         type: "ctaButton",
@@ -203,6 +236,8 @@ export class EmailModelSerializer {
           textColor,
           borderRadius,
           alignment,
+          fontSize,
+          fontWeight,
         },
       };
     }
@@ -259,12 +294,32 @@ export class EmailModelSerializer {
       case "DIV":
       case "SECTION": {
         const hasBlockChildren = Array.from(el.children).some((c) =>
-          ["P", "H1", "H2", "H3", "H4", "H5", "H6", "DIV", "UL", "OL", "BLOCKQUOTE", "HR"].includes(
-            c.tagName.toUpperCase(),
-          ),
+          [
+            "P",
+            "H1",
+            "H2",
+            "H3",
+            "H4",
+            "H5",
+            "H6",
+            "DIV",
+            "UL",
+            "OL",
+            "BLOCKQUOTE",
+            "HR",
+            "TABLE",
+            "PRE",
+          ].includes(c.tagName.toUpperCase()) ||
+          c.getAttribute("data-type") === "cta-button"
         );
 
-        if (hasBlockChildren) {
+        const isStyledContainer =
+          Boolean(attrs.backgroundColor) ||
+          Boolean(attrs.borderWidth) ||
+          Boolean(attrs.borderColor) ||
+          Boolean(attrs.padding);
+
+        if (hasBlockChildren || isStyledContainer) {
           const childBlocks: EmailDocumentNode[] = [];
           for (const c of Array.from(el.childNodes)) {
             if (c.nodeType === 3) {
@@ -282,6 +337,9 @@ export class EmailModelSerializer {
                 else childBlocks.push(parsed);
               }
             }
+          }
+          if (childBlocks.length === 0) {
+            childBlocks.push({ type: "paragraph", content: [] });
           }
           return {
             type: "container",
@@ -315,8 +373,42 @@ export class EmailModelSerializer {
       }
 
       case "BLOCKQUOTE": {
+        const hasBlockChildren = Array.from(el.children).some((c) =>
+          [
+            "P",
+            "H1",
+            "H2",
+            "H3",
+            "H4",
+            "H5",
+            "H6",
+            "DIV",
+            "UL",
+            "OL",
+            "BLOCKQUOTE",
+            "HR",
+          ].includes(c.tagName.toUpperCase())
+        );
+        let content: EmailDocumentNode[];
+        if (hasBlockChildren) {
+          content = this.extractBlockNodes(el);
+        } else {
+          const inline = this.parseInlineContent(el);
+          content = [{ type: "paragraph", content: inline }];
+        }
+        if (content.length === 0) {
+          content = [{ type: "paragraph", content: [] }];
+        }
         return {
           type: "blockquote",
+          attrs,
+          content,
+        };
+      }
+
+      case "PRE": {
+        return {
+          type: "codeBlock",
           attrs,
           content: this.parseInlineContent(el),
         };
@@ -384,7 +476,10 @@ export class EmailModelSerializer {
   private static parseImageElement(imgEl: HTMLElement, wrapperEl?: HTMLElement): EmailDocumentNode {
     const src = imgEl.getAttribute("src") || "";
     const alt = imgEl.getAttribute("alt") || "";
-    const width = imgEl.getAttribute("width") || imgEl.style.width || "";
+    const rawWidth = imgEl.style.width || imgEl.getAttribute("width") || "";
+    const width = /^\d+(\.\d+)?$/.test(rawWidth.trim())
+      ? `${rawWidth.trim()}px`
+      : rawWidth.trim();
 
     let alignment: "left" | "center" | "right" = "center";
     const dataAlign = imgEl.getAttribute("data-align");
@@ -469,6 +564,15 @@ export class EmailModelSerializer {
       const tag = node.tagName.toUpperCase();
       const currentMarks = [...activeMarks];
 
+      if (tag === "BR") {
+        inlineNodes.push({ type: "hardBreak" });
+        return;
+      }
+
+      if (tag === "CODE") {
+        currentMarks.push({ type: "code" });
+      }
+
       if (tag === "STRONG" || tag === "B") {
         currentMarks.push({ type: "bold" });
       } else if (tag === "EM" || tag === "I") {
@@ -551,7 +655,11 @@ export class EmailModelSerializer {
     return attrs;
   }
 
-  private static renderNode(node: EmailDocumentNode): string {
+  private static renderNode(node: EmailDocumentNode, parentType?: string): string {
+    if (node.type === "hardBreak") {
+      return "<br />";
+    }
+
     if (node.type === "text" && node.text) {
       let text = this.escapeHtml(node.text);
       if (node.marks) {
@@ -564,22 +672,24 @@ export class EmailModelSerializer {
             text = `<span style="text-decoration: underline;">${text}</span>`;
           } else if (mark.type === "strike") {
             text = `<span style="text-decoration: line-through;">${text}</span>`;
+          } else if (mark.type === "code") {
+            text = `<code style="background-color: #f3f4f6; padding: 2px 4px; border-radius: 4px; font-size: 85%; font-family: monospace;">${text}</code>`;
           } else if (mark.type === "textStyle") {
             const styles: string[] = [];
-            if (mark.attrs?.color) styles.push(`color: ${mark.attrs.color}`);
-            if (mark.attrs?.fontFamily) styles.push(`font-family: ${mark.attrs.fontFamily}`);
-            if (mark.attrs?.fontWeight) styles.push(`font-weight: ${mark.attrs.fontWeight}`);
-            if (mark.attrs?.fontSize) styles.push(`font-size: ${mark.attrs.fontSize}`);
+            if (mark.attrs?.color) styles.push(`color: ${this.escapeAttribute(mark.attrs.color as string)}`);
+            if (mark.attrs?.fontFamily) styles.push(`font-family: ${this.escapeAttribute(mark.attrs.fontFamily as string)}`);
+            if (mark.attrs?.fontWeight) styles.push(`font-weight: ${this.escapeAttribute(mark.attrs.fontWeight as string)}`);
+            if (mark.attrs?.fontSize) styles.push(`font-size: ${this.escapeAttribute(mark.attrs.fontSize as string)}`);
             if (styles.length > 0) {
               text = `<span style="${styles.join("; ")}">${text}</span>`;
             }
           } else if (mark.type === "highlight") {
             const bg = (mark.attrs?.color as string) || "#fef08a";
-            text = `<span style="background-color: ${bg}; padding: 2px 4px; border-radius: 3px;">${text}</span>`;
+            text = `<span style="background-color: ${this.escapeAttribute(bg)}; padding: 2px 4px; border-radius: 3px;">${text}</span>`;
           } else if (mark.type === "link" && mark.attrs?.href) {
             const customStyle = (mark.attrs.style as string) || "color: #2563eb; text-decoration: underline;";
-            const targetAttr = mark.attrs.target ? ` target="${mark.attrs.target}"` : "";
-            text = `<a href="${mark.attrs.href}" style="${customStyle}"${targetAttr}>${text}</a>`;
+            const targetAttr = mark.attrs.target ? ` target="${this.escapeAttribute(mark.attrs.target as string)}"` : "";
+            text = `<a href="${this.escapeAttribute(mark.attrs.href as string)}" style="${this.escapeAttribute(customStyle)}"${targetAttr}>${text}</a>`;
           }
         });
       }
@@ -593,10 +703,12 @@ export class EmailModelSerializer {
       const textColor = (node.attrs?.textColor as string) || "#ffffff";
       const borderRadius = (node.attrs?.borderRadius as string) || "8px";
       const alignment = (node.attrs?.alignment as string) || "center";
+      const fontSize = (node.attrs?.fontSize as string) || "15px";
+      const fontWeight = (node.attrs?.fontWeight as string) || "600";
 
       return `
-<div data-type="cta-button" data-align="${alignment}" data-button-color="${buttonColor}" data-text-color="${textColor}" data-border-radius="${borderRadius}" data-url="${url}" style="text-align: ${alignment}; margin: 24px 0;">
-  <a href="${url}" style="background-color: ${buttonColor}; color: ${textColor}; padding: 12px 24px; text-decoration: none; border-radius: ${borderRadius}; font-weight: 600; font-size: 15px; display: inline-block;">
+<div data-type="cta-button" data-align="${this.escapeAttribute(alignment)}" data-button-color="${this.escapeAttribute(buttonColor)}" data-text-color="${this.escapeAttribute(textColor)}" data-border-radius="${this.escapeAttribute(borderRadius)}" data-font-size="${this.escapeAttribute(fontSize)}" data-font-weight="${this.escapeAttribute(fontWeight)}" data-url="${this.escapeAttribute(url)}" style="text-align: ${this.escapeAttribute(alignment)}; margin: 24px 0;">
+  <a href="${this.escapeAttribute(url)}" style="background-color: ${this.escapeAttribute(buttonColor)}; color: ${this.escapeAttribute(textColor)}; padding: 12px 24px; text-decoration: none; border-radius: ${this.escapeAttribute(borderRadius)}; font-weight: ${this.escapeAttribute(fontWeight)}; font-size: ${this.escapeAttribute(fontSize)}; display: inline-block;">
     ${this.escapeHtml(label)}
   </a>
 </div>
@@ -610,7 +722,19 @@ export class EmailModelSerializer {
       const align = (node.attrs?.alignment as string) || "center";
       const href = (node.attrs?.href as string) || "";
 
-      const widthCss = width ? `width: ${width}; ` : "";
+      let widthCss = "";
+      let widthAttr = "";
+      if (width) {
+        const trimmed = width.trim();
+        const isBareNum = /^\d+(\.\d+)?$/.test(trimmed);
+        const normalized = isBareNum ? `${trimmed}px` : trimmed;
+        widthCss = `width: ${this.escapeAttribute(normalized)}; `;
+        const intMatch = trimmed.match(/^(\d+)/);
+        if (intMatch) {
+          widthAttr = ` width="${intMatch[1]}"`;
+        }
+      }
+
       let marginCss = "margin: 0 auto; display: block;";
       if (align === "left") {
         marginCss = "margin-right: auto; margin-left: 0; display: block;";
@@ -618,40 +742,42 @@ export class EmailModelSerializer {
         marginCss = "margin-left: auto; margin-right: 0; display: block;";
       }
 
-      let imgTag = `<img src="${src}" alt="${alt}" style="${widthCss}max-width: 100%; height: auto; ${marginCss}" />`;
+      let imgTag = `<img src="${this.escapeAttribute(src)}" alt="${this.escapeAttribute(alt)}"${widthAttr} style="${widthCss}max-width: 100%; height: auto; ${marginCss}" />`;
       if (href) {
-        imgTag = `<a href="${href}" style="display: block; text-decoration: none;">${imgTag}</a>`;
+        imgTag = `<a href="${this.escapeAttribute(href)}" style="display: block; text-decoration: none;">${imgTag}</a>`;
       }
       return imgTag;
     }
 
     const childrenHtml = node.content
-      ? node.content.map((c) => this.renderNode(c)).join("")
+      ? node.content.map((c) => this.renderNode(c, node.type)).join("")
       : "";
 
     // Node-level inline style attributes
     const nodeStyles: string[] = [];
-    if (node.attrs?.textAlign) nodeStyles.push(`text-align: ${node.attrs.textAlign}`);
-    if (node.attrs?.fontFamily) nodeStyles.push(`font-family: ${node.attrs.fontFamily}`);
-    if (node.attrs?.fontWeight) nodeStyles.push(`font-weight: ${node.attrs.fontWeight}`);
-    if (node.attrs?.color) nodeStyles.push(`color: ${node.attrs.color}`);
-    if (node.attrs?.backgroundColor) nodeStyles.push(`background-color: ${node.attrs.backgroundColor}`);
-    if (node.attrs?.borderColor) nodeStyles.push(`border-color: ${node.attrs.borderColor}`);
-    if (node.attrs?.borderWidth) nodeStyles.push(`border-width: ${node.attrs.borderWidth}`);
-    if (node.attrs?.borderStyle) nodeStyles.push(`border-style: ${node.attrs.borderStyle}`);
-    if (node.attrs?.borderRadius) nodeStyles.push(`border-radius: ${node.attrs.borderRadius}`);
-    if (node.attrs?.padding) nodeStyles.push(`padding: ${node.attrs.padding}`);
-    if (node.attrs?.marginTop) nodeStyles.push(`margin-top: ${node.attrs.marginTop}`);
-    if (node.attrs?.marginBottom) nodeStyles.push(`margin-bottom: ${node.attrs.marginBottom}`);
+    if (node.attrs?.textAlign) nodeStyles.push(`text-align: ${this.escapeAttribute(node.attrs.textAlign as string)}`);
+    if (node.attrs?.fontFamily) nodeStyles.push(`font-family: ${this.escapeAttribute(node.attrs.fontFamily as string)}`);
+    if (node.attrs?.fontWeight) nodeStyles.push(`font-weight: ${this.escapeAttribute(node.attrs.fontWeight as string)}`);
+    if (node.attrs?.color) nodeStyles.push(`color: ${this.escapeAttribute(node.attrs.color as string)}`);
+    if (node.attrs?.backgroundColor) nodeStyles.push(`background-color: ${this.escapeAttribute(node.attrs.backgroundColor as string)}`);
+    if (node.attrs?.borderColor) nodeStyles.push(`border-color: ${this.escapeAttribute(node.attrs.borderColor as string)}`);
+    if (node.attrs?.borderWidth) nodeStyles.push(`border-width: ${this.escapeAttribute(node.attrs.borderWidth as string)}`);
+    if (node.attrs?.borderStyle) nodeStyles.push(`border-style: ${this.escapeAttribute(node.attrs.borderStyle as string)}`);
+    if (node.attrs?.borderRadius) nodeStyles.push(`border-radius: ${this.escapeAttribute(node.attrs.borderRadius as string)}`);
+    if (node.attrs?.padding) nodeStyles.push(`padding: ${this.escapeAttribute(node.attrs.padding as string)}`);
+    if (node.attrs?.marginTop) nodeStyles.push(`margin-top: ${this.escapeAttribute(node.attrs.marginTop as string)}`);
+    if (node.attrs?.marginBottom) nodeStyles.push(`margin-bottom: ${this.escapeAttribute(node.attrs.marginBottom as string)}`);
 
     const inlineStyleStr = nodeStyles.length > 0 ? nodeStyles.join("; ") + ";" : "";
 
     switch (node.type) {
-      case "paragraph":
-        return `<p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 12px 0; ${inlineStyleStr}">${childrenHtml || "<br>"}</p>`;
+      case "paragraph": {
+        const margin = parentType === "listItem" ? "margin: 0;" : "margin: 12px 0;";
+        return `<p style="color: #374151; font-size: 15px; line-height: 1.6; ${margin} ${inlineStyleStr}">${childrenHtml || "<br>"}</p>`;
+      }
       case "heading": {
         const level = (node.attrs?.level as number) || 1;
-        const fontSize = level === 1 ? "24px" : level === 2 ? "20px" : "16px";
+        const fontSize = level === 1 ? "24px" : level === 2 ? "20px" : level === 3 ? "18px" : "16px";
         return `<h${level} style="color: #111827; font-size: ${fontSize}; font-weight: 700; margin-top: 20px; margin-bottom: 10px; ${inlineStyleStr}">${childrenHtml}</h${level}>`;
       }
       case "container":
@@ -664,11 +790,23 @@ export class EmailModelSerializer {
         return `<li style="margin: 4px 0; line-height: 1.5; ${inlineStyleStr}">${childrenHtml}</li>`;
       case "blockquote":
         return `<blockquote style="border-left: 3px solid #e5e7eb; padding-left: 14px; color: #6b7280; font-style: italic; margin: 16px 0; ${inlineStyleStr}">${childrenHtml}</blockquote>`;
+      case "codeBlock":
+        return `<pre style="background-color: #f3f4f6; padding: 12px; border-radius: 6px; font-family: monospace; overflow-x: auto; margin: 16px 0; ${inlineStyleStr}"><code>${childrenHtml}</code></pre>`;
       case "horizontalRule":
         return `<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; ${inlineStyleStr}" />`;
       default:
         return childrenHtml;
     }
+  }
+
+  private static escapeAttribute(str: string | number | null | undefined): string {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 
   private static escapeHtml(str: string): string {

@@ -31,6 +31,7 @@ import {
   BORDER_STYLES,
   CORNER_RADII,
   PADDING_SIZES,
+  MARGIN_SIZES,
   ELEMENT_TYPES,
 } from "../../constants";
 import styles from "./InspectorSidebar.module.css";
@@ -51,6 +52,8 @@ interface InspectorSidebarProps {
   currentBorderColor: string;
   currentBorderRadius: string;
   currentPadding: string;
+  currentMarginTop?: string;
+  currentMarginBottom?: string;
   currentElementType: string;
   updateBlockAttribute: (attrName: string, attrVal: string | null) => void;
   isImageActive: boolean;
@@ -93,6 +96,8 @@ export default function InspectorSidebar({
   currentBorderColor,
   currentBorderRadius,
   currentPadding,
+  currentMarginTop = "0px",
+  currentMarginBottom = "0px",
   currentElementType,
   updateBlockAttribute,
   isImageActive,
@@ -122,6 +127,205 @@ export default function InspectorSidebar({
     "textFormatting",
     "bgBorders",
   ]);
+
+  // Local drafts to prevent transactions on every keystroke
+  const [borderWidthDraft, setBorderWidthDraft] = React.useState(currentBorderWidth || "");
+  const [ctaLabelDraft, setCtaLabelDraft] = React.useState(currentCtaLabel || "");
+  const [ctaUrlDraft, setCtaUrlDraft] = React.useState(currentCtaUrl || "");
+  const [imageSrcDraft, setImageSrcDraft] = React.useState(currentImageSrc || "");
+  const [imageHrefDraft, setImageHrefDraft] = React.useState(currentImageHref || "");
+  const [imageWidthDraft, setImageWidthDraft] = React.useState(currentImageWidth || "");
+  const [imageAltDraft, setImageAltDraft] = React.useState(currentImageAlt || "");
+
+  const [prevValues, setPrevValues] = React.useState({
+    borderWidth: currentBorderWidth || "",
+    ctaLabel: currentCtaLabel || "",
+    ctaUrl: currentCtaUrl || "",
+    imageSrc: currentImageSrc || "",
+    imageHref: currentImageHref || "",
+    imageWidth: currentImageWidth || "",
+    imageAlt: currentImageAlt || "",
+  });
+
+  if (
+    currentBorderWidth !== prevValues.borderWidth ||
+    currentCtaLabel !== prevValues.ctaLabel ||
+    currentCtaUrl !== prevValues.ctaUrl ||
+    currentImageSrc !== prevValues.imageSrc ||
+    currentImageHref !== prevValues.imageHref ||
+    currentImageWidth !== prevValues.imageWidth ||
+    currentImageAlt !== prevValues.imageAlt
+  ) {
+    setPrevValues({
+      borderWidth: currentBorderWidth || "",
+      ctaLabel: currentCtaLabel || "",
+      ctaUrl: currentCtaUrl || "",
+      imageSrc: currentImageSrc || "",
+      imageHref: currentImageHref || "",
+      imageWidth: currentImageWidth || "",
+      imageAlt: currentImageAlt || "",
+    });
+    setBorderWidthDraft(currentBorderWidth || "");
+    setCtaLabelDraft(currentCtaLabel || "");
+    setCtaUrlDraft(currentCtaUrl || "");
+    setImageSrcDraft(currentImageSrc || "");
+    setImageHrefDraft(currentImageHref || "");
+    setImageWidthDraft(currentImageWidth || "");
+    setImageAltDraft(currentImageAlt || "");
+  }
+
+  const commitBorderWidth = () => {
+    const trimmed = borderWidthDraft.trim();
+    if (!trimmed) {
+      updateBlockAttribute("borderWidth", null);
+      setBorderWidthDraft("");
+      return;
+    }
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      const normalized = `${trimmed}px`;
+      if (!currentBorderStyle || currentBorderStyle === "none") {
+        updateBlockAttribute("borderStyle", "solid");
+      }
+      updateBlockAttribute("borderWidth", normalized);
+      setBorderWidthDraft(normalized);
+      return;
+    }
+    if (/^\d+(\.\d+)?(px|em|rem|%)?$/.test(trimmed)) {
+      if (!currentBorderStyle || currentBorderStyle === "none") {
+        updateBlockAttribute("borderStyle", "solid");
+      }
+      updateBlockAttribute("borderWidth", trimmed);
+      setBorderWidthDraft(trimmed);
+      return;
+    }
+    setBorderWidthDraft(currentBorderWidth || "");
+  };
+
+  const commitCtaLabel = () => {
+    const trimmed = ctaLabelDraft.trim();
+    if (!trimmed) {
+      const fallback = currentCtaLabel || "Click Here";
+      setCtaLabelDraft(fallback);
+      updateCtaAttributes?.({ label: fallback });
+      return;
+    }
+    updateCtaAttributes?.({ label: trimmed });
+  };
+
+  const commitCtaUrl = () => {
+    const trimmed = ctaUrlDraft.trim();
+    updateCtaAttributes?.({ url: trimmed || "#" });
+  };
+
+  const commitImageWidth = () => {
+    const trimmed = imageWidthDraft.trim();
+    if (!trimmed) {
+      updateImageWidth("");
+      setImageWidthDraft("");
+      return;
+    }
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      const normalized = `${trimmed}px`;
+      updateImageWidth(normalized);
+      setImageWidthDraft(normalized);
+      return;
+    }
+    if (/^\d+(\.\d+)?(px|em|rem|%)?$/.test(trimmed)) {
+      updateImageWidth(trimmed);
+      setImageWidthDraft(trimmed);
+      return;
+    }
+    setImageWidthDraft(currentImageWidth || "");
+  };
+
+  const commitImageSrc = () => {
+    updateImageSrc(imageSrcDraft.trim());
+  };
+  const commitImageHref = () => {
+    updateImageHref(imageHrefDraft.trim());
+  };
+  const commitImageAlt = () => {
+    updateImageAlt(imageAltDraft.trim());
+  };
+
+  const handleInputKeyDown =
+    (commitFn: () => void) => (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        commitFn();
+        e.currentTarget.blur();
+      }
+    };
+
+  const selectedFontValue = React.useMemo(() => {
+    if (!currentFontFamily || currentFontFamily === "__default__") {
+      return "__default__";
+    }
+    const getPrimaryFont = (f: string) =>
+      f.split(",")[0].replace(/['"]/g, "").trim().toLowerCase();
+    const curPrimary = getPrimaryFont(currentFontFamily);
+    const match = FONT_FAMILIES.find((f) => {
+      if (f.value === "__default__") return false;
+      return getPrimaryFont(f.value) === curPrimary;
+    });
+    return match ? match.value : currentFontFamily;
+  }, [currentFontFamily]);
+
+  const paddingOptions = React.useMemo(() => {
+    if (!currentPadding || PADDING_SIZES.some((o) => o.value === currentPadding)) {
+      return PADDING_SIZES;
+    }
+    return [...PADDING_SIZES, { label: `Custom (${currentPadding})`, value: currentPadding }];
+  }, [currentPadding]);
+
+  const marginTopOptions = React.useMemo(() => {
+    if (!currentMarginTop || MARGIN_SIZES.some((o) => o.value === currentMarginTop)) {
+      return MARGIN_SIZES;
+    }
+    return [...MARGIN_SIZES, { label: `Custom (${currentMarginTop})`, value: currentMarginTop }];
+  }, [currentMarginTop]);
+
+  const marginBottomOptions = React.useMemo(() => {
+    if (!currentMarginBottom || MARGIN_SIZES.some((o) => o.value === currentMarginBottom)) {
+      return MARGIN_SIZES;
+    }
+    return [...MARGIN_SIZES, { label: `Custom (${currentMarginBottom})`, value: currentMarginBottom }];
+  }, [currentMarginBottom]);
+
+  const handleElementTypeChange = (val: string) => {
+    if (val === "p") {
+      editor.chain().focus().liftListItem("listItem").setParagraph().run();
+    } else if (val === "h1") {
+      if (!editor.isActive("heading", { level: 1 })) {
+        editor.chain().focus().setHeading({ level: 1 }).run();
+      }
+    } else if (val === "h2") {
+      if (!editor.isActive("heading", { level: 2 })) {
+        editor.chain().focus().setHeading({ level: 2 }).run();
+      }
+    } else if (val === "h3") {
+      if (!editor.isActive("heading", { level: 3 })) {
+        editor.chain().focus().setHeading({ level: 3 }).run();
+      }
+    } else if (val === "container") {
+      if (editor.isActive("container")) {
+        editor.chain().focus().lift("container").run();
+      } else {
+        editor.chain().focus().wrapIn("container").run();
+      }
+    } else if (val === "quote") {
+      if (editor.isActive("blockquote")) {
+        editor.chain().focus().lift("blockquote").run();
+      } else {
+        editor.chain().focus().wrapIn("blockquote").run();
+      }
+    } else if (val === "bullet") {
+      editor.chain().focus().toggleBulletList().run();
+    } else if (val === "ordered") {
+      editor.chain().focus().toggleOrderedList().run();
+    }
+  };
 
   const activeSections = React.useMemo(() => {
     const list = [...userToggledSections];
@@ -165,29 +369,45 @@ export default function InspectorSidebar({
         onValueChange={setUserToggledSections}
         className="w-full"
       >
-        {/* 1. Text Formatting Accordion Item */}
-        <AccordionItem value="textFormatting">
-          <AccordionTrigger>Text Formatting</AccordionTrigger>
-          <AccordionContent>
-            {/* Font Family */}
-            <div className={styles.inputFieldGroup}>
-              <label className={styles.inputLabel}>Font Family</label>
-              <Dropdown
-                variant="dark"
-                options={FONT_FAMILIES}
-                value={currentFontFamily}
-                onChange={(val) => {
-                  if (val === "__default__") {
-                    editor.chain().focus().unsetFontFamily().run();
-                  } else {
-                    editor.chain().focus().setFontFamily(val).run();
-                  }
-                }}
-                placeholder="Font Family"
-                btnWidth="100%"
-                width="100%"
-              />
-            </div>
+        {!isCtaActive && (
+          <>
+            {/* 1. Text Formatting Accordion Item */}
+            <AccordionItem value="textFormatting">
+              <AccordionTrigger>Text Formatting</AccordionTrigger>
+              <AccordionContent>
+                {/* Element Type */}
+                <div className={styles.inputFieldGroup}>
+                  <label className={styles.inputLabel}>Element Type</label>
+                  <Dropdown
+                    variant="dark"
+                    options={ELEMENT_TYPES}
+                    value={currentElementType}
+                    onChange={handleElementTypeChange}
+                    placeholder="Element Type"
+                    btnWidth="100%"
+                    width="100%"
+                  />
+                </div>
+
+                {/* Font Family */}
+                <div className={styles.inputFieldGroup}>
+                  <label className={styles.inputLabel}>Font Family</label>
+                  <Dropdown
+                    variant="dark"
+                    options={FONT_FAMILIES}
+                    value={selectedFontValue}
+                    onChange={(val) => {
+                      if (val === "__default__") {
+                        editor.chain().focus().unsetFontFamily().run();
+                      } else {
+                        editor.chain().focus().setFontFamily(val).run();
+                      }
+                    }}
+                    placeholder="Font Family"
+                    btnWidth="100%"
+                    width="100%"
+                  />
+                </div>
 
             {/* Font Weight */}
             <div className={styles.inputFieldGroup}>
@@ -219,7 +439,7 @@ export default function InspectorSidebar({
               <ColorPicker
                 value={currentTextColor}
                 onChange={(color) =>
-                  editor.chain().focus().setColor(color).run()
+                  editor.chain().setColor(color).run()
                 }
               />
             </div>
@@ -230,9 +450,9 @@ export default function InspectorSidebar({
               <ColorPicker
                 value={currentHighlightColor}
                 onChange={(color) =>
-                  editor.chain().focus().setHighlight({ color }).run()
+                  editor.chain().setHighlight({ color }).run()
                 }
-                reset={() => editor.chain().focus().unsetHighlight().run()}
+                reset={() => editor.chain().unsetHighlight().run()}
               />
             </div>
 
@@ -378,12 +598,10 @@ export default function InspectorSidebar({
                 <input
                   type="text"
                   className={styles.inputControl}
-                  value={currentBorderWidth}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const formatted = /^\d+$/.test(val) ? `${val}px` : val;
-                    updateBlockAttribute("borderWidth", formatted);
-                  }}
+                  value={borderWidthDraft}
+                  onChange={(e) => setBorderWidthDraft(e.target.value)}
+                  onBlur={commitBorderWidth}
+                  onKeyDown={handleInputKeyDown(commitBorderWidth)}
                   placeholder="e.g. 1px"
                 />
               </div>
@@ -422,7 +640,7 @@ export default function InspectorSidebar({
               <label className={styles.inputLabel}>Internal Padding</label>
               <Dropdown
                 variant="dark"
-                options={PADDING_SIZES}
+                options={paddingOptions}
                 value={currentPadding}
                 onChange={(val) => updateBlockAttribute("padding", val)}
                 placeholder="Padding"
@@ -430,8 +648,37 @@ export default function InspectorSidebar({
                 width="100%"
               />
             </div>
+
+            <div className={styles.rowTwoGrid}>
+              <div className={styles.inputFieldGroup}>
+                <label className={styles.inputLabel}>Margin Top</label>
+                <Dropdown
+                  variant="dark"
+                  options={marginTopOptions}
+                  value={currentMarginTop}
+                  onChange={(val) => updateBlockAttribute("marginTop", val)}
+                  placeholder="Top"
+                  btnWidth="100%"
+                  width="100%"
+                />
+              </div>
+              <div className={styles.inputFieldGroup}>
+                <label className={styles.inputLabel}>Margin Bottom</label>
+                <Dropdown
+                  variant="dark"
+                  options={marginBottomOptions}
+                  value={currentMarginBottom}
+                  onChange={(val) => updateBlockAttribute("marginBottom", val)}
+                  placeholder="Bottom"
+                  btnWidth="100%"
+                  width="100%"
+                />
+              </div>
+            </div>
           </AccordionContent>
         </AccordionItem>
+          </>
+        )}
 
         {/* 4. Button Controls Accordion Item */}
         <AccordionItem value="buttonControls">
@@ -487,10 +734,10 @@ export default function InspectorSidebar({
                   <input
                     type="text"
                     className={styles.inputControl}
-                    value={currentCtaLabel}
-                    onChange={(e) =>
-                      updateCtaAttributes?.({ label: e.target.value })
-                    }
+                    value={ctaLabelDraft}
+                    onChange={(e) => setCtaLabelDraft(e.target.value)}
+                    onBlur={commitCtaLabel}
+                    onKeyDown={handleInputKeyDown(commitCtaLabel)}
                     placeholder="e.g. View Ticket"
                   />
                 </div>
@@ -501,10 +748,10 @@ export default function InspectorSidebar({
                   <input
                     type="text"
                     className={styles.inputControl}
-                    value={currentCtaUrl}
-                    onChange={(e) =>
-                      updateCtaAttributes?.({ url: e.target.value })
-                    }
+                    value={ctaUrlDraft}
+                    onChange={(e) => setCtaUrlDraft(e.target.value)}
+                    onBlur={commitCtaUrl}
+                    onKeyDown={handleInputKeyDown(commitCtaUrl)}
                     placeholder="e.g. {{event.passUrl}} or https://..."
                   />
                 </div>
@@ -711,8 +958,10 @@ export default function InspectorSidebar({
                   <input
                     type="text"
                     className={styles.inputControl}
-                    value={currentImageSrc}
-                    onChange={(e) => updateImageSrc(e.target.value)}
+                    value={imageSrcDraft}
+                    onChange={(e) => setImageSrcDraft(e.target.value)}
+                    onBlur={commitImageSrc}
+                    onKeyDown={handleInputKeyDown(commitImageSrc)}
                     placeholder="https://example.com/image.png"
                   />
                 </div>
@@ -725,8 +974,10 @@ export default function InspectorSidebar({
                   <input
                     type="text"
                     className={styles.inputControl}
-                    value={currentImageHref}
-                    onChange={(e) => updateImageHref(e.target.value)}
+                    value={imageHrefDraft}
+                    onChange={(e) => setImageHrefDraft(e.target.value)}
+                    onBlur={commitImageHref}
+                    onKeyDown={handleInputKeyDown(commitImageHref)}
                     placeholder="e.g. https://example.com or {{event.url}}"
                   />
                 </div>
@@ -738,8 +989,10 @@ export default function InspectorSidebar({
                     <input
                       type="text"
                       className={styles.inputControl}
-                      value={currentImageWidth}
-                      onChange={(e) => updateImageWidth(e.target.value)}
+                      value={imageWidthDraft}
+                      onChange={(e) => setImageWidthDraft(e.target.value)}
+                      onBlur={commitImageWidth}
+                      onKeyDown={handleInputKeyDown(commitImageWidth)}
                       placeholder="300px"
                     />
                   </div>
@@ -748,8 +1001,10 @@ export default function InspectorSidebar({
                     <input
                       type="text"
                       className={styles.inputControl}
-                      value={currentImageAlt}
-                      onChange={(e) => updateImageAlt(e.target.value)}
+                      value={imageAltDraft}
+                      onChange={(e) => setImageAltDraft(e.target.value)}
+                      onBlur={commitImageAlt}
+                      onKeyDown={handleInputKeyDown(commitImageAlt)}
                       placeholder="Description"
                     />
                   </div>
@@ -831,23 +1086,7 @@ export default function InspectorSidebar({
                 variant="dark"
                 options={ELEMENT_TYPES}
                 value={currentElementType}
-                onChange={(val) => {
-                  if (val === "p") editor.chain().focus().setParagraph().run();
-                  else if (val === "h1")
-                    editor.chain().focus().toggleHeading({ level: 1 }).run();
-                  else if (val === "h2")
-                    editor.chain().focus().toggleHeading({ level: 2 }).run();
-                  else if (val === "h3")
-                    editor.chain().focus().toggleHeading({ level: 3 }).run();
-                  else if (val === "container")
-                    editor.chain().focus().wrapIn("container").run();
-                  else if (val === "quote")
-                    editor.chain().focus().toggleBlockquote().run();
-                  else if (val === "bullet")
-                    editor.chain().focus().toggleBulletList().run();
-                  else if (val === "ordered")
-                    editor.chain().focus().toggleOrderedList().run();
-                }}
+                onChange={handleElementTypeChange}
                 placeholder="Element Type"
                 btnWidth="100%"
                 width="100%"

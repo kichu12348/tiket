@@ -23,6 +23,14 @@ export default function LinkModal({
   setLinkText,
   handleApplyLink,
 }: LinkModalProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      handleApplyLink();
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -39,6 +47,7 @@ export default function LinkModal({
             placeholder="https://example.com or {{event.url}}"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
             autoFocus
           />
         </div>
@@ -52,6 +61,7 @@ export default function LinkModal({
               placeholder="e.g. Click here to register"
               value={linkText || ""}
               onChange={(e) => setLinkText(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
           </div>
         )}

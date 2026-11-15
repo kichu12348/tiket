@@ -1,4 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+
+try {
+  GlobalRegistrator.register();
+} catch {
+  // Already registered
+}
+
 import { EmailModelSerializer } from "../emailModelSerializer";
 import type { EmailDocumentNode } from "@/types/email";
 
@@ -414,6 +422,186 @@ describe("EmailModelSerializer", () => {
       const plainText = EmailModelSerializer.deserializeHtmlToJson("Just raw unformatted text");
       expect(plainText.type).toBe("doc");
       expect(plainText.content![0].content![0].text).toBe("Just raw unformatted text");
+    });
+  });
+
+  describe("Batch 3: Serializer round-trip enhancements", () => {
+    test("Bug 3.1: Card container with button and text does not collapse into CTA", () => {
+      const html = `
+<div data-tiket-wrapper="true" style="max-width: 600px; margin: 0 auto;">
+  <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px;">
+    <p>Please click the button below to continue:</p>
+    <div data-type="cta-button" data-align="center">
+      <a href="https://example.com/confirm" style="background-color: #000; color: #fff; padding: 12px 24px; display: inline-block;">Confirm Attendance</a>
+    </div>
+    <p>If you have questions, reply to this email.</p>
+  </div>
+</div>
+`.trim();
+
+      const doc = EmailModelSerializer.deserializeHtmlToJson(html);
+      expect(doc.content).toBeDefined();
+      expect(doc.content!.length).toBe(1);
+
+      const container = doc.content![0];
+      expect(container.type).toBe("container");
+      expect(container.content!.length).toBe(3);
+      expect(container.content![0].type).toBe("paragraph");
+      expect(container.content![1].type).toBe("ctaButton");
+      expect(container.content![1].attrs?.label).toBe("Confirm Attendance");
+      expect(container.content![1].attrs?.url).toBe("https://example.com/confirm");
+      expect(container.content![2].type).toBe("paragraph");
+    });
+
+    test("Bug 3.2: <br> and <pre><code> round-trip accurately with hardBreak and codeBlock", () => {
+      const docWithBr: EmailDocumentNode = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "Line 1" },
+              { type: "hardBreak" },
+              { type: "text", text: "Line 2" },
+            ],
+          },
+          {
+            type: "codeBlock",
+            content: [{ type: "text", text: "const code = 42;" }],
+          },
+        ],
+      };
+
+      const html = EmailModelSerializer.serializeJsonToHtml(docWithBr);
+      expect(html).toContain("<br />");
+      expect(html).toContain("<pre");
+      expect(html).toContain("const code = 42;");
+
+      const deserialized = EmailModelSerializer.deserializeHtmlToJson(html);
+      const p = deserialized.content![0];
+      expect(p.type).toBe("paragraph");
+      expect(p.content!.some((c) => c.type === "hardBreak")).toBe(true);
+
+      const codeBlock = deserialized.content![1];
+      expect(codeBlock.type).toBe("codeBlock");
+      expect(codeBlock.content![0].text).toContain("const code = 42;");
+    });
+
+    test("Bug 3.3: Blockquote and container wrap inline content in valid block nodes", () => {
+      const html = `
+<div data-tiket-wrapper="true">
+  <blockquote>This is direct quote text without a p tag</blockquote>
+  <div style="background-color: #fafafa; padding: 16px;"></div>
+</div>
+`.trim();
+
+      const doc = EmailModelSerializer.deserializeHtmlToJson(html);
+      const bq = doc.content![0];
+      expect(bq.type).toBe("blockquote");
+      expect(bq.content![0].type).toBe("paragraph");
+      expect(bq.content![0].content![0].text).toBe(
+        "This is direct quote text without a p tag"
+      );
+
+      const emptyContainer = doc.content![1];
+      expect(emptyContainer.type).toBe("container");
+      expect(emptyContainer.content!.length).toBeGreaterThanOrEqual(1);
+      expect(emptyContainer.content![0].type).toBe("paragraph");
+    });
+
+    test("Bug 3.4: Nested container with max-width preserved and table cells flattened", () => {
+      const html = `
+<div data-tiket-wrapper="true" style="max-width: 600px; margin: 0 auto;">
+  <p>Top notice with mention of support@tiket.com in the body text.</p>
+  <div style="max-width: 480px; margin: 0 auto; background-color: #f0fdf4;">
+    <p>Inner card with its own max-width</p>
+  </div>
+  <table>
+    <tr>
+      <td><p>Cell 1</p></td>
+      <td><p>Cell 2</p></td>
+    </tr>
+  </table>
+  <hr data-tiket-footer="true" />
+  <div data-tiket-footer="true">
+    <p>Sent via Tiket Event Platform</p>
+  </div>
+</div>
+`.trim();
+
+      const doc = EmailModelSerializer.deserializeHtmlToJson(html);
+      // Top paragraph should NOT be removed even though it mentions support@tiket.com
+      expect(doc.content!.some((n) => n.content?.[0]?.text?.includes("Top notice"))).toBe(true);
+
+      // Inner container with max-width should NOT be unwrapped
+      const innerContainer = doc.content!.find((n) => n.type === "container");
+      expect(innerContainer).toBeDefined();
+
+      // Table cells flattened into blocks
+      expect(doc.content!.some((n) => n.content?.[0]?.text?.includes("Cell 1"))).toBe(true);
+      expect(doc.content!.some((n) => n.content?.[0]?.text?.includes("Cell 2"))).toBe(true);
+    });
+
+    test("Bug 3.5: Attribute escaping for double quotes, single quotes, and special characters", () => {
+      const nodeWithQuotes: EmailDocumentNode = {
+        type: "doc",
+        content: [
+          {
+            type: "ctaButton",
+            attrs: {
+              label: 'Click & "Register" <Now>',
+              url: 'https://example.com/test?a="1"&b=\'2\'',
+            },
+          },
+          {
+            type: "image",
+            attrs: {
+              src: 'https://example.com/img.png?x="1"',
+              alt: 'A "special" & <cool> image',
+              width: "300",
+            },
+          },
+        ],
+      };
+
+      const html = EmailModelSerializer.serializeJsonToHtml(nodeWithQuotes);
+      // Must not contain raw unescaped double quotes inside attributes
+      expect(html).not.toContain('url="https://example.com/test?a="1"');
+      expect(html).toContain("&quot;");
+      expect(html).toContain("&amp;");
+      expect(html).toContain("&lt;");
+      expect(html).toContain("&gt;");
+    });
+
+    test("Bug 3.6: Bare image width normalized to px with Outlook integer width attribute and list item margin 0", () => {
+      const node: EmailDocumentNode = {
+        type: "doc",
+        content: [
+          {
+            type: "image",
+            attrs: {
+              src: "https://example.com/logo.png",
+              width: "300",
+            },
+          },
+          {
+            type: "bulletList",
+            content: [
+              {
+                type: "listItem",
+                content: [{ type: "paragraph", content: [{ type: "text", text: "Item" }] }],
+              },
+            ],
+          },
+        ],
+      };
+
+      const html = EmailModelSerializer.serializeJsonToHtml(node, "organizer@example.com");
+      expect(html).toContain('width="300"');
+      expect(html).toContain("width: 300px");
+      expect(html).toContain("<li");
+      expect(html).toContain("margin: 0;");
+      expect(html).toContain("organizer@example.com");
     });
   });
 });

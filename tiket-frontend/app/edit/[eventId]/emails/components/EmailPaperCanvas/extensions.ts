@@ -1,7 +1,7 @@
 import { Extension, Node } from "@tiptap/core";
 import { Image } from "@tiptap/extension-image";
 import { Link } from "@tiptap/extension-link";
-import { Plugin, NodeSelection } from "@tiptap/pm/state";
+import { NodeSelection } from "@tiptap/pm/state";
 
 // Custom Tiptap Extension for Block Inline Attributes
 export const BlockStyleExtension = Extension.create({
@@ -9,7 +9,7 @@ export const BlockStyleExtension = Extension.create({
   addGlobalAttributes() {
     return [
       {
-        types: ["paragraph", "heading", "blockquote", "listItem", "container"],
+        types: ["paragraph", "heading", "blockquote", "listItem"],
         attributes: {
           backgroundColor: {
             default: null,
@@ -83,13 +83,42 @@ export const BlockStyleExtension = Extension.create({
   },
 });
 
+// Custom TextStyle Extension declaring fontWeight and fontSize
+export const CustomTextStyleExtension = Extension.create({
+  name: "customTextStyle",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["textStyle"],
+        attributes: {
+          fontWeight: {
+            default: null,
+            parseHTML: (element) => element.style.fontWeight || null,
+            renderHTML: (attributes) => {
+              if (!attributes.fontWeight) return {};
+              return { style: `font-weight: ${attributes.fontWeight}` };
+            },
+          },
+          fontSize: {
+            default: null,
+            parseHTML: (element) => element.style.fontSize || null,
+            renderHTML: (attributes) => {
+              if (!attributes.fontSize) return {};
+              return { style: `font-size: ${attributes.fontSize}` };
+            },
+          },
+        },
+      },
+    ];
+  },
+});
+
 // Custom Container Extension for styled card boxes (<div style="...">)
 export const ContainerExtension = Node.create({
   name: "container",
   group: "block",
   content: "block+",
   defining: true,
-  isolating: true,
   addAttributes() {
     return {
       style: {
@@ -384,6 +413,30 @@ export const CustomButtonExtension = Node.create({
           return align === "left" || align === "right" ? align : "center";
         },
       },
+      fontSize: {
+        default: "15px",
+        parseHTML: (element) => {
+          const anchor = element.querySelector("a");
+          return (
+            element.getAttribute("data-font-size") ||
+            anchor?.style.fontSize ||
+            element.style.fontSize ||
+            "15px"
+          );
+        },
+      },
+      fontWeight: {
+        default: "600",
+        parseHTML: (element) => {
+          const anchor = element.querySelector("a");
+          return (
+            element.getAttribute("data-font-weight") ||
+            anchor?.style.fontWeight ||
+            element.style.fontWeight ||
+            "600"
+          );
+        },
+      },
     };
   },
 
@@ -400,40 +453,39 @@ export const CustomButtonExtension = Node.create({
 
   addNodeView() {
     return ({ node, getPos, editor }) => {
+      const {
+        label = "Click Here",
+        url = "#",
+        buttonColor = "#000000",
+        textColor = "#ffffff",
+        borderRadius = "8px",
+        alignment = "center",
+        fontSize = "15px",
+        fontWeight = "600",
+      } = node.attrs;
+
       const dom = document.createElement("div");
       dom.setAttribute("data-type", "cta-button");
-      dom.setAttribute(
-        "data-button-color",
-        (node.attrs.buttonColor as string) || "#000000",
-      );
-      dom.setAttribute(
-        "data-text-color",
-        (node.attrs.textColor as string) || "#ffffff",
-      );
-      dom.setAttribute(
-        "data-border-radius",
-        (node.attrs.borderRadius as string) || "8px",
-      );
-      dom.setAttribute(
-        "data-align",
-        (node.attrs.alignment as string) || "center",
-      );
-      dom.setAttribute("data-url", (node.attrs.url as string) || "#");
-      dom.style.textAlign = (node.attrs.alignment as string) || "center";
+      dom.setAttribute("data-button-color", buttonColor);
+      dom.setAttribute("data-text-color", textColor);
+      dom.setAttribute("data-border-radius", borderRadius);
+      dom.setAttribute("data-align", alignment);
+      dom.setAttribute("data-url", url);
+      dom.setAttribute("data-font-size", fontSize);
+      dom.setAttribute("data-font-weight", fontWeight);
+      dom.style.textAlign = alignment;
       dom.style.margin = "24px 0";
 
       const a = document.createElement("a");
-      a.setAttribute("href", (node.attrs.url as string) || "#");
-      a.textContent = (node.attrs.label as string) || "Click Here";
-      a.style.backgroundColor =
-        (node.attrs.buttonColor as string) || "#000000";
-      a.style.color = (node.attrs.textColor as string) || "#ffffff";
+      a.setAttribute("href", url);
+      a.textContent = label;
+      a.style.backgroundColor = buttonColor;
+      a.style.color = textColor;
       a.style.padding = "12px 24px";
       a.style.textDecoration = "none";
-      a.style.borderRadius =
-        (node.attrs.borderRadius as string) || "8px";
-      a.style.fontWeight = "600";
-      a.style.fontSize = "15px";
+      a.style.borderRadius = borderRadius;
+      a.style.fontWeight = fontWeight;
+      a.style.fontSize = fontSize;
       a.style.display = "inline-block";
       a.style.cursor = "pointer";
       a.style.userSelect = "none";
@@ -473,20 +525,33 @@ export const CustomButtonExtension = Node.create({
         },
         update(newNode) {
           if (newNode.type.name !== "ctaButton") return false;
-          const { label, url, buttonColor, textColor, borderRadius, alignment } =
-            newNode.attrs;
-          dom.setAttribute("data-button-color", buttonColor || "#000000");
-          dom.setAttribute("data-text-color", textColor || "#ffffff");
-          dom.setAttribute("data-border-radius", borderRadius || "8px");
-          dom.setAttribute("data-align", alignment || "center");
-          dom.setAttribute("data-url", url || "#");
-          dom.style.textAlign = alignment || "center";
+          const {
+            label: newLabel,
+            url: newUrl,
+            buttonColor: newBtnColor,
+            textColor: newTextColor,
+            borderRadius: newBorderRadius,
+            alignment: newAlign,
+            fontSize: newFontSize,
+            fontWeight: newFontWeight,
+          } = newNode.attrs;
 
-          a.setAttribute("href", url || "#");
-          a.textContent = label || "Click Here";
-          a.style.backgroundColor = buttonColor || "#000000";
-          a.style.color = textColor || "#ffffff";
-          a.style.borderRadius = borderRadius || "8px";
+          dom.setAttribute("data-button-color", newBtnColor || "#000000");
+          dom.setAttribute("data-text-color", newTextColor || "#ffffff");
+          dom.setAttribute("data-border-radius", newBorderRadius || "8px");
+          dom.setAttribute("data-align", newAlign || "center");
+          dom.setAttribute("data-url", newUrl || "#");
+          dom.setAttribute("data-font-size", newFontSize || "15px");
+          dom.setAttribute("data-font-weight", newFontWeight || "600");
+          dom.style.textAlign = newAlign || "center";
+
+          a.setAttribute("href", newUrl || "#");
+          a.textContent = newLabel || "Click Here";
+          a.style.backgroundColor = newBtnColor || "#000000";
+          a.style.color = newTextColor || "#ffffff";
+          a.style.borderRadius = newBorderRadius || "8px";
+          a.style.fontSize = newFontSize || "15px";
+          a.style.fontWeight = newFontWeight || "600";
           return true;
         },
         destroy() {
@@ -497,28 +562,6 @@ export const CustomButtonExtension = Node.create({
     };
   },
 
-  addProseMirrorPlugins() {
-    return [
-      new Plugin({
-        props: {
-          handleClickOn(view, _pos, node, nodePos, event) {
-            if (node.type.name === "ctaButton") {
-              event.preventDefault();
-              event.stopPropagation();
-              const tr = view.state.tr.setSelection(
-                NodeSelection.create(view.state.doc, nodePos),
-              );
-              view.dispatch(tr);
-              view.focus();
-              return true;
-            }
-            return false;
-          },
-        },
-      }),
-    ];
-  },
-
   renderHTML({ HTMLAttributes }) {
     const {
       label = "Click Here",
@@ -527,6 +570,8 @@ export const CustomButtonExtension = Node.create({
       textColor = "#ffffff",
       borderRadius = "8px",
       alignment = "center",
+      fontSize = "15px",
+      fontWeight = "600",
     } = HTMLAttributes;
 
     return [
@@ -538,13 +583,15 @@ export const CustomButtonExtension = Node.create({
         "data-border-radius": borderRadius,
         "data-align": alignment,
         "data-url": url,
+        "data-font-size": fontSize,
+        "data-font-weight": fontWeight,
         style: `text-align: ${alignment}; margin: 24px 0;`,
       },
       [
         "a",
         {
           href: url,
-          style: `background-color: ${buttonColor}; color: ${textColor}; padding: 12px 24px; text-decoration: none; border-radius: ${borderRadius}; font-weight: 600; font-size: 15px; display: inline-block; cursor: pointer; user-select: none;`,
+          style: `background-color: ${buttonColor}; color: ${textColor}; padding: 12px 24px; text-decoration: none; border-radius: ${borderRadius}; font-weight: ${fontWeight}; font-size: ${fontSize}; display: inline-block;`,
         },
         label,
       ],
