@@ -412,6 +412,20 @@ body::-webkit-scrollbar-thumb {
   border-radius: var(--scrollbar-radius);
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
+html body[data-scroll-locked] {
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+  position: static !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  margin-top: 0 !important;
+  padding: 0 !important;
+}
+
 /* Custom scrollbar utility class */
 .scrollbar {
   scrollbar-width: thin;

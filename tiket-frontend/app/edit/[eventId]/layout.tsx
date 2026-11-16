@@ -134,7 +134,7 @@ export default function EditEventLayout({
             onSignOut={logout}
           />
         )}
-        <div className={styles.layout}>
+        <div className={`${styles.layout} scrollbar`}>
           {!isDetailsPage && <SidebarNav eventId={eventId} />}
           <main className={styles.mainContent}>
             <CurrentSkeleton />
@@ -165,7 +165,7 @@ export default function EditEventLayout({
           />
         )}
       </div>
-      <div className={styles.layout}>
+      <div className={`${styles.layout} scrollbar`}>
         {!isDetailsPage && <SidebarNav eventId={eventId} />}
         <main className={styles.mainContent}>{children}</main>
       </div>
