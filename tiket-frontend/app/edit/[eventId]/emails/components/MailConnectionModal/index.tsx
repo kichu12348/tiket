@@ -1,25 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { X, Send, Trash2, Check } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import {
-  saveMailConnection,
-  testMailConnection,
-  deleteMailConnection,
-} from "@/api/emails";
-import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/errors";
-import type { SmtpMailPayload } from "@/types/commerce";
+import { createPortal } from "react-dom";
+import { X, Send, Trash2 } from "lucide-react";
+import Switch from "@/components/Switch";
+import { Input } from "@/components/ui/input";
+import { useMailConnection } from "@/hooks/useMailConnection";
 import type { SmtpConfigSummary } from "@/types/email";
-import {
-  validateSmtpConfig,
-  type SmtpConfigInput,
-} from "@/validators/email.validator";
 import styles from "./MailConnectionModal.module.css";
 
-interface MailConnectionModalProps {
+export interface MailConnectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   eventId: string;
@@ -35,132 +24,48 @@ function MailConnectionModalContent({
   initialConfig,
   onStatusChange,
 }: Omit<MailConnectionModalProps, "isOpen">) {
-  const [host, setHost] = useState(initialConfig?.host || "");
-  const [port, setPort] = useState(String(initialConfig?.port || 587));
-  const [username, setUsername] = useState(initialConfig?.username || "");
-  const [password, setPassword] = useState("");
-  const [fromName, setFromName] = useState(initialConfig?.fromName || "");
-  const [fromEmail, setFromEmail] = useState(initialConfig?.fromEmail || "");
-  const [secure, setSecure] = useState(Boolean(initialConfig?.secure));
-  const [testRecipient, setTestRecipient] = useState("");
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [isRemoving, setIsRemoving] = useState(false);
-
-  // Close on Escape key
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    },
-    [onClose],
-  );
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleKeyDown]);
-
-  const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
-  const handleSave = async () => {
-    const parsedPort = parseInt(port, 10);
-    const hasPassword = Boolean(initialConfig?.hasPassword);
-
-    const payload: SmtpConfigInput = {
-      host: host.trim(),
-      port: parsedPort,
-      secure,
-      username: username.trim(),
-      password: password.trim() ? password.trim() : undefined,
-      hasPassword,
-      fromEmail: fromEmail.trim(),
-      fromName: fromName.trim() || undefined,
-    };
-
-    const validation = validateSmtpConfig(payload);
-    if (!validation.success) {
-      toast.error(validation.error);
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      const savePayload: SmtpMailPayload = {
-        host: validation.data.host,
-        port: validation.data.port,
-        secure: validation.data.secure,
-        username: validation.data.username,
-        password: validation.data.password,
-        fromEmail: validation.data.fromEmail,
-        fromName: validation.data.fromName,
-      };
-      await saveMailConnection(eventId, savePayload);
-      toast.success("Custom SMTP settings saved successfully!");
-      onStatusChange?.(true);
-      onClose();
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to save SMTP settings.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSendTest = async () => {
-    const recipient = testRecipient.trim() || fromEmail.trim();
-    if (!recipient) {
-      toast.error("Please provide a test recipient email address.");
-      return;
-    }
-
-    if (!validateEmail(recipient)) {
-      toast.error("Please provide a valid test recipient email address.");
-      return;
-    }
-
-    try {
-      setIsTesting(true);
-      await testMailConnection(eventId, recipient);
-      toast.success(`Test email sent successfully to ${recipient}!`);
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to send test email.");
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const handleRemove = async () => {
-    try {
-      setIsRemoving(true);
-      await deleteMailConnection(eventId);
-      toast.success("Custom SMTP removed. Reset to default mailer.");
-      onStatusChange?.(false);
-      onClose();
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to remove custom SMTP.");
-    } finally {
-      setIsRemoving(false);
-    }
-  };
+  const {
+    host,
+    setHost,
+    port,
+    setPort,
+    username,
+    setUsername,
+    password,
+    setPassword,
+    fromName,
+    setFromName,
+    fromEmail,
+    setFromEmail,
+    secure,
+    setSecure,
+    testRecipient,
+    setTestRecipient,
+    isSaving,
+    isTesting,
+    isRemoving,
+    handleSave,
+    handleSendTest,
+    handleRemove,
+  } = useMailConnection({
+    eventId,
+    initialConfig,
+    onStatusChange,
+    onClose,
+  });
 
   return (
     <div
-      className={styles.overlay}
+      className={styles.modalOverlay}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="mail-connection-title"
     >
-      <div className={styles.shell} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.modalShell} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className={styles.header}>
-          <h2 id="mail-connection-title" className={styles.title}>
+        <div className={styles.modalHeader}>
+          <h2 id="mail-connection-title" className={styles.modalTitle}>
             Custom SMTP Connection
           </h2>
           <button
@@ -174,60 +79,62 @@ function MailConnectionModalContent({
         </div>
 
         {/* Scrollable Body */}
-        <div className={`${styles.body} scrollbar`}>
-          <div className={styles.fieldRow}>
-            <div className={styles.inputGroup}>
+        <div className={`${styles.modalBody} scrollbar`}>
+          {/* Host & Port */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className={`sm:col-span-2 ${styles.formGroup}`}>
               <label htmlFor="smtp-host" className={styles.label}>
                 SMTP Host
               </label>
-              <input
+              <Input
                 id="smtp-host"
                 type="text"
-                className={styles.input}
                 placeholder="smtp.yourdomain.com"
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
+                className="!rounded-[var(--radius-md)]"
               />
             </div>
 
-            <div className={styles.inputGroup}>
+            <div className={styles.formGroup}>
               <label htmlFor="smtp-port" className={styles.label}>
                 SMTP Port
               </label>
-              <input
+              <Input
                 id="smtp-port"
                 type="number"
-                className={styles.input}
                 placeholder="587"
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
+                className="!rounded-[var(--radius-md)]"
               />
             </div>
           </div>
 
-          <div className={styles.inputGroup}>
+          {/* Username */}
+          <div className={styles.formGroup}>
             <label htmlFor="smtp-username" className={styles.label}>
               Username
             </label>
-            <input
+            <Input
               id="smtp-username"
               type="text"
-              className={styles.input}
               placeholder="smtp-username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
+              className="!rounded-[var(--radius-md)]"
             />
           </div>
 
-          <div className={styles.inputGroup}>
+          {/* Password */}
+          <div className={styles.formGroup}>
             <label htmlFor="smtp-password" className={styles.label}>
-              Password / API Key
+              Password / Key
             </label>
-            <input
+            <Input
               id="smtp-password"
               type="password"
-              className={styles.input}
               placeholder={
                 initialConfig?.hasPassword
                   ? "•••••••••••• (Leave blank to keep unchanged)"
@@ -236,65 +143,73 @@ function MailConnectionModalContent({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              className="!rounded-[var(--radius-md)]"
             />
           </div>
 
-          <div className={styles.inputGroup}>
-            <label htmlFor="smtp-from-name" className={styles.label}>
-              From Name
-            </label>
-            <input
-              id="smtp-from-name"
-              type="text"
-              className={styles.input}
-              placeholder="Event Organizer"
-              value={fromName}
-              onChange={(e) => setFromName(e.target.value)}
-            />
+          {/* From Name & From Email */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={styles.formGroup}>
+              <label htmlFor="smtp-from-name" className={styles.label}>
+                From Name
+              </label>
+              <Input
+                id="smtp-from-name"
+                type="text"
+                placeholder="Event Organizer"
+                value={fromName}
+                onChange={(e) => setFromName(e.target.value)}
+                className="!rounded-[var(--radius-md)]"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="smtp-from-email" className={styles.label}>
+                From Email
+              </label>
+              <Input
+                id="smtp-from-email"
+                type="email"
+                placeholder="notifications@yourdomain.com"
+                value={fromEmail}
+                onChange={(e) => setFromEmail(e.target.value)}
+                className="!rounded-[var(--radius-md)]"
+              />
+            </div>
           </div>
 
-          <div className={styles.inputGroup}>
-            <label htmlFor="smtp-from-email" className={styles.label}>
-              From Email
-            </label>
-            <input
-              id="smtp-from-email"
-              type="email"
-              className={styles.input}
-              placeholder="notifications@yourdomain.com"
-              value={fromEmail}
-              onChange={(e) => setFromEmail(e.target.value)}
-            />
-          </div>
-
+          {/* TLS/SSL Toggle */}
           <div className={styles.switchRow}>
-            <div className={styles.switchInfo}>
-              <label htmlFor="smtp-secure" className={styles.label}>
+            <div className={styles.switchLabelBlock}>
+              <label htmlFor="smtp-secure" className={styles.switchTitle}>
                 Use TLS / SSL Encryption
               </label>
-              <span className={styles.helperText}>
-                Enable for SSL direct connections (port 465) or STARTTLS enforcement.
+              <span className={styles.switchSubtext}>
+                Enable for SSL direct connections (port 465) or STARTTLS
+                enforcement.
               </span>
             </div>
             <Switch
               id="smtp-secure"
               checked={secure}
-              onCheckedChange={setSecure}
+              onChange={setSecure}
+              aria-label="Use TLS / SSL Encryption"
             />
           </div>
 
+          {/* Test Recipient Section */}
           <div className={styles.testSection}>
-            <div className={styles.inputGroup}>
+            <div className={styles.formGroup}>
               <label htmlFor="smtp-test-recipient" className={styles.label}>
                 Test Recipient Email (Optional)
               </label>
-              <input
+              <Input
                 id="smtp-test-recipient"
                 type="email"
-                className={styles.input}
                 placeholder="you@example.com (defaults to From Email)"
                 value={testRecipient}
                 onChange={(e) => setTestRecipient(e.target.value)}
+                className="!rounded-[var(--radius-md)]"
               />
               <span className={styles.helperText}>
                 Target inbox for the &quot;Send Test Email&quot; verification.
@@ -303,44 +218,48 @@ function MailConnectionModalContent({
           </div>
         </div>
 
-        {/* Sticky Footer */}
-        <div className={styles.footer}>
+        {/* Modal Footer */}
+        <div className={styles.modalFooter}>
           {isCustom ? (
-            <Button
+            <button
               type="button"
-              variant="destructive"
-              size="sm"
+              className={styles.deleteBtn}
               disabled={isRemoving || isSaving || isTesting}
               onClick={handleRemove}
             >
               <Trash2 size={15} />
               <span>{isRemoving ? "Removing..." : "Remove Custom SMTP"}</span>
-            </Button>
+            </button>
           ) : (
             <div />
           )}
 
           <div className={styles.footerActions}>
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="sm"
+              className={styles.cancelBtn}
+              onClick={onClose}
+              disabled={isSaving || isTesting || isRemoving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.testBtn}
               disabled={isTesting || isSaving || isRemoving}
               onClick={handleSendTest}
             >
               <Send size={15} />
-              <span>{isTesting ? "Sending Test..." : "Send Test Email"}</span>
-            </Button>
-            <Button
+              <span>{isTesting ? "Sending Test..." : "Test Email"}</span>
+            </button>
+            <button
               type="button"
-              variant="default"
-              size="sm"
+              className={styles.saveBtn}
               disabled={isSaving || isTesting || isRemoving}
               onClick={handleSave}
             >
-              <Check size={15} />
-              <span>{isSaving ? "Saving..." : "Save SMTP Details"}</span>
-            </Button>
+              <span>{isSaving ? "Saving..." : "Save"}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -350,10 +269,13 @@ function MailConnectionModalContent({
 
 export default function MailConnectionModal(props: MailConnectionModalProps) {
   if (!props.isOpen) return null;
-  return (
-    <MailConnectionModalContent
-      key={props.initialConfig?.host || "new"}
-      {...props}
-    />
-  );
+
+  const modalKey = props.initialConfig?.host || "new-mail-connection";
+
+  return typeof document !== "undefined"
+    ? createPortal(
+        <MailConnectionModalContent key={modalKey} {...props} />,
+        document.body,
+      )
+    : null;
 }

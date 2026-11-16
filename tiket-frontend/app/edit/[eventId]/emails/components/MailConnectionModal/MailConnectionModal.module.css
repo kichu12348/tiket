@@ -1,4 +1,4 @@
-.overlay {
+.modalOverlay {
   position: fixed;
   inset: 0;
   background: var(--color-overlay);
@@ -10,18 +10,20 @@
   padding: 1rem;
 }
 
-.shell {
-  background: var(--color-soft-bg);
-  backdrop-filter: blur(var(--blur-lg));
-  border: 1px solid var(--color-border-light);
+.modalShell {
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  width: min(540px, 90vw);
+  width: min(500px, 92vw);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.5),
+    0 8px 10px -6px rgba(0, 0, 0, 0.5);
 }
 
-.header {
+.modalHeader {
   padding: 1.15rem 1.25rem 0.65rem;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
@@ -29,7 +31,7 @@
   align-items: center;
 }
 
-.title {
+.modalTitle {
   font-size: 1.15rem;
   font-weight: 600;
   color: var(--text-primary);
@@ -39,37 +41,31 @@
 .closeBtn {
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   cursor: pointer;
-  padding: 0.35rem;
+  padding: 0.25rem;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .closeBtn:hover {
   color: var(--text-primary);
-  background: var(--color-icon-bg-hover);
+  background: var(--color-item-hover);
 }
 
-.body {
+.modalBody {
   padding: 1rem 1.25rem;
-  max-height: min(70vh, 500px);
+  max-height: min(72vh, 520px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.fieldRow {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 0.75rem;
-}
-
-.inputGroup {
+.formGroup {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -77,51 +73,43 @@
 
 .label {
   font-size: 0.85rem;
-  font-weight: 500;
   color: var(--text-secondary);
-}
-
-.input {
-  background: var(--color-soft-bg-subtle);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.75rem;
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  outline: none;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-  width: 100%;
-}
-
-.input:focus {
-  border-color: var(--color-border-hover);
-  background: var(--color-soft-bg);
-}
-
-.input::placeholder {
-  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .helperText {
   font-size: 0.75rem;
   color: var(--text-muted);
   line-height: 1.35;
+  margin-top: 0.25rem;
 }
 
 .switchRow {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
 }
 
-.switchInfo {
+.switchLabelBlock {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+}
+
+.switchTitle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.switchSubtext {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
 }
 
 .testSection {
@@ -132,11 +120,10 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-.footer {
+.modalFooter {
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--border-subtle);
-  background: var(--color-overlay-secondary);
-  backdrop-filter: blur(var(--blur-md));
+  background: var(--surface-base);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -149,4 +136,103 @@
   align-items: center;
   gap: 0.75rem;
   margin-left: auto;
+}
+
+.cancelBtn {
+  background: var(--color-soft-bg);
+  color: var(--color-text-soft);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.cancelBtn:hover {
+  background: var(--color-item-selected);
+}
+
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.testBtn {
+  background: var(--color-soft-bg);
+  color: var(--text-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.testBtn:hover {
+  background: var(--color-soft-bg-hover);
+}
+
+.testBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveBtn {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: opacity 0.15s ease;
+}
+
+.saveBtn:hover {
+  opacity: 0.9;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.deleteBtn {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.95rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.deleteBtn:hover {
+  opacity: 0.9;
+  background: var(--status-danger);
+  color: var(--text-primary);
+}
+
+.deleteBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

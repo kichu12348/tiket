@@ -43,7 +43,6 @@ export default function EditEmailsPage() {
     loadInitialData,
     selectTemplateType,
     saveTemplate,
-    toggleTemplateActive,
     resetTemplate,
     sendTest,
     sendBatch,
@@ -73,11 +72,6 @@ export default function EditEmailsPage() {
   const handleSaveTemplate = async (updatedFields: Partial<EmailTemplate>) => {
     if (!event?.id || !selectedTemplateId) return;
     await saveTemplate(event.id, selectedTemplateId, updatedFields);
-  };
-
-  const handleToggleActive = async () => {
-    if (!event?.id || !selectedTemplateId) return;
-    await toggleTemplateActive(event.id, selectedTemplateId);
   };
 
   const handleResetTemplate = async () => {
@@ -127,28 +121,10 @@ export default function EditEmailsPage() {
           <div>
             <h1 className={styles.title}>Event Email Management</h1>
             <p className={styles.subtitle}>
-              Design white-theme email templates and send automated booking
-              confirmations, check-ins, or targeted broadcasts.
+              Design email templates and send automated booking confirmations,
+              check-ins, or targeted broadcasts.
             </p>
           </div>
-          <button
-            type="button"
-            className={styles.smtpTriggerBtn}
-            onClick={() => setIsMailModalOpen(true)}
-            aria-label="Configure Custom SMTP Connection"
-          >
-            <span
-              className={styles.statusDot}
-              data-status={isCustomSmtp ? "connected" : "default"}
-            />
-            <span className={styles.smtpBtnLabel}>Custom SMTP</span>
-            <span
-              className={styles.statusBadge}
-              data-status={isCustomSmtp ? "connected" : "default"}
-            >
-              {isCustomSmtp ? "Connected" : "Default Mailer"}
-            </span>
-          </button>
         </div>
       </div>
 
@@ -160,22 +136,39 @@ export default function EditEmailsPage() {
           onValueChange={(val) => setActiveTab(val as "editor" | "logs")}
           className={styles.tabsRoot}
         >
-          <TabsList className={styles.tabsList}>
-            <TabsTrigger
-              value="editor"
-              className={styles.tabTrigger}
-              onClick={() => setActiveTab("editor")}
+          <div className="flex flex-row items-center justify-between w-full">
+            <TabsList className={styles.tabsList}>
+              <TabsTrigger
+                value="editor"
+                className={styles.tabTrigger}
+                onClick={() => setActiveTab("editor")}
+              >
+                Templates &amp; Editor
+              </TabsTrigger>
+              <TabsTrigger
+                value="logs"
+                className={styles.tabTrigger}
+                onClick={() => setActiveTab("logs")}
+              >
+                Delivery Logs &amp; Analytics
+              </TabsTrigger>
+            </TabsList>
+
+            <button
+              type="button"
+              className={styles.smtpTriggerBtn}
+              onClick={() => setIsMailModalOpen(true)}
+              aria-label="Configure Custom SMTP Connection"
             >
-              Templates &amp; Editor
-            </TabsTrigger>
-            <TabsTrigger
-              value="logs"
-              className={styles.tabTrigger}
-              onClick={() => setActiveTab("logs")}
-            >
-              Delivery Logs &amp; Analytics
-            </TabsTrigger>
-          </TabsList>
+              <span className={styles.smtpBtnLabel}>Custom SMTP</span>
+              <span
+                className={styles.statusBadge}
+                data-status={isCustomSmtp ? "connected" : "default"}
+              >
+                {isCustomSmtp ? "Connected" : "Default Mailer"}
+              </span>
+            </button>
+          </div>
 
           <TabsContent value="editor" className={styles.tabContent}>
             <TemplateTypeSelector
@@ -191,22 +184,6 @@ export default function EditEmailsPage() {
                     {currentTemplate.name}
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  className={styles.statusToggleBtn}
-                  data-active={currentTemplate.isActive}
-                  onClick={handleToggleActive}
-                  title={
-                    currentTemplate.isActive
-                      ? "Template is active (Click to deactivate)"
-                      : "Template is inactive (Click to activate)"
-                  }
-                >
-                  <Power size={14} />
-                  <span>
-                    {currentTemplate.isActive ? "Active" : "Inactive"}
-                  </span>
-                </button>
               </div>
             )}
 

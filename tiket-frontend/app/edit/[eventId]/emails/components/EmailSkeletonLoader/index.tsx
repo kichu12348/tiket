@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import styles from "./EmailSkeletonLoader.module.css";
 
 export function TemplateSelectorSkeleton() {

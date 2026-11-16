@@ -100,23 +100,26 @@
 }
 
 .tabsList {
-  display: inline-flex;
-  gap: 0.5rem;
+  display: flex;
   background: var(--color-soft-bg);
-  padding: 0.3rem;
-  border-radius: var(--radius-sm);
-  width: fit-content;
+  padding: 3px;
+  border-radius: var(--radius-sm, 8px);
+  gap: 2px;
 }
 
 .tabTrigger {
-  padding: 0.4rem 1rem;
-  font-size: 0.88rem;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-soft);
   background: transparent;
   border: none;
+  color: var(--text-muted, rgba(255, 255, 255, 0.45));
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   transition: all 0.2s ease;
 }
 
@@ -125,9 +128,8 @@
 }
 
 .tabTrigger[data-state="active"] {
-  background: var(--color-soft-bg-hover);
-  color: var(--text-primary);
-  font-weight: 600;
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary, #ffffff);
 }
 
 .tabContent {
