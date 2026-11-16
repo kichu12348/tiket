@@ -1,10 +1,84 @@
-import type { EmailLog, EmailAnalytics } from "@/types/email";
+import type {
+  EmailLog,
+  EmailAnalytics,
+  OpenTimeBucketItem,
+} from "@/types/email";
+
+export function computeOpenTimeDistribution(
+  logs: EmailLog[],
+): OpenTimeBucketItem[] {
+  let within5m = 0;
+  let within30m = 0;
+  let within2h = 0;
+  let after2h = 0;
+
+  let totalOpened = 0;
+
+  for (const log of logs) {
+    const isOpened =
+      (log.openCount !== undefined && log.openCount > 0) || Boolean(log.openedAt);
+    if (!isOpened) continue;
+
+    totalOpened += 1;
+    if (log.sentAt && log.openedAt) {
+      const diffMs =
+        new Date(log.openedAt).getTime() - new Date(log.sentAt).getTime();
+      const diffMinutes = Math.max(0, diffMs / (1000 * 60));
+
+      if (diffMinutes <= 5) {
+        within5m += 1;
+      } else if (diffMinutes <= 30) {
+        within30m += 1;
+      } else if (diffMinutes <= 120) {
+        within2h += 1;
+      } else {
+        after2h += 1;
+      }
+    } else {
+      after2h += 1;
+    }
+  }
+
+  const calcPercent = (count: number) =>
+    totalOpened > 0 ? Math.round((count / totalOpened) * 100) : 0;
+
+  return [
+    {
+      bucket: "Within 5 min",
+      count: within5m,
+      percentage: calcPercent(within5m),
+    },
+    {
+      bucket: "Within 30 min",
+      count: within30m,
+      percentage: calcPercent(within30m),
+    },
+    {
+      bucket: "Within 2 hr",
+      count: within2h,
+      percentage: calcPercent(within2h),
+    },
+    {
+      bucket: "After 2 hr",
+      count: after2h,
+      percentage: calcPercent(after2h),
+    },
+  ];
+}
 
 export function computeEmailMetrics(
   logs: EmailLog[],
   analytics?: EmailAnalytics | null,
 ): EmailAnalytics {
-  if (analytics) return analytics;
+  const openTimeDistribution =
+    analytics?.openTimeDistribution ?? computeOpenTimeDistribution(logs);
+
+  if (analytics) {
+    return {
+      ...analytics,
+      openTimeDistribution,
+    };
+  }
 
   const totalSent = logs.filter((l) => l.status === "sent").length;
   const totalFailed = logs.filter((l) => l.status === "failed").length;
@@ -85,5 +159,6 @@ export function computeEmailMetrics(
     openRatePercent,
     byType,
     timeline,
+    openTimeDistribution,
   };
 }

@@ -1,12 +1,7 @@
 import { toPng } from "html-to-image";
-import qrcode from "qrcode-generator";
-import type {
-  TicketPassData,
-  TicketPassTemplate,
-} from "@/types/ticket";
-import type {
-  TicketCanvasConfig,
-} from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
+import QRCode from "qrcode";
+import type { TicketPassData, TicketPassTemplate } from "@/types/ticket";
+import type { TicketCanvasConfig } from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
 import {
   getElementText,
   resolveTicketLayer,
@@ -113,13 +108,19 @@ async function exportCustomTicketToCanvas(
     if (el.type === "qr") {
       const isScannable = pass.status === "active" || pass.status === "used";
       const qrBg = resolved.bgColor || el.style?.qrBgColor || "#ffffff";
+      const qrFg = resolved.color || el.style?.qrFgColor || "#000000";
 
       if (isScannable && pass.qrCode) {
         try {
-          const qr = qrcode(0, "M");
-          qr.addData(pass.qrCode);
-          qr.make();
-          const qrDataUrl = qr.createDataURL(4, 0);
+          const qrDataUrl = await QRCode.toDataURL(pass.qrCode, {
+            errorCorrectionLevel: "M",
+            margin: 0,
+            width: Math.max(20, Math.round(el.width)),
+            color: {
+              dark: qrFg,
+              light: qrBg,
+            },
+          });
           const qrImg = new Image();
           await new Promise<void>((resolve) => {
             qrImg.onload = () => resolve();

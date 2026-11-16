@@ -5,8 +5,9 @@
 }
 
 .chartCard {
-  background: var(--color-soft-bg);
-  border-radius: var(--radius-md, 12px);
+  background: var(--surface);
+  backdrop-filter: blur(var(--blur-md));
+  border-radius: var(--radius-md);
   padding: 1.25rem;
   border: none;
   display: flex;
@@ -46,14 +47,14 @@
   width: 10px;
   height: 10px;
   border-radius: 2px;
-  background: var(--border-strong, rgba(255, 255, 255, 0.4));
+  background: var(--chart-bar-sent);
 }
 
 .legendColorOpened {
   width: 10px;
   height: 10px;
   border-radius: 2px;
-  background: var(--status-success);
+  background: var(--chart-bar-opened);
 }
 
 .chartContainer {
@@ -65,15 +66,15 @@
 }
 
 .customTooltip {
-  background: var(--color-overlay, #1c1c1e);
-  backdrop-filter: blur(var(--blur-md, 12px));
+  background: var(--surface-popover);
+  backdrop-filter: blur(var(--blur-md));
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--radius-sm);
   padding: 0.6rem 0.85rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-popover);
 }
 
 .tooltipTitle {
@@ -92,6 +93,12 @@
   color: var(--text-secondary);
 }
 
+.tooltipLabelGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .tooltipValSent {
   font-weight: 600;
   color: var(--text-primary);
@@ -99,7 +106,7 @@
 
 .tooltipValOpened {
   font-weight: 600;
-  color: var(--status-success);
+  color: var(--chart-bar-opened);
 }
 
 .emptyChartPlaceholder {
@@ -116,4 +123,119 @@
 .emptyIcon {
   color: var(--text-muted);
   opacity: 0.5;
+}
+
+/* Open Time Distribution Pie / Donut Chart Layout */
+.chartHeaderBadge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  border: none;
+}
+
+.pieContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  width: 100%;
+  height: 100%;
+}
+
+.donutWrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donutCenterNumber {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.donutCenterLabel {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.breakdownGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.breakdownRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  transition: background 0.15s ease;
+}
+
+.breakdownRow:hover {
+  background: var(--surface-elevated);
+}
+
+.breakdownNameCol {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.breakdownColorIndicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.breakdownBucketName {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.breakdownValuesCol {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.breakdownCountVal {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.breakdownPercentVal {
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }

@@ -4,6 +4,7 @@ export const userResponseSchema = {
     id: { type: "string" },
     name: { type: "string" },
     email: { type: "string" },
+    avatarUrl: { type: ["string", "null"] },
     type: { type: "string" },
     description: { type: ["string", "null"] },
     isVerified: { type: "boolean" },
@@ -38,6 +39,7 @@ export const passwordAuthSchema = {
           user: userResponseSchema,
         },
       },
+      400: errorResponseSchema,
       401: errorResponseSchema,
       404: {
         type: "object",
@@ -99,6 +101,7 @@ export const verifyOtpSchema = {
           user: userResponseSchema,
         },
       },
+      400: errorResponseSchema,
       401: errorResponseSchema,
       404: errorResponseSchema,
       500: errorResponseSchema,
@@ -118,6 +121,31 @@ export const getMeSchema = {
       401: errorResponseSchema,
       404: errorResponseSchema,
       500: errorResponseSchema,
+    },
+  },
+};
+
+export const googleOAuthInitiateSchema = {
+  schema: {
+    querystring: {
+      type: "object",
+      properties: {
+        redirect: { type: "string" },
+        mode: { type: "string", enum: ["popup", "redirect"] },
+      },
+    },
+  },
+};
+
+export const googleOAuthCallbackSchema = {
+  schema: {
+    querystring: {
+      type: "object",
+      properties: {
+        code: { type: "string" },
+        state: { type: "string" },
+        error: { type: "string" },
+      },
     },
   },
 };

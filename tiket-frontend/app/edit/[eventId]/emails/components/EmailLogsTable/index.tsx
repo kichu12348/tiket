@@ -106,7 +106,7 @@ export default function EmailLogsTable({
       {/* 2. Email Analytics Dashboard Header */}
       <div className={styles.analyticsSection}>
         <AnalyticsCards metrics={metrics} />
-        <AnalyticsCharts metrics={metrics} />
+        <AnalyticsCharts metrics={metrics} logs={logs} />
       </div>
 
       {/* 3. Filter Controls Bar */}

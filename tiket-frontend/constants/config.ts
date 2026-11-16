@@ -39,12 +39,16 @@ export const API_ENDPOINTS = {
     COMPLETE_UPLOAD: (id: string) => `/api/connections/uploads/${id}/complete`,
     FILE: (id: string) => `/api/connections/uploads/${id}`,
   },
-  AUTH: { ME: "/api/auth/me" },
+  AUTH: {
+    ME: "/api/auth/me",
+    GOOGLE: "/api/auth/google",
+  },
   BACKEND: {
     AUTH: {
       PASSWORD: `${API_URL}/api/auth/password`,
       OTP_SEND: `${API_URL}/api/auth/otp/send`,
       OTP_VERIFY: `${API_URL}/api/auth/otp/verify`,
+      GOOGLE: `${API_URL}/api/auth/google`,
     },
   },
   FRONTEND: {
@@ -53,6 +57,7 @@ export const API_ENDPOINTS = {
       OTP_SEND: "/api/auth/otp/send",
       OTP_VERIFY: "/api/auth/otp/verify",
       LOGOUT: "/api/auth/logout",
+      SESSION: "/api/auth/session",
     },
   },
   EVENTS: {

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./Signin.module.css";
 import { UserRoundKey } from "lucide-react";
-import { FaEye, FaGoogle } from "react-icons/fa";
+import { FaEye } from "react-icons/fa";
 import { IoEyeOff } from "react-icons/io5";
 import { BeatLoader } from "react-spinners";
 import { useAuth } from "@/hooks/useAuth";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 export default function Signin() {
   const router = useRouter();
@@ -33,6 +34,23 @@ export default function Signin() {
   const [showPassword, setShowPassword] = useState(false);
   const [needsName, setNeedsName] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const errParam = new URLSearchParams(window.location.search).get("error");
+      if (errParam === "unverified_google_email") {
+        setError(
+          "Your Google account email is not verified. Please verify it or sign in with another method.",
+        );
+      } else if (errParam === "oauth_state_invalid") {
+        setError(
+          "Google sign-in session expired or was invalid. Please try again.",
+        );
+      } else if (errParam) {
+        setError("Google sign-in was cancelled or failed. Please try again.");
+      }
+    }
+  }, [setError]);
 
   const handleOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,10 +262,10 @@ export default function Signin() {
           <div className={styles.divider} />
 
           <div className={styles.socialGroup}>
-            <button type="button" className={styles.socialBtn}>
-              <FaGoogle size={16} />
-              Sign in with Google
-            </button>
+            <GoogleSignInButton
+              redirect={returnTo()}
+              onError={(err) => setError(err)}
+            />
           </div>
         </div>
       </main>

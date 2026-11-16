@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tiket — Events and tickets",
+  title: "Tiket",
   description: "Create events, register guests and manage tickets with Tiket.",
 };
 

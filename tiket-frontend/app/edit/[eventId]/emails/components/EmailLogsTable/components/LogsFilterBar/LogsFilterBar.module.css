@@ -52,7 +52,7 @@
 .typeSelectTrigger {
   height: 34px;
   background: var(--color-soft-bg);
-  border: 1px solid var(--border-subtle);
+  border: none;
   border-radius: var(--radius-sm, 8px);
   padding: 0 0.75rem;
   font-size: 0.82rem;
@@ -74,7 +74,7 @@
 
 .searchInput {
   background: var(--color-soft-bg);
-  border: 1px solid var(--border-subtle);
+  border: none;
   border-radius: var(--radius-sm, 8px);
   padding: 0.4rem 0.75rem 0.4rem 2rem;
   font-size: 0.82rem;

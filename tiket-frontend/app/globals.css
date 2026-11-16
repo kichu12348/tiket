@@ -67,11 +67,11 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: #10b981;
+  --chart-2: #38bdf8;
+  --chart-3: #f59e0b;
+  --chart-4: #a855f7;
+  --chart-5: #f43f5e;
   --radius: 0.625rem;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
@@ -117,11 +117,11 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: #059669;
+  --chart-2: #0284c7;
+  --chart-3: #d97706;
+  --chart-4: #9333ea;
+  --chart-5: #e11d48;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -137,6 +137,14 @@
   --email-code-footer-bg: oklch(0.94 0 0);
   --email-code-text: oklch(0.25 0.08 210);
   --email-code-border: oklch(0 0 0 / 12%);
+
+  /* Data Visualization / Charts */
+  --chart-cursor: rgba(0, 0, 0, 0.05);
+  --chart-grid: rgba(0, 0, 0, 0.06);
+  --chart-axis-line: rgba(0, 0, 0, 0.12);
+  --chart-axis-text: rgba(0, 0, 0, 0.45);
+  --chart-bar-sent: rgba(0, 0, 0, 0.25);
+  --chart-bar-opened: var(--chart-1);
 }
 
 @layer base {
@@ -201,11 +209,29 @@
 :root {
   /* Color Palette */
   --color-bg-base: #121316;
+  --color-obsidian: #0a0a0c;
   --color-text-primary: #ffffff;
   --color-text-secondary: #9ea0a5;
   --color-accent-orange: #f48a58;
   --color-accent-blue: #7693b8;
   --color-black: #000000;
+
+  /* Landing Page Brand Gradient & Glass Tokens */
+  --brand-gradient: linear-gradient(92deg, #d946ef 0%, #ec4899 35%, #f97316 72%, #eab308 100%);
+  --brand-dot-gradient: linear-gradient(135deg, #ec4899 0%, #f97316 60%, #eab308 100%);
+  --landing-pill-bg: rgba(255, 255, 255, 0.035);
+  --landing-pill-border: rgba(255, 255, 255, 0.08);
+  --landing-vignette: radial-gradient(circle at 50% 47%, rgba(10, 10, 12, 0.55) 0%, rgba(10, 10, 12, 0.15) 55%, rgba(10, 10, 12, 0.65) 100%);
+  --ticket-notch-bg: #121216;
+  --ticket-pass-bg: rgba(255, 255, 255, 0.04);
+  --ticket-pass-border: rgba(255, 255, 255, 0.12);
+  --glass-panel-bg: rgba(18, 18, 22, 0.85);
+  --glass-panel-border: rgba(255, 255, 255, 0.1);
+  --badge-pass-bg: rgba(217, 70, 239, 0.15);
+  --badge-pass-text: #f0abfc;
+  --badge-pass-border: rgba(217, 70, 239, 0.25);
+  --text-amber-glow: #fcd34d;
+  --text-emerald-glow: #34d399;
 
   --surface-base: #1c1c1e;
   --surface-hover: #2c2c2e;
@@ -283,6 +309,14 @@
   --status-danger-bg: rgba(255, 80, 80, 0.15);
   --status-info: #60a5fa;
   --status-info-bg: rgba(59, 130, 246, 0.15);
+
+  /* Data Visualization / Charts */
+  --chart-cursor: rgba(255, 255, 255, 0.05);
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-axis-line: rgba(255, 255, 255, 0.12);
+  --chart-axis-text: rgba(255, 255, 255, 0.45);
+  --chart-bar-sent: rgba(255, 255, 255, 0.28);
+  --chart-bar-opened: var(--chart-1);
 
   /*status colors*/
   --color-error: #f05454;

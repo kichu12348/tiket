@@ -149,6 +149,12 @@ export interface SmtpConfigSummary {
   hasPassword?: boolean;
 }
 
+export interface OpenTimeBucketItem {
+  bucket: string;
+  count: number;
+  percentage: number;
+}
+
 export interface EmailAnalytics {
   totalSent: number;
   totalFailed: number;
@@ -158,6 +164,7 @@ export interface EmailAnalytics {
   openRatePercent: number;
   byType: EmailTypeAnalytics[];
   timeline: EmailTimelinePoint[];
+  openTimeDistribution?: OpenTimeBucketItem[];
 }
 
 export interface EmailLogsResponse {

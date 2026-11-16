@@ -1,13 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
-import type { EmailAnalytics } from "@/types/email";
+import type {
+  EmailAnalytics,
+  EmailLog,
+  OpenTimeBucketItem,
+} from "@/types/email";
 import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  AreaChart,
-  Area,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,16 +20,18 @@ import {
 } from "recharts";
 import { Clock } from "lucide-react";
 import { getTemplateTypeLabel } from "../../functions/formatLogValues";
+import { computeOpenTimeDistribution } from "../../functions/computeEmailMetrics";
 import styles from "./AnalyticsCharts.module.css";
 
 interface AnalyticsChartsProps {
   metrics: EmailAnalytics;
+  logs?: EmailLog[];
 }
 
 interface CustomTooltipPayloadItem {
-  name: string;
-  value: number;
-  dataKey: string;
+  name?: string;
+  value?: number;
+  dataKey?: string;
   payload?: {
     name?: string;
     date?: string;
@@ -50,11 +57,17 @@ function CustomBarTooltip({ active, payload, label }: CustomTooltipProps) {
     <div className={styles.customTooltip}>
       <span className={styles.tooltipTitle}>{label}</span>
       <div className={styles.tooltipRow}>
-        <span>Sent:</span>
+        <div className={styles.tooltipLabelGroup}>
+          <span className={styles.legendColorSent} />
+          <span>Sent:</span>
+        </div>
         <span className={styles.tooltipValSent}>{item.Sent}</span>
       </div>
       <div className={styles.tooltipRow}>
-        <span>Opened:</span>
+        <div className={styles.tooltipLabelGroup}>
+          <span className={styles.legendColorOpened} />
+          <span>Opened:</span>
+        </div>
         <span className={styles.tooltipValOpened}>
           {item.Opened} ({item.rate ?? 0}%)
         </span>
@@ -63,27 +76,52 @@ function CustomBarTooltip({ active, payload, label }: CustomTooltipProps) {
   );
 }
 
-function CustomTimelineTooltip({ active, payload }: CustomTooltipProps) {
+interface CustomPieTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    payload?: OpenTimeBucketItem;
+  }>;
+}
+
+function CustomPieTooltip({ active, payload }: CustomPieTooltipProps) {
   if (!active || !payload || !payload.length) return null;
   const item = payload[0]?.payload;
   if (!item) return null;
 
   return (
     <div className={styles.customTooltip}>
-      <span className={styles.tooltipTitle}>{item.fullDate || item.date}</span>
+      <span className={styles.tooltipTitle}>{item.bucket}</span>
       <div className={styles.tooltipRow}>
-        <span>Sent:</span>
-        <span className={styles.tooltipValSent}>{item.Sent}</span>
+        <div className={styles.tooltipLabelGroup}>
+          <span
+            className={styles.breakdownColorIndicator}
+            style={{
+              backgroundColor: BUCKET_COLORS[item.bucket] || "var(--chart-1)",
+            }}
+          />
+          <span>Opened:</span>
+        </div>
+        <span className={styles.tooltipValSent}>{item.count}</span>
       </div>
       <div className={styles.tooltipRow}>
-        <span>Opened:</span>
-        <span className={styles.tooltipValOpened}>{item.Opened}</span>
+        <span>Share:</span>
+        <span className={styles.tooltipValOpened}>{item.percentage}%</span>
       </div>
     </div>
   );
 }
 
-export default function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
+const BUCKET_COLORS: Record<string, string> = {
+  "Within 5 min": "var(--chart-1)",
+  "Within 30 min": "var(--chart-2)",
+  "Within 2 hr": "var(--chart-3)",
+  "After 2 hr": "var(--chart-4)",
+};
+
+export default function AnalyticsCharts({
+  metrics,
+  logs,
+}: AnalyticsChartsProps) {
   // Bar chart data: Sent vs Opened by Type
   const barChartData = useMemo(() => {
     const rawTypes =
@@ -121,16 +159,32 @@ export default function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
     }));
   }, [metrics.byType]);
 
-  // Timeline chart data
-  const timelineChartData = useMemo(() => {
-    if (!metrics.timeline || metrics.timeline.length === 0) return [];
-    return metrics.timeline.map((d) => ({
-      date: d.bucket.slice(5),
-      fullDate: d.bucket,
-      Sent: d.sent,
-      Opened: d.opened,
-    }));
-  }, [metrics.timeline]);
+  // Open Time Distribution: 4 buckets (Within 5 min, Within 30 min, Within 2 hr, After 2 hr)
+  const openTimeData = useMemo(() => {
+    if (
+      metrics.openTimeDistribution &&
+      metrics.openTimeDistribution.length > 0
+    ) {
+      return metrics.openTimeDistribution;
+    }
+    if (logs && logs.length > 0) {
+      return computeOpenTimeDistribution(logs);
+    }
+    return [
+      { bucket: "Within 5 min", count: 0, percentage: 0 },
+      { bucket: "Within 30 min", count: 0, percentage: 0 },
+      { bucket: "Within 2 hr", count: 0, percentage: 0 },
+      { bucket: "After 2 hr", count: 0, percentage: 0 },
+    ];
+  }, [metrics.openTimeDistribution, logs]);
+
+  const totalOpenedCount = useMemo(() => {
+    return openTimeData.reduce((acc, curr) => acc + curr.count, 0);
+  }, [openTimeData]);
+
+  const activePieSlices = useMemo(() => {
+    return openTimeData.filter((d) => d.count > 0);
+  }, [openTimeData]);
 
   return (
     <div className={styles.chartsGrid}>
@@ -158,31 +212,34 @@ export default function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.06)"
+                stroke="var(--chart-grid)"
                 vertical={false}
               />
               <XAxis
                 dataKey="name"
-                tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 11 }}
-                axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+                tick={{ fill: "var(--chart-axis-text)", fontSize: 11 }}
+                axisLine={{ stroke: "var(--chart-axis-line)" }}
                 tickLine={false}
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 10 }}
+                tick={{ fill: "var(--chart-axis-text)", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip content={<CustomBarTooltip />} />
+              <Tooltip
+                content={<CustomBarTooltip />}
+                cursor={{ fill: "var(--chart-cursor)", radius: 4 }}
+              />
               <Bar
                 dataKey="Sent"
-                fill="rgba(255,255,255,0.3)"
+                fill="var(--chart-bar-sent)"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={22}
               />
               <Bar
                 dataKey="Opened"
-                fill="#28a745"
+                fill="var(--chart-bar-opened)"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={22}
               />
@@ -191,86 +248,80 @@ export default function AnalyticsCharts({ metrics }: AnalyticsChartsProps) {
         </div>
       </div>
 
-      {/* Chart 2: Opens Timeline Chart */}
+      {/* Chart 2: Opens Timeline Chart (Open Time Distribution Pie) */}
       <div className={styles.chartCard}>
         <div className={styles.chartHeader}>
-          <span className={styles.chartTitle}>Opens Timeline Chart</span>
-          <div className={styles.chartLegend}>
-            <span className={styles.legendItem}>
-              <span className={styles.legendColorSent} /> Sent
-            </span>
-            <span className={styles.legendItem}>
-              <span className={styles.legendColorOpened} /> Opened
-            </span>
-          </div>
+          <span className={styles.chartTitle}>Time to Open</span>
+          <span className={styles.chartHeaderBadge}>Opens Timeline Chart</span>
         </div>
 
         <div className={styles.chartContainer}>
-          {timelineChartData.length === 0 ? (
+          {totalOpenedCount === 0 ? (
             <div className={styles.emptyChartPlaceholder}>
               <Clock size={20} className={styles.emptyIcon} />
-              <span>No delivery timeline events recorded yet</span>
+              <span>No opened email events recorded yet</span>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart
-                data={timelineChartData}
-                margin={{ top: 12, right: 12, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="gradSent" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor="rgba(255,255,255,0.4)"
-                      stopOpacity={0.35}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="rgba(255,255,255,0.4)"
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                  <linearGradient id="gradOpened" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#28a745" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#28a745" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(255,255,255,0.06)"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 11 }}
-                  axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
-                  tickLine={false}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTimelineTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="Sent"
-                  stroke="rgba(255,255,255,0.5)"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#gradSent)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="Opened"
-                  stroke="#28a745"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#gradOpened)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className={styles.pieContainer}>
+              <div className={styles.donutWrapper}>
+                <ResponsiveContainer width={140} height={140}>
+                  <PieChart>
+                    <Pie
+                      data={activePieSlices}
+                      dataKey="count"
+                      nameKey="bucket"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={42}
+                      outerRadius={65}
+                      paddingAngle={3}
+                      stroke="none"
+                    >
+                      {activePieSlices.map((entry) => (
+                        <Cell
+                          key={`slice-${entry.bucket}`}
+                          fill={BUCKET_COLORS[entry.bucket] || "var(--chart-1)"}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className={styles.donutCenter}>
+                  <span className={styles.donutCenterNumber}>
+                    {totalOpenedCount}
+                  </span>
+                  <span className={styles.donutCenterLabel}>Opened</span>
+                </div>
+              </div>
+
+              <div className={styles.breakdownGrid}>
+                {openTimeData.map((item) => {
+                  const color = BUCKET_COLORS[item.bucket] || "var(--chart-1)";
+                  return (
+                    <div key={item.bucket} className={styles.breakdownRow}>
+                      <div className={styles.breakdownNameCol}>
+                        <span
+                          className={styles.breakdownColorIndicator}
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className={styles.breakdownBucketName}>
+                          {item.bucket}
+                        </span>
+                      </div>
+                      <div className={styles.breakdownValuesCol}>
+                        <span className={styles.breakdownCountVal}>
+                          {item.count}
+                        </span>
+                        <span className={styles.breakdownPercentVal}>
+                          {item.percentage}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       </div>

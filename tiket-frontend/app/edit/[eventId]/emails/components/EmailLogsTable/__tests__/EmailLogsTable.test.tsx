@@ -40,7 +40,10 @@ try {
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { EmailLog } from "@/types/email";
 import EmailLogsTable from "../index";
-import { computeEmailMetrics } from "../functions/computeEmailMetrics";
+import {
+  computeEmailMetrics,
+  computeOpenTimeDistribution,
+} from "../functions/computeEmailMetrics";
 import { filterEmailLogs } from "../functions/filterEmailLogs";
 import {
   getTemplateTypeLabel,
@@ -113,6 +116,73 @@ describe("EmailLogsTable Subsystem", () => {
       expect(metrics.openRatePercent).toBe(50);
       expect(metrics.byType.length).toBeGreaterThanOrEqual(3);
       expect(metrics.timeline.length).toBeGreaterThanOrEqual(1);
+      expect(metrics.openTimeDistribution).toBeDefined();
+      expect(metrics.openTimeDistribution?.length).toBe(4);
+    });
+
+    test("computeOpenTimeDistribution categorizes logs into 4 duration buckets", () => {
+      const mixedLogs: EmailLog[] = [
+        {
+          id: "m-1",
+          eventId: "e1",
+          templateId: null,
+          recipientEmail: "1@t.com",
+          recipientName: null,
+          subject: "s",
+          status: "sent",
+          errorMessage: null,
+          sentAt: "2026-11-01T10:00:00.000Z",
+          openedAt: "2026-11-01T10:03:00.000Z", // 3 min -> Within 5 min
+          openCount: 1,
+        },
+        {
+          id: "m-2",
+          eventId: "e1",
+          templateId: null,
+          recipientEmail: "2@t.com",
+          recipientName: null,
+          subject: "s",
+          status: "sent",
+          errorMessage: null,
+          sentAt: "2026-11-01T10:00:00.000Z",
+          openedAt: "2026-11-01T10:20:00.000Z", // 20 min -> Within 30 min
+          openCount: 1,
+        },
+        {
+          id: "m-3",
+          eventId: "e1",
+          templateId: null,
+          recipientEmail: "3@t.com",
+          recipientName: null,
+          subject: "s",
+          status: "sent",
+          errorMessage: null,
+          sentAt: "2026-11-01T10:00:00.000Z",
+          openedAt: "2026-11-01T11:30:00.000Z", // 90 min -> Within 2 hr
+          openCount: 1,
+        },
+        {
+          id: "m-4",
+          eventId: "e1",
+          templateId: null,
+          recipientEmail: "4@t.com",
+          recipientName: null,
+          subject: "s",
+          status: "sent",
+          errorMessage: null,
+          sentAt: "2026-11-01T10:00:00.000Z",
+          openedAt: "2026-11-01T14:00:00.000Z", // 4 hr -> After 2 hr
+          openCount: 1,
+        },
+      ];
+
+      const dist = computeOpenTimeDistribution(mixedLogs);
+      expect(dist).toEqual([
+        { bucket: "Within 5 min", count: 1, percentage: 25 },
+        { bucket: "Within 30 min", count: 1, percentage: 25 },
+        { bucket: "Within 2 hr", count: 1, percentage: 25 },
+        { bucket: "After 2 hr", count: 1, percentage: 25 },
+      ]);
     });
 
     test("filterEmailLogs filters by status correctly", () => {
@@ -190,11 +260,16 @@ describe("EmailLogsTable Subsystem", () => {
       expect(screen.getAllByText("Unopened").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Failed").length).toBeGreaterThanOrEqual(1);
 
-      // Chart titles
+      // Chart titles and open time distribution buckets
       expect(
         screen.getByText("Sent vs. Opened by Email Type"),
       ).toBeInTheDocument();
       expect(screen.getByText("Opens Timeline Chart")).toBeInTheDocument();
+      expect(screen.getByText("Time to Open")).toBeInTheDocument();
+      expect(screen.getByText("Within 5 min")).toBeInTheDocument();
+      expect(screen.getByText("Within 30 min")).toBeInTheDocument();
+      expect(screen.getByText("Within 2 hr")).toBeInTheDocument();
+      expect(screen.getByText("After 2 hr")).toBeInTheDocument();
 
       // Table records
       expect(screen.getByText("Alice Wonder")).toBeInTheDocument();

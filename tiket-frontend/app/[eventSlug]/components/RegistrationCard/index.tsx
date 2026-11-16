@@ -136,7 +136,18 @@ export default function RegistrationCard({
             </div>
             <div className={styles.userInfo}>
               <div className={styles.userAvatar}>
-                {user?.name ? user?.name.charAt(0).toUpperCase() : ":)"}
+                {user?.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user?.name || "User"}
+                    referrerPolicy="no-referrer"
+                    className={styles.userAvatarImg}
+                  />
+                ) : user?.name ? (
+                  user?.name.charAt(0).toUpperCase()
+                ) : (
+                  ":)"
+                )}
               </div>
               <div className={styles.userDetails}>
                 <span className={styles.userName}>{user?.name}</span>
@@ -201,7 +212,18 @@ export default function RegistrationCard({
             </div>
             <div className={styles.userInfo}>
               <div className={styles.userAvatar}>
-                {user?.name ? user?.name.charAt(0).toUpperCase() : ":)"}
+                {user?.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user?.name || "User"}
+                    referrerPolicy="no-referrer"
+                    className={styles.userAvatarImg}
+                  />
+                ) : user?.name ? (
+                  user?.name.charAt(0).toUpperCase()
+                ) : (
+                  ":)"
+                )}
               </div>
               <div className={styles.userDetails}>
                 <span className={styles.userName}>{user?.name}</span>

@@ -328,6 +328,12 @@ const fnResendEmailLog = mock(async (_evtId: string, logId: string) => ({
   sentAt: "2026-11-01T12:00:00.000Z",
 }));
 
+mock.module("next/navigation", () => ({
+  useParams: () => ({ eventId: "evt-test-101" }),
+  useRouter: () => ({ push: mock() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 mock.module("@/api/emails", () => ({
   getEmailTemplates: fnGetEmailTemplates,
   getEmailTemplateById: fnGetEmailTemplateById,

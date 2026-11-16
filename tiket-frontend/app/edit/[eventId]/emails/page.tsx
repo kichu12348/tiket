@@ -18,8 +18,12 @@ import {
   EmailPageSkeleton,
   EmailEditorSkeleton,
 } from "./components/EmailSkeletonLoader";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function EditEmailsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const { event } = useEventStore();
   const {
     templates,
@@ -58,6 +62,11 @@ export default function EditEmailsPage() {
     }
   }, [event?.id, loadInitialData]);
 
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) setActiveTab(tab as "editor" | "logs");
+  }, []);
+
   const currentTemplate: EmailTemplate | null = selectedTemplateId
     ? loadedTemplatesMap[selectedTemplateId] || null
     : null;
@@ -66,6 +75,11 @@ export default function EditEmailsPage() {
     if (event?.id) {
       selectTemplateType(event.id, type);
     }
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as "editor" | "logs");
+    router.push(`/edit/${event?.id}/emails?tab=${value}`);
   };
 
   const handleSaveTemplate = async (updatedFields: Partial<EmailTemplate>) => {
@@ -132,7 +146,7 @@ export default function EditEmailsPage() {
       ) : (
         <Tabs
           value={activeTab}
-          onValueChange={(val) => setActiveTab(val as "editor" | "logs")}
+          onValueChange={handleTabChange}
           className={styles.tabsRoot}
         >
           <div className="flex flex-row items-center justify-between w-full">
