@@ -65,6 +65,7 @@ export default function SubjectBox({
                 key={v.key}
                 type="button"
                 className={styles.varPillBtn}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => insertVariableAtCursor(v.key)}
                 title={`Insert ${v.key} (${v.label})`}
               >

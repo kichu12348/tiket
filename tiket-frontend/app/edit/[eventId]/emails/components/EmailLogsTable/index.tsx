@@ -61,6 +61,7 @@ export default function EmailLogsTable({
 
     const totalSent = logs.filter((l) => l.status === "sent").length;
     const totalFailed = logs.filter((l) => l.status === "failed").length;
+    const totalQueued = logs.filter((l) => l.status === "queued").length;
     const totalOpened = logs.filter(
       (l) => (l.openCount !== undefined && l.openCount > 0) || Boolean(l.openedAt),
     ).length;
@@ -133,6 +134,7 @@ export default function EmailLogsTable({
       totalFailed,
       totalOpened,
       totalUnopened,
+      queuedCount: totalQueued,
       openRatePercent,
       byType,
       timeline,
@@ -187,7 +189,9 @@ export default function EmailLogsTable({
         toast.success(`Email resent successfully to ${log.recipientEmail}!`);
       }
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || "Failed to resend email");
+      if (!onResend) {
+        toast.error(getErrorMessage(err) || "Failed to resend email");
+      }
     } finally {
       setResendingId(null);
     }
@@ -295,6 +299,19 @@ export default function EmailLogsTable({
             </div>
             <span className={styles.kpiSub}>Bounced or error states</span>
           </div>
+
+          {metrics.queuedCount !== undefined && metrics.queuedCount > 0 && (
+            <div className={styles.kpiCard}>
+              <div className={styles.kpiTop}>
+                <span className={styles.kpiLabel}>Queued</span>
+                <Clock size={16} className={styles.kpiIconMuted} />
+              </div>
+              <div className={styles.kpiValueRow}>
+                <span className={styles.kpiValue}>{metrics.queuedCount}</span>
+              </div>
+              <span className={styles.kpiSub}>Awaiting transmission</span>
+            </div>
+          )}
         </div>
 
         {/* Visual Charts Grid */}

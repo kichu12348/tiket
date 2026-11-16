@@ -55,7 +55,7 @@ export const getEmailTemplates = async (
     }
 
     // Seed default templates if missing or needing repair in the database
-    await seedDefaultTemplatesForEvent(eventId);
+    // await seedDefaultTemplatesForEvent(eventId);
 
     const templateHeaders = await db
       .select({
@@ -790,9 +790,7 @@ export function calculateEmailAnalytics(
   ).length;
   const totalUnopened = logs.filter(
     (l) =>
-      l.status === "sent" &&
-      (!l.openCount || l.openCount === 0) &&
-      !l.openedAt,
+      l.status === "sent" && (!l.openCount || l.openCount === 0) && !l.openedAt,
   ).length;
   const openRatePercent =
     totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
@@ -813,13 +811,13 @@ export function calculateEmailAnalytics(
   }
 
   const byType = Array.from(allTypesSet).map((type) => {
-    const typeLogs = logs.filter(
-      (l) => (l.templateType || "custom") === type,
-    );
+    const typeLogs = logs.filter((l) => (l.templateType || "custom") === type);
     const sent = typeLogs.filter((l) => l.status === "sent").length;
     const opened = typeLogs.filter(
       (l) =>
-        (l.openCount !== null && l.openCount !== undefined && l.openCount > 0) ||
+        (l.openCount !== null &&
+          l.openCount !== undefined &&
+          l.openCount > 0) ||
         (l.openedAt !== null && l.openedAt !== undefined),
     ).length;
     const unopened = Math.max(0, sent - opened);

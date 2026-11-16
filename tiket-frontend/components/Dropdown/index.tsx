@@ -102,6 +102,8 @@ export default function Dropdown<T>({
                   display: "flex",
                   alignItems: "center",
                   gap: "0.75rem",
+                  minWidth: 0,
+                  overflow: "hidden",
                 }}
               >
                 {selectedOption?.LeftComponent}
@@ -110,9 +112,18 @@ export default function Dropdown<T>({
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "flex-start",
+                    minWidth: 0,
+                    overflow: "hidden",
                   }}
                 >
-                  <span>
+                  <span
+                    style={{
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "100%",
+                    }}
+                  >
                     {selectedOption ? selectedOption.label : placeholder}
                   </span>
                 </div>

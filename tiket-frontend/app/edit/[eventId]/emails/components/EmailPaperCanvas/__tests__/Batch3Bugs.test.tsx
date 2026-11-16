@@ -7,6 +7,44 @@ try {
   // Already registered
 }
 
+// Bridge duplicate React instances between root @testing-library/react and frontend node_modules/react
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const rFrontend = require("react");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const rTesting = require(
+    require.resolve("react", {
+      paths: [require.resolve("@testing-library/react")],
+    }),
+  );
+  const i1 =
+    rFrontend.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const i2 =
+    rTesting.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  if (i1 && i2 && i1 !== i2) {
+    Object.defineProperty(i1, "H", {
+      get() {
+        return i2.H;
+      },
+      set(v) {
+        i2.H = v;
+      },
+    });
+    Object.defineProperty(i1, "A", {
+      get() {
+        return i2.A;
+      },
+      set(v) {
+        i2.A = v;
+      },
+    });
+  }
+} catch {
+  // Ignore if already unified
+}
+
+import React from "react";
+import { render, fireEvent } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import { StarterKit } from "@tiptap/starter-kit";
 import { NodeSelection } from "@tiptap/pm/state";
@@ -14,6 +52,7 @@ import {
   CustomLinkExtension,
   CustomImageExtension,
 } from "../extensions";
+import LinkModal from "../components/Modals/LinkModal";
 
 describe("Batch 3: LinkModal and ImageModal attribute preservation", () => {
   let editor: Editor;
@@ -116,5 +155,64 @@ describe("Batch 3: LinkModal and ImageModal attribute preservation", () => {
     expect(attrs.alt).toBe("Updated Alt");
     expect(attrs.width).toBe("350px");
     expect(attrs.href).toBe("https://example.com/link");
+  });
+
+  test("MarkdownLinkExtension has inclusive set to false to prevent space extension", () => {
+    expect(editor.schema.marks.link.spec.inclusive).toBe(false);
+  });
+
+  test("LinkModal switches to Email Address mode for mailto links and triggers onApply with mailto prefix", () => {
+    let appliedUrl = "";
+    let appliedText = "";
+
+    const { getByPlaceholderText, getByText } = render(
+      <LinkModal
+        isOpen={true}
+        onClose={() => {}}
+        linkUrl="mailto:test@tiket.com"
+        setLinkUrl={() => {}}
+        linkText="Contact Us"
+        setLinkText={() => {}}
+        handleApplyLink={(url, text) => {
+          appliedUrl = url || "";
+          appliedText = text || "";
+        }}
+        isEditing={true}
+      />,
+    );
+
+    // Email Address input should be prefilled without mailto: prefix
+    const emailInput = getByPlaceholderText("support@tiket.com or {{organizer.email}}") as HTMLInputElement;
+    expect(emailInput.value).toBe("test@tiket.com");
+
+    // Click Update Link
+    const applyBtn = getByText("Update Link");
+    fireEvent.click(applyBtn);
+
+    expect(appliedUrl).toBe("mailto:test@tiket.com");
+    expect(appliedText).toBe("Contact Us");
+  });
+
+  test("LinkModal renders Remove Link button when isEditing is true and calls onRemoveLink", () => {
+    let removeCalled = false;
+
+    const { getByText } = render(
+      <LinkModal
+        isOpen={true}
+        onClose={() => {}}
+        linkUrl="https://example.com"
+        setLinkUrl={() => {}}
+        handleApplyLink={() => {}}
+        isEditing={true}
+        onRemoveLink={() => {
+          removeCalled = true;
+        }}
+      />,
+    );
+
+    const removeBtn = getByText("Remove Link");
+    expect(removeBtn).toBeDefined();
+    fireEvent.click(removeBtn);
+    expect(removeCalled).toBe(true);
   });
 });

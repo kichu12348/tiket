@@ -28,9 +28,9 @@ export const StyledParagraph = Paragraph.extend({
         renderHTML: () => ({}),
       },
       alignment: {
-        default: "left",
+        default: undefined,
         parseHTML: (element) =>
-          element.style.textAlign || element.getAttribute("data-align") || "left",
+          element.style.textAlign || element.getAttribute("data-align") || undefined,
       },
     };
   },
@@ -52,9 +52,9 @@ export const StyledHeading = Heading.extend({
         default: {},
       },
       alignment: {
-        default: "left",
+        default: undefined,
         parseHTML: (element) =>
-          element.style.textAlign || element.getAttribute("data-align") || "left",
+          element.style.textAlign || element.getAttribute("data-align") || undefined,
       },
     };
   },
@@ -250,6 +250,7 @@ export const CustomTextStyleExtension = Extension.create({
 // -------------------------------------------------------------
 
 export const MarkdownLinkExtension = Link.extend({
+  inclusive: false,
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -310,7 +311,6 @@ export const ContainerBlockExtension = Node.create({
   name: "containerBlock",
   group: "block",
   content: "block+",
-  isolating: true,
   defining: true,
   addAttributes() {
     return {
@@ -362,87 +362,20 @@ export const ContainerExtension = Node.create({
   addAttributes() {
     return {
       style: {
-        default: null,
-        parseHTML: (element) => element.getAttribute("style"),
+        default: {},
+        parseHTML: (element) => element.getAttribute("style") || {},
         renderHTML: (attributes) => {
           if (!attributes.style) return {};
-          return { style: attributes.style };
-        },
-      },
-      backgroundColor: {
-        default: null,
-        parseHTML: (element) => element.style.backgroundColor || null,
-        renderHTML: (attributes) => {
-          if (!attributes.backgroundColor) return {};
-          return { style: `background-color: ${attributes.backgroundColor}` };
-        },
-      },
-      borderColor: {
-        default: null,
-        parseHTML: (element) => element.style.borderColor || null,
-        renderHTML: (attributes) => {
-          if (!attributes.borderColor) return {};
-          return { style: `border-color: ${attributes.borderColor}` };
-        },
-      },
-      borderWidth: {
-        default: null,
-        parseHTML: (element) => element.style.borderWidth || null,
-        renderHTML: (attributes) => {
-          if (!attributes.borderWidth) return {};
-          return { style: `border-width: ${attributes.borderWidth}` };
-        },
-      },
-      borderStyle: {
-        default: null,
-        parseHTML: (element) => element.style.borderStyle || null,
-        renderHTML: (attributes) => {
-          if (!attributes.borderStyle) return {};
-          return { style: `border-style: ${attributes.borderStyle}` };
-        },
-      },
-      borderRadius: {
-        default: null,
-        parseHTML: (element) => element.style.borderRadius || null,
-        renderHTML: (attributes) => {
-          if (!attributes.borderRadius) return {};
-          return { style: `border-radius: ${attributes.borderRadius}` };
-        },
-      },
-      padding: {
-        default: null,
-        parseHTML: (element) => element.style.padding || null,
-        renderHTML: (attributes) => {
-          if (!attributes.padding) return {};
-          return { style: `padding: ${attributes.padding}` };
-        },
-      },
-      marginTop: {
-        default: null,
-        parseHTML: (element) => element.style.marginTop || null,
-        renderHTML: (attributes) => {
-          if (!attributes.marginTop) return {};
-          return { style: `margin-top: ${attributes.marginTop}` };
-        },
-      },
-      marginBottom: {
-        default: null,
-        parseHTML: (element) => element.style.marginBottom || null,
-        renderHTML: (attributes) => {
-          if (!attributes.marginBottom) return {};
-          return { style: `margin-bottom: ${attributes.marginBottom}` };
+          return { style: styleObjectToCss(attributes.style) };
         },
       },
     };
   },
   parseHTML() {
     return [
-      {
-        tag: "div[style]",
-      },
-      {
-        tag: "section",
-      },
+      { tag: 'div[data-node-type="container"]' },
+      { tag: "div[style]" },
+      { tag: "section" },
     ];
   },
   renderHTML({ HTMLAttributes }) {
@@ -458,7 +391,6 @@ export const ButtonBlockExtension = Node.create({
   name: "buttonBlock",
   group: "block",
   content: "inline*",
-  isolating: true,
   defining: true,
   selectable: true,
   draggable: true,
@@ -466,6 +398,7 @@ export const ButtonBlockExtension = Node.create({
     return {
       href: {
         default: "{{event.passUrl}}",
+        renderHTML: () => ({}),
         parseHTML: (element) => {
           const a =
             element.querySelector("a") ||
@@ -479,6 +412,7 @@ export const ButtonBlockExtension = Node.create({
       },
       alignment: {
         default: "center",
+        renderHTML: () => ({}),
         parseHTML: (element) =>
           element.getAttribute("data-align") ||
           element.style.textAlign ||
@@ -486,41 +420,55 @@ export const ButtonBlockExtension = Node.create({
       },
       style: {
         default: {
-          backgroundColor: "#09090b",
+          backgroundColor: "#000000",
           color: "#ffffff",
           borderRadius: "8px",
           borderWidth: "1px",
           borderStyle: "solid",
-          borderColor: "#09090b",
+          borderColor: "#000000",
           padding: "12px 24px",
           width: "auto",
           fontFamily: "Inter",
-          fontSize: "14px",
+          fontSize: "15px",
           fontWeight: "600",
         },
+        renderHTML: () => ({}),
       },
     };
   },
   parseHTML() {
     return [{ tag: 'div[data-node-type="buttonBlock"]' }];
   },
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML({ node }) {
     const align = node.attrs.alignment || "center";
     const href = node.attrs.href || "{{event.passUrl}}";
+    const nodeStyle = {
+      ...((node.attrs.style && typeof node.attrs.style === "object"
+        ? node.attrs.style
+        : {}) as Record<string, string>),
+    };
+
+    const mt = nodeStyle.marginTop || "16px";
+    const mb = nodeStyle.marginBottom || "16px";
+
+    delete nodeStyle.marginTop;
+    delete nodeStyle.marginBottom;
+    delete nodeStyle.textAlign;
+
     const aStyle = styleObjectToCss({
       display: "inline-block",
       textDecoration: "none",
       boxSizing: "border-box",
       cursor: "text",
-      ...node.attrs.style,
+      ...nodeStyle,
     });
 
     return [
       "div",
-      mergeAttributes(HTMLAttributes, {
+      {
         "data-node-type": "buttonBlock",
-        style: `text-align: ${align}; margin: 16px 0;`,
-      }),
+        style: `text-align: ${align}; margin-top: ${mt}; margin-bottom: ${mb}; background: transparent !important;`,
+      },
       [
         "a",
         {
@@ -546,6 +494,42 @@ export const ButtonBlockExtension = Node.create({
               .setTextSelection(afterPos + 1)
               .run();
           }
+        }
+        return false;
+      },
+      // Delete the whole buttonBlock when cursor is at start and node is selected or content is empty
+      Backspace: ({ editor }) => {
+        const { selection, doc } = editor.state;
+        const { $from } = selection;
+        // If a buttonBlock is NodeSelected, delete it
+        if (selection instanceof NodeSelection && selection.node.type.name === "buttonBlock") {
+          editor.chain().deleteSelection().run();
+          return true;
+        }
+        // If cursor is at the very start of a buttonBlock's content, select and delete the node
+        for (let d = $from.depth; d > 0; d--) {
+          const node = $from.node(d);
+          if (node.type.name === "buttonBlock") {
+            const startOfContent = $from.start(d);
+            if ($from.pos === startOfContent) {
+              const nodeStart = $from.before(d);
+              const tr = editor.state.tr.setSelection(
+                NodeSelection.create(doc, nodeStart)
+              );
+              editor.view.dispatch(tr);
+              editor.chain().deleteSelection().run();
+              return true;
+            }
+            break;
+          }
+        }
+        return false;
+      },
+      Delete: ({ editor }) => {
+        const { selection } = editor.state;
+        if (selection instanceof NodeSelection && selection.node.type.name === "buttonBlock") {
+          editor.chain().deleteSelection().run();
+          return true;
         }
         return false;
       },
@@ -829,6 +813,7 @@ export const ImageBlockExtension = Node.create({
     return {
       src: {
         default: "",
+        renderHTML: () => ({}),
         parseHTML: (element) => {
           const img =
             element.querySelector("img") ||
@@ -838,6 +823,7 @@ export const ImageBlockExtension = Node.create({
       },
       alt: {
         default: "",
+        renderHTML: () => ({}),
         parseHTML: (element) => {
           const img =
             element.querySelector("img") ||
@@ -847,6 +833,7 @@ export const ImageBlockExtension = Node.create({
       },
       href: {
         default: "",
+        renderHTML: () => ({}),
         parseHTML: (element) => {
           const a = element.querySelector("a");
           return (
@@ -856,6 +843,7 @@ export const ImageBlockExtension = Node.create({
       },
       alignment: {
         default: "center",
+        renderHTML: () => ({}),
         parseHTML: (element) =>
           element.getAttribute("data-align") ||
           element.style.textAlign ||
@@ -871,13 +859,14 @@ export const ImageBlockExtension = Node.create({
           borderColor: "#e4e4e7",
           padding: "0px",
         },
+        renderHTML: () => ({}),
       },
     };
   },
   parseHTML() {
     return [{ tag: 'div[data-node-type="imageBlock"]' }];
   },
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML({ node }) {
     const align = node.attrs.alignment || "center";
     const src = node.attrs.src || "";
     const alt = node.attrs.alt || "";
@@ -894,10 +883,10 @@ export const ImageBlockExtension = Node.create({
     if (href) {
       return [
         "div",
-        mergeAttributes(HTMLAttributes, {
+        {
           "data-node-type": "imageBlock",
-          style: `text-align: ${align}; margin: 16px 0;`,
-        }),
+          style: `text-align: ${align}; margin: 16px 0; background: transparent !important;`,
+        },
         [
           "a",
           { href, target: "_blank", style: "display: inline-block;" },
@@ -908,10 +897,10 @@ export const ImageBlockExtension = Node.create({
 
     return [
       "div",
-      mergeAttributes(HTMLAttributes, {
+      {
         "data-node-type": "imageBlock",
-        style: `text-align: ${align}; margin: 16px 0;`,
-      }),
+        style: `text-align: ${align}; margin: 16px 0; background: transparent !important;`,
+      },
       imgTag,
     ];
   },
@@ -1048,8 +1037,8 @@ export const VariableNodeExtension = Node.create({
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-variable": key,
-        class:
-          "inline-flex items-center rounded bg-zinc-900 text-zinc-100 px-1.5 py-0.5 text-xs font-mono mx-0.5",
+        class: "email-variable-chip",
+        contenteditable: "false",
       }),
       `{{${key}}}`,
     ];
@@ -1065,73 +1054,48 @@ export const BlockStyleExtension = Extension.create({
   addGlobalAttributes() {
     return [
       {
-        types: ["paragraph", "heading", "blockquote", "listItem"],
+        types: [
+          "paragraph",
+          "heading",
+          "blockquote",
+          "bulletList",
+          "orderedList",
+          "listItem",
+          "containerBlock",
+        ],
         attributes: {
-          backgroundColor: {
-            default: null,
-            parseHTML: (element) => element.style.backgroundColor || null,
+          style: {
+            default: {},
+            parseHTML: () => ({}),
             renderHTML: (attributes) => {
-              if (!attributes.backgroundColor) return {};
-              return {
-                style: `background-color: ${attributes.backgroundColor}`,
-              };
-            },
-          },
-          borderColor: {
-            default: null,
-            parseHTML: (element) => element.style.borderColor || null,
-            renderHTML: (attributes) => {
-              if (!attributes.borderColor) return {};
-              return { style: `border-color: ${attributes.borderColor}` };
+              if (!attributes.style || typeof attributes.style !== "object") return {};
+              const css = styleObjectToCss(attributes.style);
+              return css ? { style: css } : {};
             },
           },
           borderWidth: {
-            default: null,
-            parseHTML: (element) => element.style.borderWidth || null,
-            renderHTML: (attributes) => {
-              if (!attributes.borderWidth) return {};
-              return { style: `border-width: ${attributes.borderWidth}` };
-            },
+            default: undefined,
           },
           borderStyle: {
-            default: null,
-            parseHTML: (element) => element.style.borderStyle || null,
-            renderHTML: (attributes) => {
-              if (!attributes.borderStyle) return {};
-              return { style: `border-style: ${attributes.borderStyle}` };
-            },
+            default: undefined,
+          },
+          borderColor: {
+            default: undefined,
           },
           borderRadius: {
-            default: null,
-            parseHTML: (element) => element.style.borderRadius || null,
-            renderHTML: (attributes) => {
-              if (!attributes.borderRadius) return {};
-              return { style: `border-radius: ${attributes.borderRadius}` };
-            },
+            default: undefined,
+          },
+          backgroundColor: {
+            default: undefined,
           },
           padding: {
-            default: null,
-            parseHTML: (element) => element.style.padding || null,
-            renderHTML: (attributes) => {
-              if (!attributes.padding) return {};
-              return { style: `padding: ${attributes.padding}` };
-            },
+            default: undefined,
           },
           marginTop: {
-            default: null,
-            parseHTML: (element) => element.style.marginTop || null,
-            renderHTML: (attributes) => {
-              if (!attributes.marginTop) return {};
-              return { style: `margin-top: ${attributes.marginTop}` };
-            },
+            default: undefined,
           },
           marginBottom: {
-            default: null,
-            parseHTML: (element) => element.style.marginBottom || null,
-            renderHTML: (attributes) => {
-              if (!attributes.marginBottom) return {};
-              return { style: `margin-bottom: ${attributes.marginBottom}` };
-            },
+            default: undefined,
           },
         },
       },

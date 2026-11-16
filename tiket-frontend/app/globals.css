@@ -89,6 +89,13 @@
   --ticket-card-text-muted: #6b7280;
   --ticket-card-tag-bg: #f3f4f6;
   --ticket-card-border-dashed: #e5e7eb;
+
+  /* Email Code Viewer Tokens */
+  --email-code-bg: oklch(0.13 0 0);
+  --email-code-header-bg: oklch(0.17 0 0);
+  --email-code-footer-bg: oklch(0.15 0 0);
+  --email-code-text: oklch(0.88 0.08 210);
+  --email-code-border: oklch(1 0 0 / 12%);
 }
 
 .light {
@@ -123,6 +130,13 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Email Code Viewer Tokens */
+  --email-code-bg: oklch(0.96 0 0);
+  --email-code-header-bg: oklch(0.92 0 0);
+  --email-code-footer-bg: oklch(0.94 0 0);
+  --email-code-text: oklch(0.25 0.08 210);
+  --email-code-border: oklch(0 0 0 / 12%);
 }
 
 @layer base {

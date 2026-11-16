@@ -105,7 +105,12 @@ export function ColorPicker({
   );
 
   const displayColor = useMemo(() => {
-    if (!value || value === "transparent" || value === "#00000000") {
+    if (
+      !value ||
+      value === "transparent" ||
+      value.toLowerCase() === "#00000000" ||
+      (value.startsWith("#") && value.length === 9 && value.toLowerCase().endsWith("00"))
+    ) {
       return "transparent";
     }
     if (chroma.valid(value)) {
@@ -118,13 +123,33 @@ export function ColorPicker({
     !value ||
     value === "transparent" ||
     value.toLowerCase() === "#00000000" ||
-    (value.startsWith("#") && value.length === 9 && value.endsWith("00"));
+    (value.startsWith("#") && value.length === 9 && value.toLowerCase().endsWith("00")) ||
+    (inputValue.startsWith("#") && inputValue.length === 9 && inputValue.toLowerCase().endsWith("00")) ||
+    inputValue.toLowerCase() === "transparent";
 
   const handlePickerChange = (newColor: string) => {
     let finalColor = newColor;
-    if (allowAlpha && newColor.length === 9 && newColor.endsWith("ff")) {
-      finalColor = newColor.slice(0, 7);
+
+    if (newColor.length === 9) {
+      const isEndingInZeroZero = newColor.toLowerCase().endsWith("00");
+      const isEndingInFf = newColor.toLowerCase().endsWith("ff");
+      const previousRgb = pickerColor.slice(0, 7).toLowerCase();
+      const newRgb = newColor.slice(0, 7).toLowerCase();
+      const rgbChanged = previousRgb !== newRgb;
+
+      if (isEndingInZeroZero) {
+        // If the color was already transparent, or the user picked/changed a new RGB color
+        // while alpha was at 0, make it visible at full opacity instead of keeping invisible alpha '00'.
+        if (isTransparent || rgbChanged) {
+          finalColor = newColor.slice(0, 7);
+        } else {
+          finalColor = "transparent";
+        }
+      } else if (allowAlpha && isEndingInFf) {
+        finalColor = newColor.slice(0, 7);
+      }
     }
+
     setInputValue(finalColor);
     onChange(finalColor);
   };
@@ -136,8 +161,12 @@ export function ColorPicker({
   };
 
   const handlePresetSelect = (preset: string) => {
-    setInputValue(preset);
-    onChange(preset);
+    let finalPreset = preset;
+    if (preset.length === 9 && preset.toLowerCase().endsWith("00") && preset !== "#00000000") {
+      finalPreset = preset.slice(0, 7);
+    }
+    setInputValue(finalPreset);
+    onChange(finalPreset);
   };
 
   const handleEyeDropper = async () => {

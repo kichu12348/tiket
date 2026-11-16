@@ -2,6 +2,7 @@ export const FONT_FAMILIES = [
   { label: "Default (System)", value: "__default__" },
   { label: "Inter", value: "'Inter', sans-serif" },
   { label: "Arial", value: "Arial, Helvetica, sans-serif" },
+  { label: "Times New Roman", value: "'Times New Roman', Times, serif" },
   { label: "Georgia", value: "Georgia, serif" },
   { label: "Playfair Display", value: "'Playfair Display', serif" },
   { label: "Roboto", value: "'Roboto', sans-serif" },

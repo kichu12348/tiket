@@ -56,10 +56,12 @@ export function createDefaultEmailDocument(): EmailDocumentJSON {
   return {
     version: 1,
     canvasStyle: {
-      backgroundColor: "#f4f4f5",
-      contentBackgroundColor: "#ffffff",
+      backgroundColor: "#ffffff",
+      color: "#111827",
+      maxWidth: "600px",
       contentWidth: "600px",
       padding: "32px",
+      borderRadius: "12px",
     },
     doc: {
       type: "doc",
@@ -69,7 +71,7 @@ export function createDefaultEmailDocument(): EmailDocumentJSON {
           attrs: {
             style: {
               fontSize: "16px",
-              color: "#18181b",
+              color: "#111827",
               lineHeight: "1.6",
             },
           },
@@ -86,6 +88,148 @@ export function createDefaultEmailDocument(): EmailDocumentJSON {
 }
 
 /**
+ * Recursively normalizes an EmailNodeJSON tree so styling lives strictly in attrs.style,
+ * removing null/undefined attributes, legacy flat style properties, and aligning with backend schema.
+ */
+export function normalizeEmailDocumentDoc(node: EmailNodeJSON): EmailNodeJSON {
+  if (!node || typeof node !== "object") {
+    return { type: "paragraph", content: [] };
+  }
+
+  // Normalize variable nodes into plain text tokens so variables are part of the text itself
+  if (node.type === "variable") {
+    const rawKey = ((node.attrs?.key as string) || (node.attrs?.label as string) || "").trim();
+    const cleanKey = rawKey.startsWith("{{") ? rawKey : `{{${rawKey}}}`;
+    return {
+      type: "text",
+      text: cleanKey,
+    };
+  }
+
+  let normalizedType = node.type;
+  if (normalizedType === "container") normalizedType = "containerBlock";
+  if (normalizedType === "ctaButton") normalizedType = "buttonBlock";
+  if (normalizedType === "image") normalizedType = "imageBlock";
+
+  const rawAttrs = (node.attrs && typeof node.attrs === "object" ? node.attrs : {}) as Record<string, unknown>;
+  const cleanAttrs: Record<string, unknown> = {};
+
+  const rawStyle = (rawAttrs.style && typeof rawAttrs.style === "object" ? rawAttrs.style : {}) as Record<string, unknown>;
+  const cleanStyle: Record<string, string | number> = {};
+
+  for (const [sKey, sVal] of Object.entries(rawStyle)) {
+    if (sVal !== null && sVal !== undefined && sVal !== "") {
+      cleanStyle[sKey] = sVal as string | number;
+    }
+  }
+
+  const legacyStyleProps = [
+    "backgroundColor",
+    "borderColor",
+    "borderWidth",
+    "borderStyle",
+    "borderRadius",
+    "padding",
+    "marginTop",
+    "marginBottom",
+    "fontSize",
+    "fontWeight",
+    "color",
+    "lineHeight",
+  ];
+  for (const prop of legacyStyleProps) {
+    if (rawAttrs[prop] !== undefined && rawAttrs[prop] !== null && rawAttrs[prop] !== "") {
+      if (cleanStyle[prop] === undefined) {
+        cleanStyle[prop] = rawAttrs[prop] as string | number;
+      }
+    }
+  }
+
+  if (rawAttrs.buttonColor && !cleanStyle.backgroundColor) {
+    cleanStyle.backgroundColor = String(rawAttrs.buttonColor);
+  }
+  if (rawAttrs.textColor && !cleanStyle.color) {
+    cleanStyle.color = String(rawAttrs.textColor);
+  }
+
+  const rawAlignment = rawAttrs.alignment || rawAttrs.textAlign || cleanStyle.textAlign;
+  if (rawAlignment && typeof rawAlignment === "string") {
+    cleanAttrs.alignment = rawAlignment;
+    cleanStyle.textAlign = rawAlignment;
+  }
+
+  if (Object.keys(cleanStyle).length > 0) {
+    cleanAttrs.style = cleanStyle;
+  }
+
+  if (rawAttrs.level !== undefined && rawAttrs.level !== null) {
+    cleanAttrs.level = rawAttrs.level as 1 | 2 | 3;
+  }
+  if (rawAttrs.href || rawAttrs.url) {
+    cleanAttrs.href = String(rawAttrs.href || rawAttrs.url);
+  }
+  if (rawAttrs.src) {
+    cleanAttrs.src = String(rawAttrs.src);
+  }
+  if (rawAttrs.alt !== undefined && rawAttrs.alt !== null && rawAttrs.alt !== "") {
+    cleanAttrs.alt = String(rawAttrs.alt);
+  }
+  if (rawAttrs.label) {
+    cleanAttrs.label = String(rawAttrs.label);
+  }
+  if (rawAttrs.key) {
+    cleanAttrs.key = String(rawAttrs.key);
+  }
+
+  const result: EmailNodeJSON = {
+    type: normalizedType,
+  };
+
+  if (Object.keys(cleanAttrs).length > 0) {
+    result.attrs = cleanAttrs;
+  }
+
+  if (node.marks && Array.isArray(node.marks) && node.marks.length > 0) {
+    result.marks = node.marks.filter((m) => m && m.type);
+  }
+
+  if (node.text !== undefined && node.text !== null) {
+    result.text = node.text;
+  }
+
+  if (node.content && Array.isArray(node.content)) {
+    result.content = node.content.map(normalizeEmailDocumentDoc);
+  }
+
+  return result;
+}
+
+export function normalizeEmailDocument(document: EmailDocumentJSON): EmailDocumentJSON {
+  const defaultCanvasStyle: StyleObject = {
+    backgroundColor: "#ffffff",
+    color: "#111827",
+    maxWidth: "600px",
+    padding: "32px",
+    borderRadius: "12px",
+  };
+
+  const rawCanvas = document.canvasStyle || {};
+  const cleanCanvas: StyleObject = { ...defaultCanvasStyle };
+
+  for (const [k, v] of Object.entries(rawCanvas)) {
+    if (v !== null && v !== undefined && v !== "") {
+      cleanCanvas[k] = v;
+    }
+  }
+
+  return {
+    version: 1,
+    canvasStyle: cleanCanvas,
+    doc: normalizeEmailDocumentDoc(document.doc),
+  };
+}
+
+/**
  * Replaces token occurrences in text or attributes.
  */
 function interpolateString(
@@ -97,6 +241,10 @@ function interpolateString(
     const trimmed = key.trim();
     if (variablesMap[trimmed] !== undefined) {
       return variablesMap[trimmed];
+    }
+    const withBraces = `{{${trimmed}}}`;
+    if (variablesMap[withBraces] !== undefined) {
+      return variablesMap[withBraces];
     }
     return match;
   });
@@ -114,6 +262,16 @@ function compileNodeToHtml(
   switch (node.type) {
     case "text": {
       let text = node.text || "";
+      if (text.includes("ticket.qrCodeUrl")) {
+        const qrUrl =
+          variablesMap?.["ticket.qrCodeUrl"] ||
+          variablesMap?.["{{ticket.qrCodeUrl}}"] ||
+          "https://quickchart.io/qr?text=TKT-884920-XYZ";
+        text = text.replace(
+          /\{\{\s*ticket\.qrCodeUrl\s*\}\}/g,
+          `<img src="${qrUrl}" alt="Ticket QR Code" width="160" height="160" style="display:block;margin:12px auto;border-radius:8px;border:1px solid #e5e7eb;" />`,
+        );
+      }
       text = interpolateString(text, variablesMap);
 
       if (node.marks && node.marks.length > 0) {
@@ -265,7 +423,13 @@ function compileNodeToHtml(
       const align = (node.attrs?.alignment as string) || "center";
       const rawHref = (node.attrs?.href as string) || "{{event.passUrl}}";
       const resolvedHref = interpolateString(rawHref, variablesMap);
-      const nodeStyle = extractStyleObject(node.attrs?.style);
+      const nodeStyle = { ...extractStyleObject(node.attrs?.style) };
+      const mt = (nodeStyle.marginTop as string) || "16px";
+      const mb = (nodeStyle.marginBottom as string) || "16px";
+      delete nodeStyle.marginTop;
+      delete nodeStyle.marginBottom;
+      delete nodeStyle.textAlign;
+
       const btnStyle = styleObjectToCss({
         display: "inline-block",
         textDecoration: "none",
@@ -278,7 +442,7 @@ function compileNodeToHtml(
           .map((child) => compileNodeToHtml(child, variablesMap))
           .join("") || "Click Here";
 
-      return `<div data-node-type="buttonBlock" style="text-align: ${align}; margin: 16px 0;"><a data-button-anchor="true" href="${resolvedHref}" style="${btnStyle}">${children}</a></div>`;
+      return `<div data-node-type="buttonBlock" style="text-align: ${align}; margin-top: ${mt}; margin-bottom: ${mb};"><a data-button-anchor="true" href="${resolvedHref}" style="${btnStyle}">${children}</a></div>`;
     }
 
     case "imageBlock": {
@@ -308,12 +472,14 @@ function compileNodeToHtml(
 
     case "variable": {
       const key = (node.attrs?.key as string || "").trim();
+      const strippedKey = key.replace(/^\{\{\s*/, "").replace(/\s*\}\}$/, "");
+      const withBraces = `{{${strippedKey}}}`;
       const resolved =
-        variablesMap && variablesMap[key] !== undefined
-          ? variablesMap[key]
-          : `{{${key}}}`;
+        variablesMap && (variablesMap[strippedKey] !== undefined || variablesMap[withBraces] !== undefined || variablesMap[key] !== undefined)
+          ? (variablesMap[strippedKey] ?? variablesMap[withBraces] ?? variablesMap[key])
+          : `{{${strippedKey}}}`;
 
-      if (key === "ticket.qrCodeUrl") {
+      if (key === "ticket.qrCodeUrl" || strippedKey === "ticket.qrCodeUrl") {
         return `<img src="${resolved}" alt="Ticket QR Code" width="160" height="160" style="display:block;margin:12px auto;border-radius:8px;" />`;
       }
       return resolved;
@@ -342,9 +508,12 @@ export function compileEmailJsonToHtml(
   if (!document || !document.doc) return "";
 
   const canvasStyle = document.canvasStyle || {};
-  const bg = (canvasStyle.backgroundColor as string) || "#f4f4f5";
-  const contentBg = (canvasStyle.contentBackgroundColor as string) || "#ffffff";
-  const contentWidth = (canvasStyle.contentWidth as string) || "600px";
+  const bg = (canvasStyle.backgroundColor as string) || "#ffffff";
+  const contentBg = (canvasStyle.contentBackgroundColor as string) || bg;
+  const contentWidth =
+    (canvasStyle.maxWidth as string) ||
+    (canvasStyle.contentWidth as string) ||
+    "600px";
   const padding = (canvasStyle.padding as string) || "32px";
 
   const bodyHtml = compileNodeToHtml(document.doc, variablesMap);

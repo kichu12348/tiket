@@ -3,8 +3,10 @@ import {
   styleObjectToCss,
   createDefaultEmailDocument,
   compileEmailJsonToHtml,
+  normalizeEmailDocumentDoc,
+  normalizeEmailDocument,
 } from "../emailJsonCompiler";
-import type { EmailDocumentJSON } from "@/types/email";
+import type { EmailDocumentJSON, StyleObject } from "@/types/email";
 
 describe("emailJsonCompiler", () => {
   describe("styleObjectToCss", () => {
@@ -64,7 +66,7 @@ describe("emailJsonCompiler", () => {
     test("returns valid version 1 document with canvas style and starter paragraph", () => {
       const doc = createDefaultEmailDocument();
       expect(doc.version).toBe(1);
-      expect(doc.canvasStyle?.backgroundColor).toBe("#f4f4f5");
+      expect(doc.canvasStyle?.backgroundColor).toBe("#ffffff");
       expect(doc.canvasStyle?.contentWidth).toBe("600px");
       expect(doc.doc.type).toBe("doc");
       expect(doc.doc.content?.length).toBeGreaterThanOrEqual(1);
@@ -195,6 +197,96 @@ describe("emailJsonCompiler", () => {
       expect(html).toContain("Download Pass");
       expect(html).toContain('data-node-type="imageBlock"');
       expect(html).toContain('<img src="https://tiket.app/banner.png" alt="Event Banner"');
+    });
+  });
+
+  describe("normalizeEmailDocumentDoc", () => {
+    test("strips null attributes and nests styles inside attrs.style", () => {
+      const pollutedDoc = {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: {
+              level: 2,
+              textAlign: null,
+              backgroundColor: null,
+              borderColor: null,
+              borderWidth: null,
+              borderStyle: null,
+              borderRadius: null,
+              padding: null,
+              marginTop: null,
+              marginBottom: null,
+              style: {
+                color: "#111827",
+                fontSize: "22px",
+                fontWeight: "700",
+              },
+            },
+            content: [{ type: "text", text: "Confirmed" }],
+          },
+          {
+            type: "paragraph",
+            attrs: {
+              textAlign: null,
+              backgroundColor: null,
+              borderColor: null,
+              borderWidth: null,
+              borderStyle: null,
+              borderRadius: null,
+              padding: null,
+              marginTop: null,
+              marginBottom: null,
+              style: {
+                color: "#4b5563",
+                fontSize: "15px",
+              },
+            },
+            content: [{ type: "text", text: "Hello" }],
+          },
+          {
+            type: "ctaButton",
+            attrs: {
+              url: "https://tiket.com/pass",
+              label: "View Pass",
+              buttonColor: "#000000",
+              textColor: "#ffffff",
+              borderRadius: "8px",
+              alignment: "center",
+            },
+          },
+        ],
+      };
+
+      const normalized = normalizeEmailDocumentDoc(pollutedDoc);
+      expect(normalized.type).toBe("doc");
+
+      const headingNode = normalized.content?.[0];
+      const headingStyle = headingNode?.attrs?.style as StyleObject;
+      expect(headingNode?.attrs?.level).toBe(2);
+      expect(headingStyle?.color).toBe("#111827");
+      expect(headingStyle?.fontSize).toBe("22px");
+      // Must not contain any null attributes
+      expect("textAlign" in (headingNode?.attrs || {})).toBe(false);
+      expect("backgroundColor" in (headingNode?.attrs || {})).toBe(false);
+      expect("borderWidth" in (headingNode?.attrs || {})).toBe(false);
+
+      const btnNode = normalized.content?.[2];
+      const btnStyle = btnNode?.attrs?.style as StyleObject;
+      expect(btnNode?.type).toBe("buttonBlock");
+      expect(btnNode?.attrs?.href).toBe("https://tiket.com/pass");
+      expect(btnNode?.attrs?.label).toBe("View Pass");
+      expect(btnStyle?.backgroundColor).toBe("#000000");
+      expect(btnStyle?.color).toBe("#ffffff");
+
+      const fullDoc = normalizeEmailDocument({
+        version: 1,
+        doc: pollutedDoc,
+      });
+      expect(fullDoc.version).toBe(1);
+      expect(fullDoc.canvasStyle?.backgroundColor).toBe("#ffffff");
+      expect(fullDoc.doc.content?.length).toBe(3);
     });
   });
 });

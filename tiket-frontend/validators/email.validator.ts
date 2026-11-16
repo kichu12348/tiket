@@ -30,21 +30,7 @@ export const emailMarkSchema = z.object({
 
 export const emailNodeJsonSchema: z.ZodType<EmailNodeJSON> = z.lazy(() =>
   z.object({
-    type: z.enum([
-      "doc",
-      "paragraph",
-      "heading",
-      "blockquote",
-      "bulletList",
-      "orderedList",
-      "listItem",
-      "containerBlock",
-      "buttonBlock",
-      "imageBlock",
-      "variable",
-      "text",
-      "hardBreak",
-    ]),
+    type: z.string(),
     attrs: z
       .object({
         style: emailStyleSchema.optional(),
@@ -54,6 +40,7 @@ export const emailNodeJsonSchema: z.ZodType<EmailNodeJSON> = z.lazy(() =>
         alt: z.string().optional(),
         alignment: z
           .enum(["left", "center", "right", "justify"])
+          .or(z.string())
           .optional(),
         key: z.string().optional(),
         label: z.string().optional(),
@@ -71,6 +58,19 @@ export const emailDocumentJsonSchema = z.object({
   canvasStyle: emailStyleSchema.optional(),
   doc: emailNodeJsonSchema,
 });
+
+export function validateEmailDocument(document: unknown): ValidationResult<EmailDocumentJSON> {
+  const result = emailDocumentJsonSchema.safeParse(document);
+  if (!result.success) {
+    const firstIssue = result.error.issues[0];
+    const pathStr = firstIssue.path.join(".");
+    return {
+      success: false,
+      error: pathStr ? `${pathStr}: ${firstIssue.message}` : firstIssue.message,
+    };
+  }
+  return { success: true, data: result.data as EmailDocumentJSON };
+}
 
 export const emailTemplateSaveSchema = z.object({
   name: z

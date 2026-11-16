@@ -264,14 +264,21 @@ function compileEmailNode(
       fontSize: "15px",
       display: "inline-block",
     };
+    const nodeStyle = { ...((node.attrs?.style || {}) as StyleObject) };
+    const mt = nodeStyle.marginTop || "16px";
+    const mb = nodeStyle.marginBottom || "16px";
+    delete nodeStyle.marginTop;
+    delete nodeStyle.marginBottom;
+    delete nodeStyle.textAlign;
+
     const mergedStyle: StyleObject = {
       ...defaultBtnStyle,
-      ...(node.attrs?.style || {}),
+      ...nodeStyle,
     };
     const btnCss = styleObjectToCss(mergedStyle);
 
     return `
-<div style="text-align: ${escapeAttribute(alignment)}; margin: 24px 0;">
+<div style="text-align: ${escapeAttribute(alignment)}; margin-top: ${escapeAttribute(String(mt))}; margin-bottom: ${escapeAttribute(String(mb))};">
   <a href="${escapeAttribute(href)}" style="${escapeAttribute(btnCss)}">
     ${label}
   </a>
@@ -538,12 +545,7 @@ export const DEFAULT_TEMPLATES: Array<{
               },
             },
             content: [
-              { type: "text", text: "You're confirmed for " },
-              {
-                type: "variable",
-                attrs: { key: "{{event.title}}", label: "Event Title" },
-              },
-              { type: "text", text: "! 🎉" },
+              { type: "text", text: "You're confirmed for {{event.title}}! 🎉" },
             ],
           },
           {
@@ -552,12 +554,7 @@ export const DEFAULT_TEMPLATES: Array<{
               style: { color: "#4b5563", fontSize: "15px", lineHeight: "1.5" },
             },
             content: [
-              { type: "text", text: "Hi " },
-              {
-                type: "variable",
-                attrs: { key: "{{attendee.name}}", label: "Attendee Name" },
-              },
-              { type: "text", text: "," },
+              { type: "text", text: "Hi {{attendee.name}}," },
             ],
           },
           {
@@ -601,10 +598,7 @@ export const DEFAULT_TEMPLATES: Array<{
                 },
                 content: [
                   { type: "text", text: "Date: ", marks: [{ type: "bold" }] },
-                  {
-                    type: "variable",
-                    attrs: { key: "{{event.startDate}}", label: "Start Date" },
-                  },
+                  { type: "text", text: "{{event.startDate}}" },
                 ],
               },
               {
@@ -622,10 +616,7 @@ export const DEFAULT_TEMPLATES: Array<{
                     text: "Location: ",
                     marks: [{ type: "bold" }],
                   },
-                  {
-                    type: "variable",
-                    attrs: { key: "{{event.location}}", label: "Location" },
-                  },
+                  { type: "text", text: "{{event.location}}" },
                 ],
               },
               {
@@ -643,10 +634,7 @@ export const DEFAULT_TEMPLATES: Array<{
                     text: "Ticket Type: ",
                     marks: [{ type: "bold" }],
                   },
-                  {
-                    type: "variable",
-                    attrs: { key: "{{ticket.type}}", label: "Ticket Type" },
-                  },
+                  { type: "text", text: "{{ticket.type}}" },
                 ],
               },
             ],
@@ -719,12 +707,7 @@ export const DEFAULT_TEMPLATES: Array<{
               },
             },
             content: [
-              { type: "text", text: "Welcome to " },
-              {
-                type: "variable",
-                attrs: { key: "{{event.title}}", label: "Event Title" },
-              },
-              { type: "text", text: "! 🎟️" },
+              { type: "text", text: "Welcome to {{event.title}}! 🎟️" },
             ],
           },
           {
@@ -733,12 +716,7 @@ export const DEFAULT_TEMPLATES: Array<{
               style: { color: "#4b5563", fontSize: "15px", lineHeight: "1.5" },
             },
             content: [
-              { type: "text", text: "Hi " },
-              {
-                type: "variable",
-                attrs: { key: "{{attendee.name}}", label: "Attendee Name" },
-              },
-              { type: "text", text: "," },
+              { type: "text", text: "Hi {{attendee.name}}," },
             ],
           },
           {
@@ -779,10 +757,7 @@ export const DEFAULT_TEMPLATES: Array<{
                 },
                 content: [
                   { type: "text", text: "Event: ", marks: [{ type: "bold" }] },
-                  {
-                    type: "variable",
-                    attrs: { key: "{{event.title}}", label: "Event Title" },
-                  },
+                  { type: "text", text: "{{event.title}}" },
                 ],
               },
               {
@@ -800,10 +775,7 @@ export const DEFAULT_TEMPLATES: Array<{
                     text: "Location: ",
                     marks: [{ type: "bold" }],
                   },
-                  {
-                    type: "variable",
-                    attrs: { key: "{{event.location}}", label: "Location" },
-                  },
+                  { type: "text", text: "{{event.location}}" },
                 ],
               },
             ],
@@ -859,12 +831,7 @@ export const DEFAULT_TEMPLATES: Array<{
               style: { color: "#4b5563", fontSize: "15px", lineHeight: "1.5" },
             },
             content: [
-              { type: "text", text: "Hi " },
-              {
-                type: "variable",
-                attrs: { key: "{{attendee.name}}", label: "Attendee Name" },
-              },
-              { type: "text", text: "," },
+              { type: "text", text: "Hi {{attendee.name}}," },
             ],
           },
           {
@@ -908,10 +875,7 @@ export const DEFAULT_TEMPLATES: Array<{
                 },
                 content: [
                   { type: "text", text: "Date: ", marks: [{ type: "bold" }] },
-                  {
-                    type: "variable",
-                    attrs: { key: "{{event.startDate}}", label: "Start Date" },
-                  },
+                  { type: "text", text: "{{event.startDate}}" },
                 ],
               },
               {
@@ -929,10 +893,7 @@ export const DEFAULT_TEMPLATES: Array<{
                     text: "Location: ",
                     marks: [{ type: "bold" }],
                   },
-                  {
-                    type: "variable",
-                    attrs: { key: "{{event.location}}", label: "Location" },
-                  },
+                  { type: "text", text: "{{event.location}}" },
                 ],
               },
             ],
@@ -993,12 +954,7 @@ export const DEFAULT_TEMPLATES: Array<{
               style: { color: "#4b5563", fontSize: "15px", lineHeight: "1.5" },
             },
             content: [
-              { type: "text", text: "Hi " },
-              {
-                type: "variable",
-                attrs: { key: "{{attendee.name}}", label: "Attendee Name" },
-              },
-              { type: "text", text: "," },
+              { type: "text", text: "Hi {{attendee.name}}," },
             ],
           },
           {
@@ -1073,12 +1029,7 @@ export const DEFAULT_TEMPLATES: Array<{
               style: { color: "#4b5563", fontSize: "15px", lineHeight: "1.5" },
             },
             content: [
-              { type: "text", text: "Hi " },
-              {
-                type: "variable",
-                attrs: { key: "{{attendee.name}}", label: "Attendee Name" },
-              },
-              { type: "text", text: "," },
+              { type: "text", text: "Hi {{attendee.name}}," },
             ],
           },
           {

@@ -72,15 +72,54 @@ function computeSnapshot(editor: Editor | null): TipTapSyncSnapshot {
     }
   }
 
-  // 2. Resolve text styles & marks
+  // 2. Resolve text styles & marks with block-level and type-aware fallbacks
   const textStyleAttrs = editor.getAttributes("textStyle") || {};
+  const nodeStyle = (nodeAttrs.style && typeof nodeAttrs.style === "object"
+    ? nodeAttrs.style
+    : {}) as StyleObject;
+
+  const defaultFontSize =
+    activeType === "heading"
+      ? nodeAttrs.level === 1
+        ? "24px"
+        : nodeAttrs.level === 2
+          ? "20px"
+          : "18px"
+      : activeType === "buttonBlock"
+        ? (nodeStyle.fontSize as string) || "15px"
+        : "15px";
+
+  const resolvedFontSize =
+    (textStyleAttrs.fontSize as string) ||
+    ((textStyleAttrs.style as StyleObject)?.fontSize as string) ||
+    (nodeStyle.fontSize as string) ||
+    defaultFontSize;
+
+  const resolvedFontFamily =
+    (textStyleAttrs.fontFamily as string) ||
+    ((textStyleAttrs.style as StyleObject)?.fontFamily as string) ||
+    (nodeStyle.fontFamily as string) ||
+    undefined;
+
+  const resolvedFontWeight =
+    (textStyleAttrs.fontWeight as string) ||
+    ((textStyleAttrs.style as StyleObject)?.fontWeight as string) ||
+    (nodeStyle.fontWeight as string) ||
+    (activeType === "heading" ? "700" : undefined);
+
   const textStyle: StyleObject = {
-    fontFamily: textStyleAttrs.fontFamily || undefined,
-    fontSize: textStyleAttrs.fontSize || undefined,
-    fontWeight: textStyleAttrs.fontWeight || undefined,
-    color: textStyleAttrs.color || undefined,
-    backgroundColor: textStyleAttrs.backgroundColor || undefined,
+    fontFamily: resolvedFontFamily,
+    fontSize: resolvedFontSize,
+    fontWeight: resolvedFontWeight,
+    color: textStyleAttrs.color || (nodeStyle.color as string) || undefined,
+    backgroundColor:
+      textStyleAttrs.backgroundColor ||
+      (nodeStyle.backgroundColor as string) ||
+      undefined,
+    ...nodeStyle,
     ...((textStyleAttrs.style as StyleObject) || {}),
+    ...(resolvedFontSize ? { fontSize: resolvedFontSize } : {}),
+    ...(resolvedFontFamily ? { fontFamily: resolvedFontFamily } : {}),
   };
 
   const isBold =
@@ -240,8 +279,12 @@ export function useTipTapSync(editor: Editor | null) {
           style: mergedStyle,
         })
         .run();
+
+      if (editor.state.selection.empty) {
+        updateBlockStyleLive(stylePatch);
+      }
     },
-    [editor],
+    [editor, updateBlockStyleLive],
   );
 
   // Toggles bold weight between 700 and 400

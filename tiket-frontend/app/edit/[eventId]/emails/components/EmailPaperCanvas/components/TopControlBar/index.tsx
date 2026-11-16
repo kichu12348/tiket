@@ -9,7 +9,7 @@ import {
   Smartphone,
   Edit3,
   Eye,
-  Code,
+  FileJson,
   Power,
 } from "lucide-react";
 import styles from "./TopControlBar.module.css";
@@ -86,6 +86,7 @@ export default function TopControlBar({
             type="button"
             className={styles.deviceBtn}
             data-active={deviceView === "desktop"}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setDeviceView("desktop")}
             title="Desktop View (720px)"
           >
@@ -96,6 +97,7 @@ export default function TopControlBar({
             type="button"
             className={styles.deviceBtn}
             data-active={deviceView === "mobile"}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setDeviceView("mobile")}
             title="Mobile View (375px)"
           >
@@ -110,6 +112,7 @@ export default function TopControlBar({
             type="button"
             className={styles.modeBtn}
             data-active={canvasMode === "edit"}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setCanvasMode("edit")}
             title="Visual Editor Mode"
           >
@@ -120,6 +123,7 @@ export default function TopControlBar({
             type="button"
             className={styles.modeBtn}
             data-active={canvasMode === "preview"}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setCanvasMode("preview")}
             title="Live Data Preview"
           >
@@ -130,11 +134,12 @@ export default function TopControlBar({
             type="button"
             className={styles.modeBtn}
             data-active={canvasMode === "code"}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setCanvasMode("code")}
-            title="HTML Code View"
+            title="JSON Schema & Document View"
           >
-            <Code size={14} />
-            <span>Code</span>
+            <FileJson size={14} />
+            <span>JSON</span>
           </button>
         </div>
 
@@ -142,6 +147,7 @@ export default function TopControlBar({
           type="button"
           className={styles.activeStatusBtn}
           data-active={isActive}
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => setIsActive(!isActive)}
           title={isActive ? "Template is Active" : "Template is Inactive"}
         >

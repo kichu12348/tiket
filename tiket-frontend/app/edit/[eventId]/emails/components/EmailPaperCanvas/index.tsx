@@ -7,7 +7,6 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { TextStyle, Color, FontFamily } from "@tiptap/extension-text-style";
 import { Highlight } from "@tiptap/extension-highlight";
 import { Underline } from "@tiptap/extension-underline";
-import { TextAlign } from "@tiptap/extension-text-align";
 import { Placeholder } from "@tiptap/extension-placeholder";
 
 import type {
@@ -18,13 +17,24 @@ import type {
   EmailDocumentNode,
 } from "@/types/email";
 import { EmailModelSerializer } from "@/lib/emailModelSerializer";
-import { createDefaultEmailDocument } from "@/utils/emailJsonCompiler";
 import {
+  createDefaultEmailDocument,
+  compileEmailJsonToHtml,
+  normalizeEmailDocumentDoc,
+} from "@/utils/emailJsonCompiler";
+import { useTipTapSync } from "@/hooks/useTipTapSync";
+import {
+  StyledParagraph,
+  StyledHeading,
+  StyledBlockquote,
+  StyledBulletList,
+  StyledOrderedList,
+  StyledListItem,
   BlockStyleExtension,
-  ContainerExtension,
+  ContainerBlockExtension,
   CustomLinkExtension,
-  CustomImageExtension,
-  CustomButtonExtension,
+  ImageBlockExtension,
+  ButtonBlockExtension,
   CustomTextStyleExtension,
   VariableNodeExtension,
 } from "./extensions";
@@ -78,6 +88,7 @@ function EmailPaperCanvasContent({
   const [ctaUrl, setCtaUrl] = useState("{{event.passUrl}}");
 
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [isEditingLink, setIsEditingLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
 
@@ -92,21 +103,31 @@ function EmailPaperCanvasContent({
       StarterKit.configure({
         link: false,
         underline: false,
+        paragraph: false,
+        heading: false,
+        blockquote: false,
+        bulletList: false,
+        orderedList: false,
+        listItem: false,
       }),
+      StyledParagraph,
+      StyledHeading,
+      StyledBlockquote,
+      StyledBulletList,
+      StyledOrderedList,
+      StyledListItem,
       TextStyle,
       Color,
       FontFamily,
       Highlight.configure({ multicolor: true }),
       Underline,
-      TextAlign.configure({
-        types: ["heading", "paragraph", "container"],
-      }),
       CustomLinkExtension.configure({
         openOnClick: false,
+        autolink: false,
       }),
-      ContainerExtension,
-      CustomImageExtension,
-      CustomButtonExtension,
+      ContainerBlockExtension,
+      ImageBlockExtension,
+      ButtonBlockExtension,
       CustomTextStyleExtension,
       VariableNodeExtension,
       Placeholder.configure({
@@ -131,7 +152,7 @@ function EmailPaperCanvasContent({
       template.body &&
       typeof template.body === "object" &&
       "doc" in template.body
-        ? template.body.doc
+        ? normalizeEmailDocumentDoc(template.body.doc)
         : typeof template.body === "string"
           ? EmailModelSerializer.deserializeHtmlToJson(template.body)
           : createDefaultEmailDocument().doc,
@@ -140,6 +161,8 @@ function EmailPaperCanvasContent({
       setSelectionTick((tick) => tick + 1);
     },
   });
+
+  const tipTapSync = useTipTapSync(editor);
 
   const [prevTemplate, setPrevTemplate] = useState(template);
   if (template !== prevTemplate) {
@@ -153,7 +176,7 @@ function EmailPaperCanvasContent({
   useEffect(() => {
     if (editor && template.body) {
       if (typeof template.body === "object" && "doc" in template.body) {
-        editor.commands.setContent(template.body.doc);
+        editor.commands.setContent(normalizeEmailDocumentDoc(template.body.doc));
       } else if (typeof template.body === "string") {
         const currentSerialized = EmailModelSerializer.serializeJsonToHtml(
           editor.getJSON() as unknown as EmailDocumentNode,
@@ -172,19 +195,21 @@ function EmailPaperCanvasContent({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const docJson = editor.getJSON() as EmailNodeJSON;
+    const docJson = normalizeEmailDocumentDoc(editor.getJSON() as EmailNodeJSON);
     const documentJson: EmailDocumentJSON = {
       version: 1,
       canvasStyle:
         template.body &&
         typeof template.body === "object" &&
-        "canvasStyle" in template.body
+        "canvasStyle" in template.body &&
+        template.body.canvasStyle
           ? template.body.canvasStyle
           : {
-              backgroundColor: "#f4f4f5",
-              contentBackgroundColor: "#ffffff",
-              contentWidth: "600px",
+              backgroundColor: "#ffffff",
+              color: "#111827",
+              maxWidth: "600px",
               padding: "32px",
+              borderRadius: "12px",
             },
       doc: docJson,
     };
@@ -231,15 +256,26 @@ function EmailPaperCanvasContent({
 
     chain
       .insertContent({
-        type: "ctaButton",
+        type: "buttonBlock",
         attrs: {
-          label: ctaLabel.trim(),
-          url: ctaUrl.trim(),
-          buttonColor: "#000000",
-          textColor: "#ffffff",
-          borderRadius: "8px",
+          href: ctaUrl.trim(),
           alignment: "center",
+          label: ctaLabel.trim(),
+          style: {
+            backgroundColor: "#000000",
+            color: "#ffffff",
+            padding: "12px 24px",
+            borderRadius: "8px",
+            fontWeight: "600",
+            fontSize: "15px",
+          },
         },
+        content: [
+          {
+            type: "text",
+            text: ctaLabel.trim(),
+          },
+        ],
       })
       .run();
 
@@ -249,7 +285,9 @@ function EmailPaperCanvasContent({
 
   const handleOpenLinkModal = () => {
     if (editor) {
-      if (editor.isActive("link") && editor.state.selection.from === editor.state.selection.to) {
+      const isLink = editor.isActive("link");
+      setIsEditingLink(isLink);
+      if (isLink) {
         editor.chain().extendMarkRange("link").run();
       }
       savedSelectionRef.current = {
@@ -265,47 +303,74 @@ function EmailPaperCanvasContent({
       } else {
         setLinkText("");
       }
+    } else {
+      setIsEditingLink(false);
     }
     setIsLinkModalOpen(true);
   };
 
-  const handleApplyLink = () => {
-    const trimmedUrl = linkUrl.trim();
+  const handleRemoveLink = () => {
+    if (!editor) return;
+    const chain = editor.chain().focus();
+    if (savedSelectionRef.current) {
+      chain.setTextSelection(savedSelectionRef.current);
+    }
+    chain.extendMarkRange("link").unsetLink().run();
+    setIsLinkModalOpen(false);
+    setLinkUrl("");
+    setLinkText("");
+    setIsEditingLink(false);
+    savedSelectionRef.current = null;
+  };
+
+  const handleApplyLink = (urlOverride?: string, textOverride?: string) => {
+    const urlToUse = urlOverride !== undefined ? urlOverride : linkUrl;
+    const textToUse = textOverride !== undefined ? textOverride : linkText;
+    const trimmedUrl = urlToUse.trim();
+
     if (!trimmedUrl) {
-      const chain = editor.chain().focus();
-      if (savedSelectionRef.current) {
-        chain.setTextSelection(savedSelectionRef.current);
-      }
-      chain.extendMarkRange("link").unsetLink().run();
-      setIsLinkModalOpen(false);
-      setLinkUrl("");
-      setLinkText("");
-      savedSelectionRef.current = null;
+      handleRemoveLink();
       return;
     }
 
     const chain = editor.chain().focus();
-    if (savedSelectionRef.current) {
-      chain.setTextSelection(savedSelectionRef.current);
-      const isCollapsed = savedSelectionRef.current.from === savedSelectionRef.current.to;
-      if (isCollapsed) {
-        const textToInsert = linkText.trim() || trimmedUrl;
-        chain.insertContent({
-          type: "text",
-          text: textToInsert,
-          marks: [{ type: "link", attrs: { href: trimmedUrl } }],
-        });
-      } else {
-        chain.extendMarkRange("link").setLink({ href: trimmedUrl });
-      }
+    const sel = savedSelectionRef.current || {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to,
+    };
+
+    chain.setTextSelection(sel);
+
+    const isCollapsed = sel.from === sel.to;
+    const currentSelectedText = isCollapsed
+      ? ""
+      : editor.state.doc.textBetween(sel.from, sel.to, " ");
+    const trimmedText = textToUse.trim();
+
+    if (isCollapsed) {
+      const textToInsert = trimmedText || trimmedUrl;
+      chain.insertContent({
+        type: "text",
+        text: textToInsert,
+        marks: [{ type: "link", attrs: { href: trimmedUrl } }],
+      });
+    } else if (trimmedText && trimmedText !== currentSelectedText) {
+      chain.insertContent({
+        type: "text",
+        text: trimmedText,
+        marks: [{ type: "link", attrs: { href: trimmedUrl } }],
+      });
     } else {
       chain.extendMarkRange("link").setLink({ href: trimmedUrl });
     }
+
+    chain.unsetLink();
     chain.run();
 
     setIsLinkModalOpen(false);
     setLinkUrl("");
     setLinkText("");
+    setIsEditingLink(false);
     savedSelectionRef.current = null;
   };
 
@@ -387,6 +452,8 @@ function EmailPaperCanvasContent({
   const sampleValues: Record<string, string> = {};
   allVars.forEach((v) => {
     sampleValues[v.key] = v.sample;
+    const stripped = v.key.replace(/^\{\{\s*/, "").replace(/\s*\}\}$/, "");
+    sampleValues[stripped] = v.sample;
   });
 
   const qrUrl =
@@ -425,12 +492,37 @@ function EmailPaperCanvasContent({
     return result;
   };
 
-  const previewSubject = renderInterpolated(subject, false) || "(No Subject)";
-  const compiledRawHtml = EmailModelSerializer.serializeJsonToHtml(
-    editor.getJSON() as unknown as EmailDocumentNode,
+  const currentDocJson = normalizeEmailDocumentDoc(
+    editor.getJSON() as EmailNodeJSON,
   );
+  const currentDocModel: EmailDocumentJSON = {
+    version: 1,
+    canvasStyle:
+      template.body &&
+      typeof template.body === "object" &&
+      "canvasStyle" in template.body &&
+      template.body.canvasStyle
+        ? template.body.canvasStyle
+        : {
+            backgroundColor: "#ffffff",
+            color: "#111827",
+            maxWidth: "600px",
+            padding: "32px",
+            borderRadius: "12px",
+          },
+    doc: currentDocJson,
+  };
+
+  const previewSubject = renderInterpolated(subject, false) || "(No Subject)";
+  const compiledRawHtml = compileEmailJsonToHtml(currentDocModel);
   const previewBodyHtml =
-    renderInterpolated(compiledRawHtml, true) ||
+    compileEmailJsonToHtml(currentDocModel, sampleValues) ||
+    renderInterpolated(
+      EmailModelSerializer.serializeJsonToHtml(
+        editor.getJSON() as unknown as EmailDocumentNode,
+      ),
+      true,
+    ) ||
     "<p style='color:#9ca3af;'>No content written yet...</p>";
 
   // Current Active Node Style Getters
@@ -444,11 +536,39 @@ function EmailPaperCanvasContent({
     (editor.getAttributes("highlight").color as string) || "";
 
   // Innermost / deepest styleable block detection (Bug 2.3 & 2.4)
+  const getActiveBlockInfo = () => {
+    if (!editor) return null;
+    const { selection } = editor.state;
+    if (selection instanceof NodeSelection) {
+      return { pos: selection.from, node: selection.node, type: selection.node.type.name };
+    }
+    const { $from } = selection;
+    for (let d = $from.depth; d > 0; d--) {
+      const node = $from.node(d);
+      const name = node.type.name;
+      if (
+        name === "heading" ||
+        name === "paragraph" ||
+        name === "blockquote" ||
+        name === "listItem" ||
+        name === "containerBlock" ||
+        name === "container"
+      ) {
+        return { pos: $from.before(d), node, type: name };
+      }
+    }
+    return null;
+  };
+
   const getInnermostBlock = (): { blockType: string; elementType: string } => {
     if (editor.state.selection instanceof NodeSelection) {
       const node = editor.state.selection.node;
-      if (node.type.name === "ctaButton") return { blockType: "ctaButton", elementType: "ctaButton" };
-      if (node.type.name === "image") return { blockType: "image", elementType: "image" };
+      if (node.type.name === "ctaButton" || node.type.name === "buttonBlock") {
+        return { blockType: node.type.name, elementType: "ctaButton" };
+      }
+      if (node.type.name === "image" || node.type.name === "imageBlock") {
+        return { blockType: node.type.name, elementType: "image" };
+      }
     }
     const { $from } = editor.state.selection;
     for (let d = $from.depth; d > 0; d--) {
@@ -467,50 +587,164 @@ function EmailPaperCanvasContent({
         return { blockType: "listItem", elementType: "ordered" };
       }
       if (name === "listItem") return { blockType: "listItem", elementType: "bullet" };
+      if (name === "containerBlock") return { blockType: "containerBlock", elementType: "container" };
       if (name === "container") return { blockType: "container", elementType: "container" };
     }
     return { blockType: "paragraph", elementType: "p" };
   };
 
   const { blockType: activeBlockType, elementType: currentElementType } = getInnermostBlock();
+  const activeBlockInfo = getActiveBlockInfo();
+  const activeBlockNode = activeBlockInfo?.node;
 
-  const blockAttrs = editor.getAttributes(activeBlockType);
-  const currentBlockBgColor = (blockAttrs.backgroundColor as string) || "";
-  const currentBorderStyle = (blockAttrs.borderStyle as string) || "none";
-  const currentBorderWidth = (blockAttrs.borderWidth as string) || "0px";
-  const currentBorderColor = (blockAttrs.borderColor as string) || "#e5e7eb";
-  const currentBorderRadius = (blockAttrs.borderRadius as string) || "0px";
-  const currentPadding = (blockAttrs.padding as string) || "0px";
-  const currentMarginTop = (blockAttrs.marginTop as string) || "0px";
-  const currentMarginBottom = (blockAttrs.marginBottom as string) || "0px";
+  const blockAttrs = activeBlockNode ? activeBlockNode.attrs : editor.getAttributes(activeBlockType);
+  const blockStyle = (blockAttrs.style && typeof blockAttrs.style === "object"
+    ? blockAttrs.style
+    : {}) as Record<string, string>;
+  const currentBlockBgColor = blockStyle.backgroundColor || "";
+  const currentBorderStyle = blockStyle.borderStyle || "none";
+  const currentBorderWidth = blockStyle.borderWidth || "0px";
+  const currentBorderColor = blockStyle.borderColor || "#e5e7eb";
+  const currentBorderRadius = blockStyle.borderRadius || "0px";
+  const currentPadding = blockStyle.padding || "0px";
+  const currentMarginTop = blockStyle.marginTop || "0px";
+  const currentMarginBottom = blockStyle.marginBottom || "0px";
 
   const updateBlockAttribute = (attrName: string, attrVal: string | null) => {
     // When selection is CTA or image, don't apply block attributes (Bug 2.3)
     if (editor.state.selection instanceof NodeSelection) {
       const name = editor.state.selection.node.type.name;
-      if (name === "ctaButton" || name === "image") {
+      if (name === "ctaButton" || name === "image" || name === "buttonBlock" || name === "imageBlock") {
         return;
       }
     }
-    if (activeBlockType === "ctaButton" || activeBlockType === "image") {
+    if (
+      activeBlockType === "ctaButton" ||
+      activeBlockType === "image" ||
+      activeBlockType === "buttonBlock" ||
+      activeBlockType === "imageBlock"
+    ) {
       return;
     }
-    editor.chain().updateAttributes(activeBlockType, { [attrName]: attrVal }).run();
+
+    const info = getActiveBlockInfo();
+    if (!info) return;
+    const { pos, node } = info;
+    const existingStyle = (node.attrs.style && typeof node.attrs.style === "object"
+      ? node.attrs.style
+      : {}) as Record<string, string>;
+    const updatedStyle = { ...existingStyle };
+    if (attrVal === null || attrVal === undefined || attrVal === "") {
+      delete updatedStyle[attrName];
+    } else {
+      updatedStyle[attrName] = attrVal;
+    }
+
+    const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
+      ...node.attrs,
+      style: updatedStyle,
+    });
+    editor.view.dispatch(tr);
+  };
+
+  // Active Card Container Detection & Helpers
+  const getActiveContainerInfo = () => {
+    if (!editor) return null;
+    const { selection } = editor.state;
+    if (
+      selection instanceof NodeSelection &&
+      (selection.node.type.name === "containerBlock" ||
+        selection.node.type.name === "container")
+    ) {
+      return { pos: selection.from, node: selection.node };
+    }
+    const { $from } = selection;
+    for (let d = $from.depth; d > 0; d--) {
+      const n = $from.node(d);
+      if (n.type.name === "containerBlock" || n.type.name === "container") {
+        return { pos: $from.before(d), node: n };
+      }
+    }
+    return null;
+  };
+
+  const activeContainerInfo = getActiveContainerInfo();
+  const isContainerActive = Boolean(activeContainerInfo);
+  const activeContainerNode = activeContainerInfo?.node;
+  const containerStyle = (activeContainerNode?.attrs.style &&
+    typeof activeContainerNode.attrs.style === "object"
+    ? activeContainerNode.attrs.style
+    : {}) as Record<string, string>;
+
+  const currentContainerBgColor = containerStyle.backgroundColor || "";
+  const currentContainerBorderStyle = containerStyle.borderStyle || "solid";
+  const currentContainerBorderWidth = containerStyle.borderWidth || "1px";
+  const currentContainerBorderColor = containerStyle.borderColor || "#e5e7eb";
+  const currentContainerBorderRadius = containerStyle.borderRadius || "8px";
+  const currentContainerPadding = containerStyle.padding || "20px";
+  const currentContainerMarginTop = containerStyle.marginTop || "16px";
+  const currentContainerMarginBottom = containerStyle.marginBottom || "16px";
+
+  const handleUnwrapContainer = () => {
+    const info = getActiveContainerInfo();
+    if (!info) return;
+    const { pos, node } = info;
+    const tr = editor.state.tr;
+    tr.replaceWith(pos, pos + node.nodeSize, node.content);
+    editor.view.dispatch(tr);
+    editor.view.focus();
+  };
+
+  const handleDeleteContainer = () => {
+    const info = getActiveContainerInfo();
+    if (!info) return;
+    const { pos, node } = info;
+    const tr = editor.state.tr.delete(pos, pos + node.nodeSize);
+    editor.view.dispatch(tr);
+    editor.view.focus();
+  };
+
+  const updateContainerStyleAttribute = (styleKey: string, val: string | null) => {
+    const info = getActiveContainerInfo();
+    if (!info) return;
+    const { pos, node } = info;
+    const existingStyle = (node.attrs.style && typeof node.attrs.style === "object"
+      ? node.attrs.style
+      : {}) as Record<string, string>;
+    const updatedStyle = { ...existingStyle };
+    if (val === null || val === undefined || val === "") {
+      delete updatedStyle[styleKey];
+    } else {
+      updatedStyle[styleKey] = val;
+    }
+    const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
+      ...node.attrs,
+      style: updatedStyle,
+    });
+    editor.view.dispatch(tr);
   };
 
   // Active Image & Link Getters
   const isImageNodeSelected =
     editor.state.selection instanceof NodeSelection &&
-    editor.state.selection.node.type.name === "image";
+    (editor.state.selection.node.type.name === "image" ||
+      editor.state.selection.node.type.name === "imageBlock");
 
-  const isImageActive = editor.isActive("image") || isImageNodeSelected;
+  const isImageActive = editor.isActive("image") || editor.isActive("imageBlock") || isImageNodeSelected;
 
-  const activeImageAttrs = editor.getAttributes("image");
+  const activeImageAttrs = isImageNodeSelected
+    ? (editor.state.selection as NodeSelection).node.attrs
+    : (editor.isActive("imageBlock")
+        ? editor.getAttributes("imageBlock")
+        : editor.getAttributes("image")) || {};
   const activeLinkAttrs = editor.getAttributes("link");
 
+  const imageStyle = (activeImageAttrs.style && typeof activeImageAttrs.style === "object"
+    ? activeImageAttrs.style
+    : {}) as Record<string, string>;
   const currentImageSrc = (activeImageAttrs.src as string) || "";
   const currentImageAlt = (activeImageAttrs.alt as string) || "";
-  const currentImageWidth = (activeImageAttrs.width as string) || "";
+  const currentImageWidth = imageStyle.width || (activeImageAttrs.width as string) || "";
   const currentImageHref =
     (activeImageAttrs.href as string) || (activeLinkAttrs.href as string) || "";
   const currentImageAlignment =
@@ -520,151 +754,260 @@ function EmailPaperCanvasContent({
     const { selection } = editor.state;
     if (
       selection instanceof NodeSelection &&
-      selection.node.type.name === "image"
+      (selection.node.type.name === "image" || selection.node.type.name === "imageBlock")
     ) {
       return selection.from;
     }
     return null;
   };
 
+  const getTargetImageType = (): string => {
+    if (
+      editor.state.selection instanceof NodeSelection &&
+      editor.state.selection.node.type.name === "imageBlock"
+    ) {
+      return "imageBlock";
+    }
+    if (editor.isActive("imageBlock")) return "imageBlock";
+    return "image";
+  };
+
   const updateImageSrc = (newSrc: string) => {
+    const targetType = getTargetImageType();
     const pos = getSelectedImagePos();
     if (pos !== null) {
       editor
         .chain()
-        .updateAttributes("image", { src: newSrc })
+        .updateAttributes(targetType, { src: newSrc })
         .setNodeSelection(pos)
         .run();
     } else {
-      editor.chain().updateAttributes("image", { src: newSrc }).run();
+      editor.chain().updateAttributes(targetType, { src: newSrc }).run();
     }
   };
 
   const updateImageAlt = (newAlt: string) => {
+    const targetType = getTargetImageType();
     const pos = getSelectedImagePos();
     if (pos !== null) {
       editor
         .chain()
-        .updateAttributes("image", { alt: newAlt })
+        .updateAttributes(targetType, { alt: newAlt })
         .setNodeSelection(pos)
         .run();
     } else {
-      editor.chain().updateAttributes("image", { alt: newAlt }).run();
+      editor.chain().updateAttributes(targetType, { alt: newAlt }).run();
     }
   };
 
   const updateImageWidth = (newWidth: string) => {
+    const targetType = getTargetImageType();
     const pos = getSelectedImagePos();
+    const current = editor.getAttributes(targetType);
+    const existingStyle = (current.style && typeof current.style === "object"
+      ? current.style
+      : {}) as Record<string, string>;
+    const attrsToUpdate = {
+      width: newWidth || null,
+      style: { ...existingStyle, width: newWidth || undefined },
+    };
     if (pos !== null) {
       editor
         .chain()
-        .updateAttributes("image", { width: newWidth })
+        .updateAttributes(targetType, attrsToUpdate)
         .setNodeSelection(pos)
         .run();
     } else {
-      editor.chain().updateAttributes("image", { width: newWidth }).run();
+      editor.chain().updateAttributes(targetType, attrsToUpdate).run();
     }
   };
 
   const updateImageHref = (newHref: string) => {
+    const targetType = getTargetImageType();
     const pos = getSelectedImagePos();
     const trimmed = newHref.trim();
     if (!trimmed) {
       if (pos !== null) {
         editor
           .chain()
-          .updateAttributes("image", { href: null })
+          .updateAttributes(targetType, { href: null })
           .setNodeSelection(pos)
           .run();
       } else {
-        editor.chain().updateAttributes("image", { href: null }).run();
+        editor.chain().updateAttributes(targetType, { href: null }).run();
       }
     } else {
       if (pos !== null) {
         editor
           .chain()
-          .updateAttributes("image", { href: trimmed })
+          .updateAttributes(targetType, { href: trimmed })
           .setNodeSelection(pos)
           .run();
       } else {
-        editor.chain().updateAttributes("image", { href: trimmed }).run();
+        editor.chain().updateAttributes(targetType, { href: trimmed }).run();
       }
     }
   };
 
   const updateImageAlignment = (alignment: "left" | "center" | "right") => {
+    const targetType = getTargetImageType();
     const pos = getSelectedImagePos();
     if (pos !== null) {
       editor
         .chain()
-        .updateAttributes("image", { alignment })
+        .updateAttributes(targetType, { alignment })
         .setNodeSelection(pos)
         .run();
     } else {
-      editor.chain().updateAttributes("image", { alignment }).run();
+      editor.chain().updateAttributes(targetType, { alignment }).run();
     }
   };
 
   // Active CTA Button Detection
-  const selectedCtaNode =
-    editor.state.selection instanceof NodeSelection &&
-    editor.state.selection.node.type.name === "ctaButton"
-      ? editor.state.selection.node
-      : null;
-  const isCtaSelected = Boolean(selectedCtaNode);
-  const isCtaActive = editor.isActive("ctaButton") || isCtaSelected;
-  const activeCtaAttrs =
-    selectedCtaNode?.attrs || editor.getAttributes("ctaButton") || {};
-
-  const currentCtaLabel = (activeCtaAttrs.label as string) || "";
-  const currentCtaUrl = (activeCtaAttrs.url as string) || "";
-  const currentCtaButtonColor =
-    (activeCtaAttrs.buttonColor as string) || "#000000";
-  const currentCtaTextColor =
-    (activeCtaAttrs.textColor as string) || "#ffffff";
-  const currentCtaBorderRadius =
-    (activeCtaAttrs.borderRadius as string) || "8px";
-  const currentCtaAlignment =
-    (activeCtaAttrs.alignment as "left" | "center" | "right") || "center";
-
-  const updateCtaAttributes = (attrs: Record<string, string>) => {
+  const getActiveButtonInfo = () => {
+    if (!editor) return null;
     const { selection } = editor.state;
     if (
       selection instanceof NodeSelection &&
-      selection.node.type.name === "ctaButton"
+      (selection.node.type.name === "ctaButton" ||
+        selection.node.type.name === "buttonBlock")
     ) {
-      editor
-        .chain()
-        .updateAttributes("ctaButton", attrs)
-        .setNodeSelection(selection.from)
-        .run();
-    } else {
-      editor.chain().updateAttributes("ctaButton", attrs).run();
+      return { pos: selection.from, node: selection.node };
     }
+    const { $from } = selection;
+    for (let d = $from.depth; d > 0; d--) {
+      const n = $from.node(d);
+      if (n.type.name === "ctaButton" || n.type.name === "buttonBlock") {
+        return { pos: $from.before(d), node: n };
+      }
+    }
+    return null;
   };
 
-  const isBoldActive =
-    Boolean(editor.isActive("bold")) ||
-    currentFontWeight === "700" ||
-    currentFontWeight === "800" ||
-    currentFontWeight === "900" ||
-    currentFontWeight === "bold";
+  const activeButtonInfo = getActiveButtonInfo();
+  const isCtaActive = Boolean(activeButtonInfo);
+  const activeCtaNode = activeButtonInfo?.node;
+  const activeCtaAttrs = (activeCtaNode ? activeCtaNode.attrs : editor.getAttributes("buttonBlock")) || {};
+
+  const ctaStyle = (activeCtaAttrs.style && typeof activeCtaAttrs.style === "object"
+    ? activeCtaAttrs.style
+    : {}) as Record<string, string>;
+  const currentCtaLabel =
+    (activeCtaNode?.textContent || (activeCtaAttrs.label as string) || "").trim();
+  const currentCtaUrl =
+    (activeCtaAttrs.href as string) || (activeCtaAttrs.url as string) || "";
+  const currentCtaButtonColor =
+    ctaStyle.backgroundColor || (activeCtaAttrs.buttonColor as string) || "#000000";
+  const currentCtaTextColor =
+    ctaStyle.color || (activeCtaAttrs.textColor as string) || "#ffffff";
+  const currentCtaBorderRadius =
+    ctaStyle.borderRadius || (activeCtaAttrs.borderRadius as string) || "8px";
+  const currentCtaAlignment =
+    (activeCtaAttrs.alignment as "left" | "center" | "right") || "center";
+  const currentCtaPadding = ctaStyle.padding || "12px 24px";
+  const currentCtaFontSize = ctaStyle.fontSize || "15px";
+  const currentCtaFontWeight = ctaStyle.fontWeight || "600";
+  const currentCtaHeight = ctaStyle.height || "";
+  const currentCtaWidth = ctaStyle.width || "";
+  const normalizeDimension = (val: unknown): string => {
+    if (val === null || val === undefined || val === "") return "";
+    const s = String(val).trim();
+    if (/^\d+(\.\d+)?$/.test(s)) return `${s}px`;
+    return s;
+  };
+
+  const currentCtaMarginTop =
+    normalizeDimension(ctaStyle.marginTop) ||
+    normalizeDimension(activeCtaAttrs.marginTop) ||
+    normalizeDimension(ctaStyle.margin?.split(" ")[0]) ||
+    "16px";
+  const currentCtaMarginBottom =
+    normalizeDimension(ctaStyle.marginBottom) ||
+    normalizeDimension(activeCtaAttrs.marginBottom) ||
+    normalizeDimension(ctaStyle.margin?.split(" ")[1] || ctaStyle.margin?.split(" ")[0]) ||
+    "16px";
+
+  const handleDeleteCta = () => {
+    const info = getActiveButtonInfo();
+    if (!info) return;
+    const { pos, node } = info;
+    const tr = editor.state.tr.delete(pos, pos + node.nodeSize);
+    editor.view.dispatch(tr);
+    editor.view.focus();
+  };
+
+  const updateCtaStyleAttribute = (styleKey: string, val: string | null) => {
+    const info = getActiveButtonInfo();
+    if (!info) return;
+    const { pos, node } = info;
+
+    const existingStyle = (node.attrs.style && typeof node.attrs.style === "object"
+      ? node.attrs.style
+      : {}) as Record<string, string>;
+    const updatedStyle = { ...existingStyle };
+    if (val === null || val === undefined || val === "") {
+      delete updatedStyle[styleKey];
+    } else {
+      const normalizedVal =
+        (styleKey === "marginTop" || styleKey === "marginBottom" || styleKey === "width" || styleKey === "height") &&
+        /^\d+(\.\d+)?$/.test(val.trim())
+          ? `${val.trim()}px`
+          : val;
+      updatedStyle[styleKey] = normalizedVal;
+    }
+
+    const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
+      ...node.attrs,
+      style: updatedStyle,
+    });
+    editor.view.dispatch(tr);
+  };
+
+  const updateCtaAttributes = (attrs: Record<string, string>) => {
+    const info = getActiveButtonInfo();
+    if (!info) return;
+    const { pos, node } = info;
+    const targetType = node.type.name;
+
+    const existingStyle = (node.attrs.style && typeof node.attrs.style === "object"
+      ? node.attrs.style
+      : {}) as Record<string, string>;
+
+    const styleUpdates: Record<string, string> = {};
+    if (attrs.buttonColor) styleUpdates.backgroundColor = attrs.buttonColor;
+    if (attrs.textColor) styleUpdates.color = attrs.textColor;
+    if (attrs.borderRadius) styleUpdates.borderRadius = attrs.borderRadius;
+
+    const mergedAttrs: Record<string, unknown> = {
+      ...node.attrs,
+      ...attrs,
+    };
+    if (attrs.url) {
+      mergedAttrs.href = attrs.url;
+    }
+    if (Object.keys(styleUpdates).length > 0) {
+      mergedAttrs.style = {
+        ...existingStyle,
+        ...styleUpdates,
+      };
+    }
+
+    const tr = editor.state.tr;
+    if (attrs.label !== undefined && targetType === "buttonBlock") {
+      const contentStart = pos + 1;
+      const contentEnd = pos + node.nodeSize - 1;
+      tr.replaceWith(
+        contentStart,
+        contentEnd,
+        attrs.label ? editor.state.schema.text(attrs.label) : []
+      );
+    }
+    tr.setNodeMarkup(pos, undefined, mergedAttrs);
+    editor.view.dispatch(tr);
+  };
 
   const toggleBoldAndWeight = () => {
-    if (isBoldActive) {
-      editor
-        .chain()
-        .focus()
-        .unsetMark("bold")
-        .setMark("textStyle", { fontWeight: null })
-        .run();
-    } else {
-      editor
-        .chain()
-        .focus()
-        .setMark("textStyle", { fontWeight: "700" })
-        .run();
-    }
+    tipTapSync.toggleBoldUnified();
   };
 
   const setFontWeight = (val: string) => {
@@ -718,6 +1061,7 @@ function EmailPaperCanvasContent({
           allVars={allVars}
           onOpenCtaModal={handleOpenCtaModal}
           onOpenLinkModal={handleOpenLinkModal}
+          onRemoveLink={handleRemoveLink}
           onOpenImageModal={handleOpenImageModal}
           currentFontFamily={currentFontFamily}
           currentFontWeight={currentFontWeight}
@@ -752,7 +1096,28 @@ function EmailPaperCanvasContent({
           currentCtaTextColor={currentCtaTextColor}
           currentCtaBorderRadius={currentCtaBorderRadius}
           currentCtaAlignment={currentCtaAlignment}
+          currentCtaPadding={currentCtaPadding}
+          currentCtaFontSize={currentCtaFontSize}
+          currentCtaFontWeight={currentCtaFontWeight}
+          currentCtaHeight={currentCtaHeight}
+          currentCtaWidth={currentCtaWidth}
+          currentCtaMarginTop={currentCtaMarginTop}
+          currentCtaMarginBottom={currentCtaMarginBottom}
           updateCtaAttributes={updateCtaAttributes}
+          updateCtaStyleAttribute={updateCtaStyleAttribute}
+          onDeleteCta={handleDeleteCta}
+          isContainerActive={isContainerActive}
+          currentContainerBgColor={currentContainerBgColor}
+          currentContainerBorderStyle={currentContainerBorderStyle}
+          currentContainerBorderWidth={currentContainerBorderWidth}
+          currentContainerBorderColor={currentContainerBorderColor}
+          currentContainerBorderRadius={currentContainerBorderRadius}
+          currentContainerPadding={currentContainerPadding}
+          currentContainerMarginTop={currentContainerMarginTop}
+          currentContainerMarginBottom={currentContainerMarginBottom}
+          updateContainerStyleAttribute={updateContainerStyleAttribute}
+          onUnwrapContainer={handleUnwrapContainer}
+          onDeleteContainer={handleDeleteContainer}
           onToggleBold={toggleBoldAndWeight}
           onSetFontWeight={setFontWeight}
         />
@@ -764,6 +1129,7 @@ function EmailPaperCanvasContent({
           editor={editor}
           compiledRawHtml={compiledRawHtml}
           previewBodyHtml={previewBodyHtml}
+          documentJson={currentDocModel}
         />
       </div>
 
@@ -795,6 +1161,9 @@ function EmailPaperCanvasContent({
         isOpen={isLinkModalOpen}
         onClose={() => {
           setIsLinkModalOpen(false);
+          setLinkUrl("");
+          setLinkText("");
+          setIsEditingLink(false);
           savedSelectionRef.current = null;
         }}
         linkUrl={linkUrl}
@@ -802,6 +1171,8 @@ function EmailPaperCanvasContent({
         linkText={linkText}
         setLinkText={setLinkText}
         handleApplyLink={handleApplyLink}
+        isEditing={isEditingLink}
+        onRemoveLink={handleRemoveLink}
       />
 
       <ImageModal

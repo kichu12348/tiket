@@ -1,50 +1,153 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { toast } from "sonner";
+import DOMPurify from "isomorphic-dompurify";
+import { FileJson, CheckCircle2, AlertCircle, Copy, Check } from "lucide-react";
+
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { validateEmailDocument } from "@/validators/email.validator";
+import type { EmailDocumentJSON, EmailNodeJSON } from "@/types/email";
 import styles from "./CanvasViewport.module.css";
 
 interface CanvasViewportProps {
   canvasMode: "edit" | "preview" | "code";
   deviceView: "desktop" | "mobile";
   editor: Editor;
-  compiledRawHtml: string;
-  previewBodyHtml: string;
+  compiledRawHtml?: string;
+  previewBodyHtml?: string;
+  documentJson?: EmailDocumentJSON;
+}
+
+function countDocNodes(node?: EmailNodeJSON): number {
+  if (!node) return 0;
+  let count = 1;
+  if (Array.isArray(node.content)) {
+    for (const child of node.content) {
+      count += countDocNodes(child);
+    }
+  }
+  return count;
 }
 
 export default function CanvasViewport({
   canvasMode,
   deviceView,
   editor,
-  compiledRawHtml,
-  previewBodyHtml,
+  compiledRawHtml: _compiledRawHtml,
+  previewBodyHtml = "",
+  documentJson,
 }: CanvasViewportProps) {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const activeDocJson: EmailDocumentJSON = useMemo(() => {
+    if (documentJson) return documentJson;
+    return {
+      version: 1,
+      canvasStyle: {
+        backgroundColor: "#f4f4f5",
+        contentBackgroundColor: "#ffffff",
+        contentWidth: "600px",
+        padding: "32px",
+      },
+      doc: (editor
+        ? editor.getJSON()
+        : { type: "doc", content: [] }) as EmailNodeJSON,
+    };
+  }, [documentJson, editor]);
+
+  const validationResult = useMemo(() => {
+    return validateEmailDocument(activeDocJson);
+  }, [activeDocJson]);
+
+  const formattedJson = useMemo(() => {
+    try {
+      return JSON.stringify(activeDocJson, null, 2);
+    } catch {
+      return "{}";
+    }
+  }, [activeDocJson]);
+
+  const totalNodes = useMemo(() => {
+    return countDocNodes(activeDocJson.doc);
+  }, [activeDocJson.doc]);
+
+  const handleCopyJson = () => {
+    navigator.clipboard.writeText(formattedJson);
+    setIsCopied(true);
+    toast.success("JSON document copied to clipboard!");
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   return (
     <div className={styles.canvasOuterViewport}>
       {canvasMode === "code" ? (
         <div className={styles.codeViewViewport}>
           <div className={styles.codeHeaderBar}>
-            <span className={styles.codeHeaderTitle}>
-              HTML Email Document Output
-            </span>
-            <button
+            <div className={styles.codeHeaderLeft}>
+              <FileJson size={16} className={styles.codeFileIcon} />
+              <span className={styles.codeHeaderTitle}>
+                email-document.json
+              </span>
+              {!validationResult.success && (
+                <Badge
+                  variant="destructive"
+                  className="gap-1 text-xs py-0.5 px-2"
+                  title={validationResult.error}
+                >
+                  <AlertCircle size={12} />
+                  <span>Invalid: {validationResult.error}</span>
+                </Badge>
+              )}
+            </div>
+            <Button
               type="button"
-              className={styles.copyCodeBtn}
-              onClick={() => {
-                navigator.clipboard.writeText(compiledRawHtml);
-                toast.success("HTML code copied to clipboard!");
-              }}
+              variant="secondary"
+              size="xs"
+              onClick={handleCopyJson}
+              className="h-7 text-xs gap-1.5 cursor-pointer"
             >
-              Copy HTML
-            </button>
+              {isCopied ? (
+                <>
+                  <Check size={13} className="text-emerald-400" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={13} />
+                  <span>Copy JSON</span>
+                </>
+              )}
+            </Button>
           </div>
-          <textarea
-            className={styles.htmlCodeTextarea}
-            value={compiledRawHtml}
-            readOnly
-          />
+
+          <ScrollArea className={styles.jsonScrollArea}>
+            <pre className={styles.jsonCodeBlock}>
+              <code>{formattedJson}</code>
+            </pre>
+            <ScrollBar orientation="horizontal" />
+            <ScrollBar orientation="vertical" />
+          </ScrollArea>
+
+          <div className={styles.codeMetaFooter}>
+            <div className={styles.codeMetaLeft}>
+              <span>Nodes: {totalNodes}</span>
+              <span>Version: {activeDocJson.version || 1}</span>
+            </div>
+            <div className={styles.codeMetaRight}>
+              <span>
+                Width:{" "}
+                {(activeDocJson.canvasStyle?.contentWidth as string) || "600px"}
+              </span>
+              <span>
+                {validationResult.success ? "Schema: OK" : "Schema: Error"}
+              </span>
+            </div>
+          </div>
         </div>
       ) : (
         <div className={styles.paperDocumentCard} data-device={deviceView}>
@@ -54,7 +157,9 @@ export default function CanvasViewport({
             ) : (
               <div
                 className={styles.previewRenderedBody}
-                dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(previewBodyHtml),
+                }}
               />
             )}
           </div>
