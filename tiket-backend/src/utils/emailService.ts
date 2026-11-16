@@ -204,8 +204,16 @@ function compileEmailNode(
             text = `<span style="${escapeAttribute(css)}">${text}</span>`;
           }
         } else if (mark.type === "highlight") {
-          const bg = mark.attrs?.color || "#fef08a";
-          text = `<span style="background-color: ${escapeAttribute(String(bg))}; padding: 2px 4px; border-radius: 3px;">${text}</span>`;
+          const rawAttrs = (mark.attrs && typeof mark.attrs === "object" ? mark.attrs : {}) as Record<string, unknown>;
+          const markStyle = (rawAttrs.style && typeof rawAttrs.style === "object" ? rawAttrs.style : {}) as Record<string, string>;
+          const bg = markStyle.backgroundColor || rawAttrs.color || "#fef08a";
+          const css = styleObjectToCss({
+            backgroundColor: String(bg),
+            padding: "2px 4px",
+            borderRadius: "3px",
+            ...markStyle,
+          });
+          text = `<mark style="${escapeAttribute(css)}">${text}</mark>`;
         } else if (mark.type === "link") {
           const rawHref = (mark.attrs?.href as string) || "#";
           const href = interpolateTemplate(rawHref, data);

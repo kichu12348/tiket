@@ -51,6 +51,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import {
   CustomLinkExtension,
   CustomImageExtension,
+  CustomHighlightExtension,
 } from "../extensions";
 import LinkModal from "../components/Modals/LinkModal";
 
@@ -65,6 +66,7 @@ describe("Batch 3: LinkModal and ImageModal attribute preservation", () => {
           openOnClick: false,
         }),
         CustomImageExtension,
+        CustomHighlightExtension.configure({ multicolor: true }),
       ],
       content: {
         type: "doc",
@@ -157,8 +159,19 @@ describe("Batch 3: LinkModal and ImageModal attribute preservation", () => {
     expect(attrs.href).toBe("https://example.com/link");
   });
 
-  test("MarkdownLinkExtension has inclusive set to false to prevent space extension", () => {
-    expect(editor.schema.marks.link.spec.inclusive).toBe(false);
+  test("MarkdownLinkExtension includes linkSpaceExit plugin to exit link on space boundary", () => {
+    const plugins = editor.state.plugins;
+    const hasLinkSpaceExit = plugins.some((p) =>
+      String((p as unknown as { key: string }).key).includes("linkSpaceExit"),
+    );
+    expect(hasLinkSpaceExit).toBe(true);
+  });
+
+  test("CustomHighlightExtension sets style: { backgroundColor } in mark attrs", () => {
+    // Select text "Click"
+    editor.chain().setTextSelection({ from: 1, to: 6 }).setHighlight({ color: "#fef08a" }).run();
+    const attrs = editor.getAttributes("highlight");
+    expect(attrs.style?.backgroundColor).toBe("#fef08a");
   });
 
   test("LinkModal switches to Email Address mode for mailto links and triggers onApply with mailto prefix", () => {

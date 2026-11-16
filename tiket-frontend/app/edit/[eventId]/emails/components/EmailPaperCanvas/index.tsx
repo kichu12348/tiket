@@ -5,7 +5,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { TextStyle, Color, FontFamily } from "@tiptap/extension-text-style";
-import { Highlight } from "@tiptap/extension-highlight";
 import { Underline } from "@tiptap/extension-underline";
 import { Placeholder } from "@tiptap/extension-placeholder";
 
@@ -33,6 +32,7 @@ import {
   BlockStyleExtension,
   ContainerBlockExtension,
   CustomLinkExtension,
+  CustomHighlightExtension,
   ImageBlockExtension,
   ButtonBlockExtension,
   CustomTextStyleExtension,
@@ -119,7 +119,7 @@ function EmailPaperCanvasContent({
       TextStyle,
       Color,
       FontFamily,
-      Highlight.configure({ multicolor: true }),
+      CustomHighlightExtension.configure({ multicolor: true }),
       Underline,
       CustomLinkExtension.configure({
         openOnClick: false,
@@ -311,11 +311,32 @@ function EmailPaperCanvasContent({
 
   const handleRemoveLink = () => {
     if (!editor) return;
+    // Unlink: remove the mark but keep the text
     const chain = editor.chain().focus();
     if (savedSelectionRef.current) {
       chain.setTextSelection(savedSelectionRef.current);
     }
     chain.extendMarkRange("link").unsetLink().run();
+    // Clear any stored link marks so the cursor doesn't inherit the mark
+    const { state, view } = editor;
+    const tr = state.tr.setStoredMarks([]);
+    view.dispatch(tr);
+    setIsLinkModalOpen(false);
+    setLinkUrl("");
+    setLinkText("");
+    setIsEditingLink(false);
+    savedSelectionRef.current = null;
+  };
+
+  const handleDeleteLink = () => {
+    if (!editor) return;
+    // Delete: remove the linked text node entirely
+    const chain = editor.chain().focus();
+    if (savedSelectionRef.current) {
+      chain.setTextSelection(savedSelectionRef.current);
+    }
+    // Extend to full mark range then delete that range
+    chain.extendMarkRange("link").deleteSelection().run();
     setIsLinkModalOpen(false);
     setLinkUrl("");
     setLinkText("");
@@ -364,8 +385,15 @@ function EmailPaperCanvasContent({
       chain.extendMarkRange("link").setLink({ href: trimmedUrl });
     }
 
-    chain.unsetLink();
     chain.run();
+
+    // Clear stored marks after insertion so the cursor doesn't inherit the link
+    // mark when the user types immediately after (or backspaces back in).
+    // inclusive:false handles the boundary case but storedMarks can still carry over.
+    const { state, view } = editor;
+    if (state.storedMarks && state.storedMarks.length > 0) {
+      view.dispatch(state.tr.setStoredMarks([]));
+    }
 
     setIsLinkModalOpen(false);
     setLinkUrl("");
@@ -533,7 +561,9 @@ function EmailPaperCanvasContent({
   const currentTextColor =
     (editor.getAttributes("textStyle").color as string) || "#111827";
   const currentHighlightColor =
-    (editor.getAttributes("highlight").color as string) || "";
+    (editor.getAttributes("highlight").style?.backgroundColor as string) ||
+    (editor.getAttributes("highlight").color as string) ||
+    "";
 
   // Innermost / deepest styleable block detection (Bug 2.3 & 2.4)
   const getActiveBlockInfo = () => {
@@ -1062,6 +1092,7 @@ function EmailPaperCanvasContent({
           onOpenCtaModal={handleOpenCtaModal}
           onOpenLinkModal={handleOpenLinkModal}
           onRemoveLink={handleRemoveLink}
+          onDeleteLink={handleDeleteLink}
           onOpenImageModal={handleOpenImageModal}
           currentFontFamily={currentFontFamily}
           currentFontWeight={currentFontWeight}

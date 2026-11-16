@@ -93,7 +93,15 @@ export default function CanvasViewport({
               <span className={styles.codeHeaderTitle}>
                 email-document.json
               </span>
-              {!validationResult.success && (
+              {validationResult.success ? (
+                <Badge
+                  variant="outline"
+                  className="gap-1 text-xs text-emerald-400 border-emerald-500/30 py-0.5 px-2"
+                >
+                  <CheckCircle2 size={12} />
+                  <span>Valid Schema (v1)</span>
+                </Badge>
+              ) : (
                 <Badge
                   variant="destructive"
                   className="gap-1 text-xs py-0.5 px-2"

@@ -288,5 +288,42 @@ describe("emailJsonCompiler", () => {
       expect(fullDoc.canvasStyle?.backgroundColor).toBe("#ffffff");
       expect(fullDoc.doc.content?.length).toBe(3);
     });
+
+    test("normalizes highlight mark attributes into style: { backgroundColor }", () => {
+      const docWithHighlight: EmailDocumentJSON["doc"] = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Highlighted Note",
+                marks: [
+                  {
+                    type: "highlight",
+                    attrs: {
+                      color: "#fef08a",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const normalized = normalizeEmailDocumentDoc(docWithHighlight);
+      const textNode = normalized.content?.[0]?.content?.[0];
+      const highlightMark = textNode?.marks?.find((m) => m.type === "highlight");
+      expect(highlightMark).toBeDefined();
+      expect((highlightMark?.attrs?.style as StyleObject)?.backgroundColor).toBe("#fef08a");
+
+      const compiledHtml = compileEmailJsonToHtml({
+        version: 1,
+        doc: normalized,
+      });
+      expect(compiledHtml).toContain('<mark style="background-color: #fef08a;">Highlighted Note</mark>');
+    });
   });
 });

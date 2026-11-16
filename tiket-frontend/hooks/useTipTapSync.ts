@@ -74,6 +74,11 @@ function computeSnapshot(editor: Editor | null): TipTapSyncSnapshot {
 
   // 2. Resolve text styles & marks with block-level and type-aware fallbacks
   const textStyleAttrs = editor.getAttributes("textStyle") || {};
+  const highlightAttrs = editor.getAttributes("highlight") || {};
+  const highlightBg =
+    ((highlightAttrs.style as StyleObject)?.backgroundColor as string) ||
+    (highlightAttrs.color as string) ||
+    undefined;
   const nodeStyle = (nodeAttrs.style && typeof nodeAttrs.style === "object"
     ? nodeAttrs.style
     : {}) as StyleObject;
@@ -113,6 +118,7 @@ function computeSnapshot(editor: Editor | null): TipTapSyncSnapshot {
     fontWeight: resolvedFontWeight,
     color: textStyleAttrs.color || (nodeStyle.color as string) || undefined,
     backgroundColor:
+      highlightBg ||
       textStyleAttrs.backgroundColor ||
       (nodeStyle.backgroundColor as string) ||
       undefined,

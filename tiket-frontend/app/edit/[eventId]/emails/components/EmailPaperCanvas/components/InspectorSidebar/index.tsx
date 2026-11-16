@@ -46,6 +46,7 @@ interface InspectorSidebarProps {
   onOpenCtaModal: () => void;
   onOpenLinkModal: () => void;
   onRemoveLink?: () => void;
+  onDeleteLink?: () => void;
   onOpenImageModal: () => void;
   currentFontFamily: string;
   currentFontWeight: string;
@@ -115,6 +116,7 @@ export default function InspectorSidebar({
   onOpenCtaModal,
   onOpenLinkModal,
   onRemoveLink,
+  onDeleteLink,
   onOpenImageModal,
   currentFontFamily,
   currentFontWeight,
@@ -2047,9 +2049,20 @@ export default function InspectorSidebar({
                     <button
                       type="button"
                       className={styles.clearSwatchBtn}
-                      style={{ color: "#f87171", fontSize: "0.75rem" }}
+                      style={{ fontSize: "0.75rem" }}
                       onClick={onRemoveLink}
-                      title="Remove hyperlink"
+                      title="Unlink — keep the text"
+                    >
+                      Unlink
+                    </button>
+                  )}
+                  {onDeleteLink && (
+                    <button
+                      type="button"
+                      className={styles.clearSwatchBtn}
+                      style={{ color: "#f87171", fontSize: "0.75rem" }}
+                      onClick={onDeleteLink}
+                      title="Remove link and its text"
                     >
                       Remove
                     </button>

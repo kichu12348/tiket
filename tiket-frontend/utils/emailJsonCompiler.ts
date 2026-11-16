@@ -190,7 +190,59 @@ export function normalizeEmailDocumentDoc(node: EmailNodeJSON): EmailNodeJSON {
   }
 
   if (node.marks && Array.isArray(node.marks) && node.marks.length > 0) {
-    result.marks = node.marks.filter((m) => m && m.type);
+    result.marks = node.marks
+      .filter((m) => m && m.type)
+      .map((mark) => {
+        const rawMarkAttrs = (mark.attrs && typeof mark.attrs === "object" ? mark.attrs : {}) as Record<string, unknown>;
+        const cleanMarkAttrs: Record<string, unknown> = {};
+        const markStyle = (rawMarkAttrs.style && typeof rawMarkAttrs.style === "object" ? { ...rawMarkAttrs.style } : {}) as Record<string, unknown>;
+
+        if (mark.type === "highlight") {
+          const bg = markStyle.backgroundColor || rawMarkAttrs.color || rawMarkAttrs.backgroundColor;
+          if (bg) {
+            markStyle.backgroundColor = String(bg);
+          }
+          if (Object.keys(markStyle).length > 0) {
+            cleanMarkAttrs.style = markStyle;
+          }
+        } else if (mark.type === "textStyle") {
+          for (const [key, val] of Object.entries(rawMarkAttrs)) {
+            if (val !== null && val !== undefined && val !== "" && key !== "style") {
+              if (["color", "backgroundColor", "fontSize", "fontWeight", "fontFamily"].includes(key)) {
+                if (!markStyle[key]) {
+                  markStyle[key] = val;
+                }
+              } else {
+                cleanMarkAttrs[key] = val;
+              }
+            }
+          }
+          if (Object.keys(markStyle).length > 0) {
+            cleanMarkAttrs.style = markStyle;
+          }
+        } else if (mark.type === "link") {
+          if (rawMarkAttrs.href) cleanMarkAttrs.href = rawMarkAttrs.href;
+          if (rawMarkAttrs.target) cleanMarkAttrs.target = rawMarkAttrs.target;
+          if (rawMarkAttrs.rel) cleanMarkAttrs.rel = rawMarkAttrs.rel;
+          if (Object.keys(markStyle).length > 0) {
+            cleanMarkAttrs.style = markStyle;
+          }
+        } else {
+          for (const [k, v] of Object.entries(rawMarkAttrs)) {
+            if (v !== null && v !== undefined && v !== "") {
+              cleanMarkAttrs[k] = v;
+            }
+          }
+          if (Object.keys(markStyle).length > 0) {
+            cleanMarkAttrs.style = markStyle;
+          }
+        }
+
+        return {
+          type: mark.type,
+          ...(Object.keys(cleanMarkAttrs).length > 0 ? { attrs: cleanMarkAttrs } : {}),
+        };
+      });
   }
 
   if (node.text !== undefined && node.text !== null) {
@@ -311,7 +363,13 @@ function compileNodeToHtml(
               text = `<code>${text}</code>`;
               break;
             case "highlight": {
-              const css = styleObjectToCss(extractStyleObject(mark.attrs?.style));
+              const markStyle = extractStyleObject(mark.attrs?.style);
+              const rawColor = typeof mark.attrs?.color === "string" ? mark.attrs.color : undefined;
+              const bg = (markStyle.backgroundColor as string) || rawColor || "#fef08a";
+              const css = styleObjectToCss({
+                backgroundColor: bg,
+                ...markStyle,
+              });
               text = `<mark style="${css}">${text}</mark>`;
               break;
             }

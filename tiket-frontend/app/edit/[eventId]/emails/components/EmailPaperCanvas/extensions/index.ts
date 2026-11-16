@@ -2,13 +2,14 @@ import { Extension, Node, InputRule, mergeAttributes } from "@tiptap/core";
 import { Link } from "@tiptap/extension-link";
 import { Image } from "@tiptap/extension-image";
 import { TextStyle } from "@tiptap/extension-text-style";
+import { Highlight } from "@tiptap/extension-highlight";
 import { Paragraph } from "@tiptap/extension-paragraph";
 import { Heading } from "@tiptap/extension-heading";
 import { Blockquote } from "@tiptap/extension-blockquote";
 import { BulletList } from "@tiptap/extension-bullet-list";
 import { OrderedList } from "@tiptap/extension-ordered-list";
 import { ListItem } from "@tiptap/extension-list-item";
-import { NodeSelection } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import { styleObjectToCss } from "@/utils/emailJsonCompiler";
 import type { StyleObject } from "@/types/email";
 
@@ -250,7 +251,40 @@ export const CustomTextStyleExtension = Extension.create({
 // -------------------------------------------------------------
 
 export const MarkdownLinkExtension = Link.extend({
-  inclusive: false,
+  addProseMirrorPlugins() {
+    return [
+      ...(this.parent?.() || []),
+      new Plugin({
+        key: new PluginKey("linkSpaceExit"),
+        props: {
+          handleKeyDown(view, event) {
+            if (event.key === " ") {
+              const { state, dispatch } = view;
+              const { selection } = state;
+              if (!selection.empty) return false;
+
+              const $from = selection.$from;
+              const beforeHasLink = $from.nodeBefore?.marks.some((m) => m.type.name === "link");
+              const afterHasLink = $from.nodeAfter?.marks.some((m) => m.type.name === "link");
+
+              if (beforeHasLink && !afterHasLink) {
+                const tr = state.tr.insertText(" ");
+                const linkType = state.schema.marks.link;
+                if (linkType) {
+                  tr.removeMark($from.pos, $from.pos + 1, linkType);
+                  const currentStored = state.storedMarks || $from.marks();
+                  tr.setStoredMarks(currentStored.filter((m) => m.type.name !== "link"));
+                }
+                dispatch(tr);
+                return true;
+              }
+            }
+            return false;
+          },
+        },
+      }),
+    ];
+  },
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -302,6 +336,73 @@ export const MarkdownLinkExtension = Link.extend({
 });
 
 export const CustomLinkExtension = MarkdownLinkExtension;
+
+interface HighlightCommandAttrs {
+  color?: string;
+  style?: { backgroundColor?: string };
+}
+
+export const CustomHighlightExtension = Highlight.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: {},
+        parseHTML: (element) => {
+          const bg = element.style.backgroundColor;
+          return bg ? { backgroundColor: bg } : {};
+        },
+        renderHTML: (attributes) => {
+          const bg =
+            attributes.style?.backgroundColor ||
+            attributes.color;
+          return bg ? { style: `background-color: ${bg};` } : {};
+        },
+      },
+      color: {
+        default: null,
+        parseHTML: (element) => element.style.backgroundColor || null,
+        renderHTML: (attributes) => {
+          const bg =
+            attributes.style?.backgroundColor ||
+            attributes.color;
+          return bg ? { style: `background-color: ${bg};` } : {};
+        },
+      },
+    };
+  },
+  addCommands() {
+    return {
+      ...this.parent?.(),
+      setHighlight:
+        (attributes) =>
+        ({ commands }) => {
+          const attrs = attributes as HighlightCommandAttrs | undefined;
+          const color =
+            typeof attributes === "string"
+              ? attributes
+              : attrs?.color || attrs?.style?.backgroundColor;
+          return commands.setMark(this.name, {
+            color,
+            style: color ? { backgroundColor: color } : {},
+          });
+        },
+      toggleHighlight:
+        (attributes) =>
+        ({ commands }) => {
+          const attrs = attributes as HighlightCommandAttrs | undefined;
+          const color =
+            typeof attributes === "string"
+              ? attributes
+              : attrs?.color || attrs?.style?.backgroundColor;
+          return commands.toggleMark(this.name, {
+            color,
+            style: color ? { backgroundColor: color } : {},
+          });
+        },
+    };
+  },
+});
 
 // -------------------------------------------------------------
 // 4. ContainerBlockExtension

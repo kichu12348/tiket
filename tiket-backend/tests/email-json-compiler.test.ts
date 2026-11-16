@@ -263,6 +263,38 @@ describe("Email JSON Compiler & Variable Interpolation", () => {
       expect(html).toContain('href="https://tiket.com/info"');
     });
 
+    it("renders highlight marks using style.backgroundColor", () => {
+      const doc: EmailDocumentJSON = {
+        version: 1,
+        doc: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "Highlighted Info",
+                  marks: [
+                    {
+                      type: "highlight",
+                      attrs: {
+                        style: { backgroundColor: "#fef08a" },
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+
+      const html = compileEmailJsonToHtml(doc);
+      expect(html).toContain('<mark style="background-color: #fef08a;');
+      expect(html).toContain("Highlighted Info</mark>");
+    });
+
     it("interpolates variable nodes against InterpolationData", () => {
       const doc: EmailDocumentJSON = {
         version: 1,
