@@ -13,7 +13,7 @@ export default async function Home() {
     <>
       <AsciiBackground />
       <div className={styles.container}>
-        <Navbar isAuthenticated={!!token} />
+        <Navbar isAuthenticated={!!token} noHorizontalPadding />
 
         <main className={styles.mainContent}>
           <LandingHero isAuthenticated={!!token} />

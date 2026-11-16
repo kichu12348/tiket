@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { setClientToken } from "@/lib/api";
 import { syncSessionToken, getGoogleOAuthUrl } from "@/api/auth";
 import { cn } from "@/lib/utils";
+import styles from "./GoogleSignInButton.module.css";
 
 export interface GoogleSignInButtonProps {
   redirect?: string;
@@ -109,7 +110,10 @@ export function GoogleSignInButton({
     const handleMessage = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
 
-      if (event.data?.type === "TIKET_GOOGLE_AUTH_SUCCESS" && event.data.token) {
+      if (
+        event.data?.type === "TIKET_GOOGLE_AUTH_SUCCESS" &&
+        event.data.token
+      ) {
         window.removeEventListener("message", handleMessage);
         cleanup();
 
@@ -152,7 +156,11 @@ export function GoogleSignInButton({
       variant="outline"
       onClick={handleClick}
       disabled={disabled || isLoading}
-      className={cn("w-full gap-2 font-medium cursor-pointer", className)}
+      className={cn(
+        "w-full gap-2 font-medium cursor-pointer",
+        styles.btn,
+        className,
+      )}
     >
       <GoogleIcon />
       <span>{children ?? "Continue with Google"}</span>

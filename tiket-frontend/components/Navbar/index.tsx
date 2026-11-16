@@ -6,11 +6,13 @@ export default function Navbar({
   borderBottom,
   onSignOut,
   user,
+  noHorizontalPadding = false,
 }: {
   isAuthenticated?: boolean;
   borderBottom?: boolean;
   onSignOut?: () => void | Promise<void>;
   user?: { name?: string; avatarUrl?: string | null } | null;
+  noHorizontalPadding?: boolean;
 }) {
   const initials = user?.name
     ? user.name
@@ -21,15 +23,18 @@ export default function Navbar({
         .slice(0, 2)
     : ":)";
 
+  console.log(user);
+
   return (
     <header
-      className={`${styles.header} ${borderBottom ? styles.borderBottom : ""}`}
+      className={`${styles.header} ${borderBottom ? styles.borderBottom : ""} ${noHorizontalPadding ? styles.headerNoPadding : ""}`}
     >
       <Link href="/" className={styles.logo}>
         Tiket<span className={styles.dot}>.</span>
       </Link>
+
       {isAuthenticated ? (
-        <>
+        <div className={styles.authContainer}>
           <Link
             href="/home"
             className={styles.avatarBtn}
@@ -55,7 +60,7 @@ export default function Navbar({
               Sign out
             </button>
           )}
-        </>
+        </div>
       ) : (
         <Link href="/signin" className={styles.signInBtn}>
           Sign In

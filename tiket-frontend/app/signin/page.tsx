@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./Signin.module.css";
 import { UserRoundKey } from "lucide-react";
 import { FaEye } from "react-icons/fa";
@@ -13,9 +13,10 @@ import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 export default function Signin() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const returnTo = () => {
     if (typeof window === "undefined") return "/home";
-    const path = new URLSearchParams(window.location.search).get("redirect");
+    const path = searchParams.get("redirect");
     return path?.startsWith("/") &&
       !path.startsWith("//") &&
       !path.includes("\\")
@@ -52,7 +53,7 @@ export default function Signin() {
     }
   }, [setError]);
 
-  const handleOtp = async (e: React.FormEvent) => {
+  const handleOtp = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!email) return;
 
@@ -73,7 +74,7 @@ export default function Signin() {
     }
   };
 
-  const handlePassword = async (e: React.FormEvent) => {
+  const handlePassword = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!email || !password) return;
 

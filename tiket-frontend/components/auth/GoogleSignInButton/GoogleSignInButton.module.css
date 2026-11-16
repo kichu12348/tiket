@@ -1,0 +1,17 @@
+.btn {
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-soft);
+  padding: 0.5rem 1rem;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background 0.2s ease;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: var(--color-soft-bg-hover);
+}

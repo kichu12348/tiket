@@ -2,10 +2,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.8rem 0;
+  padding: 0.8rem 2rem;
   width: 100%;
   margin: 0 auto;
   z-index: 999;
+}
+
+.headerNoPadding {
+  padding: 0.8rem 0;
 }
 
 .borderBottom {
@@ -20,6 +24,14 @@
   letter-spacing: -0.03em;
   text-decoration: none;
   color: var(--color-text-primary);
+}
+
+.authContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .dot {

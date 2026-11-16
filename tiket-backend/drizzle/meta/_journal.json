@@ -64,6 +64,13 @@
       "when": 1794754991052,
       "tag": "0008_slim_stryfe",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794863305432,
+      "tag": "0009_giant_miss_america",
+      "breakpoints": true
     }
   ]
 }
