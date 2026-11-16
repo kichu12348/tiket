@@ -8,9 +8,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
 };
 
 export default nextConfig;

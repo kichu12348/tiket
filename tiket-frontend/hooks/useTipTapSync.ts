@@ -79,9 +79,11 @@ function computeSnapshot(editor: Editor | null): TipTapSyncSnapshot {
     ((highlightAttrs.style as StyleObject)?.backgroundColor as string) ||
     (highlightAttrs.color as string) ||
     undefined;
-  const nodeStyle = (nodeAttrs.style && typeof nodeAttrs.style === "object"
-    ? nodeAttrs.style
-    : {}) as StyleObject;
+  const nodeStyle = (
+    nodeAttrs.style && typeof nodeAttrs.style === "object"
+      ? nodeAttrs.style
+      : {}
+  ) as StyleObject;
 
   const defaultFontSize =
     activeType === "heading"
