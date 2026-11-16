@@ -159,6 +159,11 @@ export default function EmailPaperCanvas({
     modals.handleCloseImageModal();
   };
 
+  const handleToggleActive = async (newActive: boolean) => {
+    setIsActive(newActive);
+    await onSave({ isActive: newActive });
+  };
+
   return (
     <form className={styles.workspaceCard} onSubmit={handleSave}>
       {/* Upper Control Bar */}
@@ -172,7 +177,7 @@ export default function EmailPaperCanvas({
         canvasMode={canvasMode}
         setCanvasMode={setCanvasMode}
         isActive={isActive}
-        setIsActive={setIsActive}
+        setIsActive={handleToggleActive}
       />
 
       {/* Dedicated Subject Line Input Box with Variable Insertion */}

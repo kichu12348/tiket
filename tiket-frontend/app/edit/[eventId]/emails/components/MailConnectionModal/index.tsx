@@ -130,7 +130,7 @@ function MailConnectionModalContent({
           {/* Password */}
           <div className={styles.formGroup}>
             <label htmlFor="smtp-password" className={styles.label}>
-              Password / Key
+              Password / API Key
             </label>
             <Input
               id="smtp-password"
@@ -250,7 +250,7 @@ function MailConnectionModalContent({
               onClick={handleSendTest}
             >
               <Send size={15} />
-              <span>{isTesting ? "Sending Test..." : "Test Email"}</span>
+              <span>{isTesting ? "Sending Test..." : "Send Test Email"}</span>
             </button>
             <button
               type="button"
@@ -258,7 +258,7 @@ function MailConnectionModalContent({
               disabled={isSaving || isTesting || isRemoving}
               onClick={handleSave}
             >
-              <span>{isSaving ? "Saving..." : "Save"}</span>
+              <span>{isSaving ? "Saving..." : "Save SMTP Details"}</span>
             </button>
           </div>
         </div>

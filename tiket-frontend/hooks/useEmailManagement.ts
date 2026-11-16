@@ -193,6 +193,28 @@ export function useEmailManagement() {
       templateId: string,
       fields: Partial<EmailTemplate>,
     ) => {
+      // If updating only isActive, send lean partial payload
+      if (
+        Object.keys(fields).length === 1 &&
+        fields.isActive !== undefined
+      ) {
+        try {
+          setSaving(true);
+          await updateEmailTemplate(eventId, templateId, {
+            isActive: fields.isActive,
+          });
+          updateTemplateLocally(templateId, { isActive: fields.isActive });
+          return true;
+        } catch (err: unknown) {
+          toast.error(
+            getErrorMessage(err) || "Failed to update template status",
+          );
+          return false;
+        } finally {
+          setSaving(false);
+        }
+      }
+
       const { loadedTemplatesMap } = useEmailStore.getState();
       const existing = loadedTemplatesMap[templateId];
 

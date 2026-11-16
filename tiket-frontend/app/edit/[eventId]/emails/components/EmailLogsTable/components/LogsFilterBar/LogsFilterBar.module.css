@@ -1,0 +1,93 @@
+.filterBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 1.25rem;
+}
+
+.filterPills {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.filterPill {
+  background: var(--color-soft-bg);
+  color: var(--color-text-soft);
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filterPill:hover {
+  background: var(--color-soft-bg-hover);
+  color: var(--text-primary);
+}
+
+.filterPill[data-active="true"] {
+  background: var(--text-primary);
+  color: var(--color-bg-base);
+  font-weight: 600;
+}
+
+.filterRight {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.typeSelectWrapper {
+  min-width: 160px;
+}
+
+.typeSelectTrigger {
+  height: 34px;
+  background: var(--color-soft-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 8px);
+  padding: 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.searchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.65rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  background: var(--color-soft-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.4rem 0.75rem 0.4rem 2rem;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  outline: none;
+  min-width: 220px;
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--border-strong);
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}

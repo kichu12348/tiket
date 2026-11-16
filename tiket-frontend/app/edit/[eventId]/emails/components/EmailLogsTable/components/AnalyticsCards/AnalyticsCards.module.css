@@ -1,0 +1,77 @@
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.kpiCard {
+  background: var(--color-soft-bg);
+  border-radius: var(--radius-md, 12px);
+  padding: 1.15rem 1.25rem;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.kpiCard:hover {
+  background: var(--color-soft-bg-hover);
+}
+
+.kpiTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpiLabel {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kpiIcon {
+  color: var(--text-secondary);
+}
+
+.kpiIconSuccess {
+  color: var(--status-success);
+}
+
+.kpiIconMuted {
+  color: var(--text-muted);
+}
+
+.kpiIconDanger {
+  color: var(--status-danger);
+}
+
+.kpiValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.kpiValue {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.kpiBadgeSuccess {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.kpiSub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

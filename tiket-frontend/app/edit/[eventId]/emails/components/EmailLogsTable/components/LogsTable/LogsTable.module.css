@@ -1,0 +1,188 @@
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-sm, 8px);
+}
+
+.tableHeaderCell {
+  padding: 0.65rem 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tableCell {
+  padding: 0.85rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  vertical-align: middle;
+}
+
+.recipientCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.recipientName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.recipientEmail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.typeBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--color-soft-bg);
+  color: var(--color-text-soft);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+.subjectText {
+  color: var(--text-secondary);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.statusBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.statusBadge[data-status="sent"] {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+}
+
+.statusBadge[data-status="failed"] {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+
+.openedBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.unopenedBadge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--color-soft-bg);
+  color: var(--text-muted);
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.timeCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.timeText {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.resentTag {
+  font-size: 0.68rem;
+  color: var(--status-warning);
+  background: var(--status-warning-bg);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.actionsCol {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.actionBtn {
+  background: var(--color-soft-bg);
+  color: var(--color-text-soft);
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s ease;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--color-soft-bg-hover);
+  color: var(--text-primary);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.emptyState {
+  padding: 3rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  color: var(--text-muted);
+  opacity: 0.3;
+}
+
+.emptyText {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0;
+}

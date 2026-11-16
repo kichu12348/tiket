@@ -6,7 +6,6 @@ import { useEmailStore } from "@/store/useEmailStore";
 import { useEmailManagement } from "@/hooks/useEmailManagement";
 import type { EmailTemplateType, EmailTemplate } from "@/types/email";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Power } from "lucide-react";
 import styles from "./EmailsPage.module.css";
 
 import TemplateTypeSelector from "./components/TemplateTypeSelector";
