@@ -142,7 +142,10 @@ mock.module("@/api/events", () => ({
 }));
 
 mock.module("@/constants/config", () => ({
-  getImageUrl: (fn: string) => `https://cdn.tiket.app/${fn}`,
+  getImageUrl: (fn: string) =>
+    fn?.startsWith("http://") || fn?.startsWith("https://")
+      ? fn
+      : `https://cdn.tiket.app/${fn}`,
 }));
 
 mock.module("sonner", () => ({

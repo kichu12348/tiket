@@ -40,7 +40,7 @@ try {
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { TeamMember, EventRole } from "@/types/team";
-import TeamPage from "@/app/routes/edit.$eventId.team";
+import TeamPage from "@/app/edit/team/page";
 
 // --- Mock API Layer ---
 let mockRoles: EventRole[] = [];

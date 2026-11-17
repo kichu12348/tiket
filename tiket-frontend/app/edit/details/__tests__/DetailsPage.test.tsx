@@ -41,7 +41,7 @@ try {
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { Event } from "@/types/event";
 import { useEventStore } from "@/store/useEventStore";
-import EditDetailsPage from "@/app/routes/edit.$eventId.details";
+import EditDetailsPage from "@/app/edit/details/page";
 
 const mockEvent: Event = {
   id: "evt-test-details-101",

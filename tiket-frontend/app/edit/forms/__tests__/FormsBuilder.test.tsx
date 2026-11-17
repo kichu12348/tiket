@@ -397,7 +397,7 @@ mock.module("sonner", () => ({
 }));
 
 // Import EditFormsPage after mocks are set up
-import EditFormsPage from "@/app/routes/edit.$eventId.forms";
+import EditFormsPage from "@/app/edit/forms/page";
 
 describe("EditFormsPage Component Integration", () => {
   beforeEach(() => {

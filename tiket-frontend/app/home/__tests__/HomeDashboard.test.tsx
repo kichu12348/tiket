@@ -38,7 +38,7 @@ if (rtlReact && localReact && rtlReact !== localReact) {
 
 import React from "react";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import Home from "@/app/routes/home";
+import Home from "@/app/home/page";
 import * as eventsApi from "@/app/home/api/events";
 import * as ticketsApi from "@/api/tickets";
 import * as useTokenModule from "@/hooks/useToken";

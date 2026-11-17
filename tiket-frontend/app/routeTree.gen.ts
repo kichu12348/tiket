@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CreateRouteImport } from './routes/create'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as EventSlugIndexRouteImport } from './routes/$eventSlug.index'
@@ -39,11 +38,6 @@ const IndexRoute = IndexRouteImport.update({
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HomeRoute = HomeRouteImport.update({
@@ -140,7 +134,6 @@ const EditEventIdTicketsRoute = EditEventIdTicketsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
-  '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRoute
   '/signin': typeof SigninRoute
   '/$eventSlug/form': typeof EventSlugFormRoute
@@ -163,7 +156,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
-  '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRoute
   '/signin': typeof SigninRoute
   '/$eventSlug/form': typeof EventSlugFormRoute
@@ -186,7 +178,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
-  '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRoute
   '/signin': typeof SigninRoute
   '/$eventSlug/form': typeof EventSlugFormRoute
@@ -211,7 +202,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/create'
-    | '/dashboard'
     | '/home'
     | '/signin'
     | '/$eventSlug/form'
@@ -234,7 +224,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/create'
-    | '/dashboard'
     | '/home'
     | '/signin'
     | '/$eventSlug/form'
@@ -256,7 +245,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/create'
-    | '/dashboard'
     | '/home'
     | '/signin'
     | '/$eventSlug/form'
@@ -280,7 +268,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CreateRoute: typeof CreateRoute
-  DashboardRoute: typeof DashboardRoute
   HomeRoute: typeof HomeRoute
   SigninRoute: typeof SigninRoute
   EventSlugFormRoute: typeof EventSlugFormRoute
@@ -304,13 +291,6 @@ declare module '@tanstack/react-router' {
       path: '/create'
       fullPath: '/create'
       preLoaderRoute: typeof CreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -477,7 +457,6 @@ const EditEventIdRouteWithChildren = EditEventIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreateRoute: CreateRoute,
-  DashboardRoute: DashboardRoute,
   HomeRoute: HomeRoute,
   SigninRoute: SigninRoute,
   EventSlugFormRoute: EventSlugFormRoute,

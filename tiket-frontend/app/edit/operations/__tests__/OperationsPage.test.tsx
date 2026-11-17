@@ -39,7 +39,7 @@ try {
 }
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import OperationsPage from "@/app/routes/edit.$eventId.operations";
+import OperationsPage from "@/app/edit/operations/page";
 
 // --- Mock Live Event Hook ---
 mock.module("@/hooks/useLiveEvent", () => ({

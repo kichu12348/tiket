@@ -1,9 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import styles from "@/app/LandingPage.module.css";
-import Navbar from "@/components/Navbar";
-import AsciiBackground from "@/components/AsciiBackground";
-import LandingHero from "@/components/LandingHero";
 import { getToken } from "@/lib/getToken";
+import LandingPage from "@/app/page";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -13,22 +10,5 @@ export const Route = createFileRoute("/")({
     }
     return { token };
   },
-  component: HomePage,
+  component: LandingPage,
 });
-
-function HomePage() {
-  const context = Route.useRouteContext();
-  const token = context?.token;
-
-  return (
-    <>
-      <AsciiBackground />
-      <div className={styles.container}>
-        <Navbar isAuthenticated={!!token} noHorizontalPadding />
-        <main className={styles.mainContent}>
-          <LandingHero isAuthenticated={!!token} />
-        </main>
-      </div>
-    </>
-  );
-}

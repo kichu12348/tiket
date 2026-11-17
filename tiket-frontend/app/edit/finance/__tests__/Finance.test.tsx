@@ -42,7 +42,7 @@ import { render, fireEvent, waitFor, act } from "@testing-library/react";
 import type { Finance } from "@/types/commerce";
 import BankAccountCard from "../components/BankAccountCard";
 import SettlementsTable, { type SettlementOrder } from "../components/SettlementsTable";
-import FinancePage from "@/app/routes/edit.$eventId.finance";
+import FinancePage from "@/app/edit/finance/page";
 
 // --- Mock Sonner ---
 mock.module("sonner", () => ({

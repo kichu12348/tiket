@@ -19,7 +19,7 @@ mock.module("@/api/auth", () => ({
   getGoogleOAuthUrl: mock(() => "http://localhost:5000/api/auth/google"),
 }));
 
-import GoogleCallbackPage from "@/app/routes/auth.google.callback";
+import GoogleCallbackPage from "@/app/auth/google/callback/page";
 
 describe("GoogleCallbackPage", () => {
   beforeEach(() => {

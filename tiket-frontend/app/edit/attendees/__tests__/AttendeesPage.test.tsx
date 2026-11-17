@@ -47,7 +47,7 @@ import type {
   GetAttendeesResponse,
 } from "@/types/attendee";
 import type { TicketType } from "@/types/ticketType";
-import AttendeesPage from "@/app/routes/edit.$eventId.attendees";
+import AttendeesPage from "@/app/edit/attendees/page";
 
 // --- Mock Data ---
 const mockTicketTypes: TicketType[] = [

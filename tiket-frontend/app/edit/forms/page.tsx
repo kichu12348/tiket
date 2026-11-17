@@ -1,0 +1,254 @@
+import { useMemo } from "react";
+import { useEventStore } from "@/store/useEventStore";
+import { Plus, User, HelpCircle, X, Layers } from "lucide-react";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
+
+import styles from "@/app/edit/forms/Forms.module.css";
+import type { LocalField } from "@/app/edit/forms/types";
+
+import StandardFieldCard from "@/app/edit/forms/components/StandardFieldCard";
+import SortableFieldCard from "@/app/edit/forms/components/SortableFieldCard";
+import FieldModal from "@/app/edit/forms/components/FieldModal";
+import SkeletonLoader from "@/app/edit/forms/components/SkeletonLoader";
+
+import { useFormData } from "@/app/edit/forms/hooks/useFormData";
+import { useFormUI } from "@/app/edit/forms/hooks/useFormUI";
+import { getActivePageFields } from "@/app/edit/forms/functions/formHelpers";
+
+export default function EditFormsPage() {
+  const { event } = useEventStore();
+
+  /* ── Core Data & DB Actions ── */
+  const {
+    customFields,
+    standardFields,
+    isLoading,
+    pages,
+    toggleInlineEdit,
+    updateStandardField,
+    saveCustomField,
+    deleteCustomField,
+    reorderCustomFields,
+    deletePageFromDB,
+  } = useFormData(event?.id);
+
+  /* ── Local UI State & Handlers ── */
+  const {
+    activePage,
+    setActivePage,
+    effectivePages,
+    setActiveDragId,
+    isModalOpen,
+    modalMode,
+    editingField,
+    addPage,
+    confirmDeletePage,
+    openAddModal,
+    openEditModal,
+    closeFieldModal,
+  } = useFormUI(pages, deletePageFromDB);
+
+  /* ── Drag & Drop Configuration ── */
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  /* ── Derived Data ── */
+  const activePageFields = useMemo(
+    () => getActivePageFields(customFields, activePage),
+    [customFields, activePage],
+  );
+
+  /* ── Handlers ── */
+  const handleModalSave = async (
+    fieldData: Omit<LocalField, "isEditing" | "localId">,
+  ) => {
+    await saveCustomField(
+      fieldData,
+      modalMode === "edit",
+      editingField?.localId,
+      activePage,
+    );
+    closeFieldModal();
+  };
+
+  const handleInlineSave = async (updated: Omit<LocalField, "isEditing">) => {
+    await saveCustomField(updated, true, updated.localId, activePage);
+    toggleInlineEdit(updated.localId, false);
+  };
+
+  const handleDragStart = (e: DragStartEvent) => {
+    setActiveDragId(e.active.id as string);
+  };
+
+  const handleDragEnd = async (e: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+
+    const activeIdx = activePageFields.findIndex(
+      (f) => f.localId === active.id,
+    );
+    const overIdx = activePageFields.findIndex((f) => f.localId === over.id);
+
+    if (activeIdx === -1 || overIdx === -1) return;
+
+    const reordered = arrayMove(activePageFields, activeIdx, overIdx);
+    const updated = reordered.map((f, i) => ({ ...f, sortOrder: i }));
+
+    await reorderCustomFields(updated, activePageFields, activePage);
+  };
+
+  /* ── Render ── */
+  if (!event) return null;
+  if (isLoading) {
+    return <SkeletonLoader />;
+  }
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>Registration Questions</h1>
+        <p className={styles.subtitle}>
+          We will ask guests the following questions when they register for the
+          event.
+        </p>
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <User size={18} className={styles.iconPersonal} />
+          <span>Personal Information</span>
+        </div>
+        <div className={styles.personalGrid}>
+          {standardFields.map((field) => (
+            <StandardFieldCard
+              key={field.name}
+              field={field}
+              onChange={(status) => updateStandardField(field.name, status)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionHeader} style={{ marginTop: "1rem" }}>
+          <HelpCircle size={18} className={styles.iconCustom} />
+          <span>Custom Questions</span>
+        </div>
+
+        {effectivePages.length > 0 && (
+          <div className={styles.pageTabs}>
+            {effectivePages.map((pageNum) => (
+              <div
+                key={pageNum}
+                style={{ display: "flex", alignItems: "center" }}
+              >
+                <button
+                  className={styles.pageTab}
+                  data-active={activePage === pageNum ? "true" : "false"}
+                  onClick={() => setActivePage(pageNum)}
+                >
+                  <Layers size={13} style={{ marginRight: 6, opacity: 0.6 }} />
+                  Page {pageNum}
+                </button>
+                {effectivePages.length > 1 && (
+                  <button
+                    className={styles.deletePageBtn}
+                    onClick={() => confirmDeletePage(pageNum)}
+                    title={`Delete Page ${pageNum}`}
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              className={styles.addPageBtn}
+              onClick={addPage}
+              title="Add Page"
+              style={{ marginLeft: "0.25rem" }}
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+        )}
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        >
+          <SortableContext
+            items={activePageFields.map((f) => f.localId)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className={styles.fieldsList}>
+              {activePageFields.length === 0 && (
+                <div className={styles.emptyState}>
+                  No custom questions added to this page yet.
+                </div>
+              )}
+              {activePageFields.map((field) => (
+                <SortableFieldCard
+                  key={field.localId}
+                  field={field}
+                  availableFields={customFields}
+                  onEdit={() => openEditModal(field)}
+                  onToggleInlineEdit={() => toggleInlineEdit(field.localId)}
+                  onSaveInline={handleInlineSave}
+                  onDeleteInline={() => deleteCustomField(field.localId)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+
+        <button className={styles.addQuestionBtn} onClick={openAddModal}>
+          <Plus size={16} />
+          Add Question
+        </button>
+      </div>
+
+      <FieldModal
+        isOpen={isModalOpen}
+        onClose={closeFieldModal}
+        mode={modalMode}
+        initialField={editingField}
+        availableFields={customFields}
+        onSave={handleModalSave}
+        onDelete={
+          modalMode === "edit" && editingField
+            ? async () => {
+                await deleteCustomField(editingField.localId);
+                closeFieldModal();
+              }
+            : undefined
+        }
+      />
+    </div>
+  );
+}

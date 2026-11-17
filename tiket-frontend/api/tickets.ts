@@ -17,7 +17,7 @@ import type {
   DocumentTemplate,
   CreateTemplatePayload,
   UpdateTemplatePayload,
-} from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
+} from "@/app/edit/tickets/components/TicketDesignStudio/types";
 
 export const getTicketTypes = async (
   eventId: string,
@@ -172,8 +172,6 @@ export const updateTemplate = async (
 export const deleteTemplate = async (
   templateId: string,
 ): Promise<{ message: string }> => {
-  const response = await api.delete(
-    API_ENDPOINTS.TEMPLATES.DELETE(templateId),
-  );
+  const response = await api.delete(API_ENDPOINTS.TEMPLATES.DELETE(templateId));
   return response.data;
 };

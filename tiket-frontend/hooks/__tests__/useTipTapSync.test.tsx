@@ -52,7 +52,7 @@ import {
   ContainerBlockExtension,
   UnifiedTextStyle,
   StyledParagraph,
-} from "@/app/edit/[eventId]/emails/components/EmailPaperCanvas/extensions";
+} from "@/app/edit/emails/components/EmailPaperCanvas/extensions";
 
 describe("useTipTapSync Hook", () => {
   let editor: Editor;

@@ -56,9 +56,9 @@ import {
   resolveTicketLayer,
   getElementText,
 } from "../components/CustomTicketCanvas";
-import type { TicketCanvasElement } from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
+import type { TicketCanvasElement } from "@/app/edit/tickets/components/TicketDesignStudio/types";
 import { testRouterState } from "@/testing-library";
-import TicketPassPage from "@/app/routes/passes.$ticketId";
+import TicketPassPage from "@/app/passes/[ticketId]/page";
 
 // Mock @tanstack/react-router
 let mockParams = { ticketId: "ticket-active-1" };
@@ -233,7 +233,9 @@ describe("formatLocation utility", () => {
       city: "Bengaluru",
       state: "Karnataka",
     };
-    expect(formatLocation("offline", loc)).toBe("Grand Palace, Bengaluru, Karnataka");
+    expect(formatLocation("offline", loc)).toBe(
+      "Grand Palace, Bengaluru, Karnataka",
+    );
   });
 
   test("formats hybrid events by appending (Hybrid)", () => {
@@ -242,7 +244,9 @@ describe("formatLocation utility", () => {
       city: "Austin",
       state: "TX",
     };
-    expect(formatLocation("hybrid", loc)).toBe("Convention Center, Austin, TX (Hybrid)");
+    expect(formatLocation("hybrid", loc)).toBe(
+      "Convention Center, Austin, TX (Hybrid)",
+    );
   });
 
   test("falls back to Venue TBA when details are empty", () => {
@@ -261,7 +265,9 @@ describe("PassQRCode component", () => {
     );
 
     expect(screen.getByTestId("qr-container")).toBeInTheDocument();
-    expect(screen.getByText("Present this code at venue entrance")).toBeInTheDocument();
+    expect(
+      screen.getByText("Present this code at venue entrance"),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("status-badge-container")).toBeNull();
   });
 
@@ -399,7 +405,9 @@ describe("PassActions & Ticket Transfer", () => {
     expect(mockInitiateTicketTransfer).not.toHaveBeenCalled();
 
     // Enter valid email and submit
-    fireEvent.change(emailInput, { target: { value: "recipient@example.com" } });
+    fireEvent.change(emailInput, {
+      target: { value: "recipient@example.com" },
+    });
     fireEvent.submit(form);
 
     await waitFor(() => {
@@ -411,7 +419,9 @@ describe("PassActions & Ticket Transfer", () => {
 
     await waitFor(() => {
       expect(onTransferSuccess).toHaveBeenCalledWith("recipient@example.com");
-      expect(screen.getByTestId("transfer-success-message")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("transfer-success-message"),
+      ).toBeInTheDocument();
     });
   });
 });
@@ -508,9 +518,7 @@ describe("TicketPassPage Integration", () => {
     render(<TicketPassPage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("custom-ticket-artboard"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("custom-ticket-artboard")).toBeInTheDocument();
       expect(screen.getByTestId("custom-ticket-bg")).toHaveAttribute(
         "src",
         mockCustomTemplate.backgroundImageUrl,
@@ -532,9 +540,7 @@ describe("TicketPassPage Integration", () => {
     render(<TicketPassPage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("custom-ticket-artboard"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("custom-ticket-artboard")).toBeInTheDocument();
       expect(screen.getByTestId("locked-qr-badge")).toBeInTheDocument();
       expect(screen.getByText("PENDING APPROVAL")).toBeInTheDocument();
     });
@@ -629,7 +635,9 @@ describe("TicketPassPage Integration", () => {
     await waitFor(() => {
       expect(screen.getByTestId("custom-ticket-artboard")).toBeInTheDocument();
       expect(screen.queryByTestId("custom-ticket-bg")).toBeNull();
-      expect(screen.getByTestId("custom-element-layer-text-1")).toHaveTextContent("Alex Morgan");
+      expect(
+        screen.getByTestId("custom-element-layer-text-1"),
+      ).toHaveTextContent("Alex Morgan");
     });
   });
 });
@@ -987,7 +995,9 @@ describe("resolveTicketLayer condition evaluator & form field bindings", () => {
         template={templateWithConditionalLayer}
       />,
     );
-    expect(screen.getByTestId("custom-element-vip-exclusive-badge")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("custom-element-vip-exclusive-badge"),
+    ).toBeInTheDocument();
     expect(screen.getByText("VIP ACCESS ONLY")).toBeInTheDocument();
     unmount();
 
@@ -998,7 +1008,9 @@ describe("resolveTicketLayer condition evaluator & form field bindings", () => {
         template={templateWithConditionalLayer}
       />,
     );
-    expect(screen.queryByTestId("custom-element-vip-exclusive-badge")).toBeNull();
+    expect(
+      screen.queryByTestId("custom-element-vip-exclusive-badge"),
+    ).toBeNull();
     expect(screen.queryByText("VIP ACCESS ONLY")).toBeNull();
   });
 });

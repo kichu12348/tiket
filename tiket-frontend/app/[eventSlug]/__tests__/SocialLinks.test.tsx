@@ -24,7 +24,7 @@ let mockEventData: Event | null = null;
 let mockHostsData: unknown[] = [];
 
 // Import the component page
-import EventPage from "@/app/routes/$eventSlug.index";
+import EventPage from "@/app/[eventSlug]/page";
 
 describe("Social Media & Community Links", () => {
   describe("lib/validators/event - URL & Handle Normalization / Validation", () => {

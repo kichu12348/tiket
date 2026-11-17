@@ -1,7 +1,7 @@
 import { toPng } from "html-to-image";
 import QRCode from "qrcode";
 import type { TicketPassData, TicketPassTemplate } from "@/types/ticket";
-import type { TicketCanvasConfig } from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
+import type { TicketCanvasConfig } from "@/app/edit/tickets/components/TicketDesignStudio/types";
 import {
   getElementText,
   resolveTicketLayer,

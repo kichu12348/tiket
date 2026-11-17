@@ -1,5 +1,4 @@
-﻿
-import React from "react";
+﻿import React from "react";
 import QRCode from "react-qr-code";
 import { Lock } from "lucide-react";
 import { getImageUrl } from "@/constants/config";
@@ -8,7 +7,7 @@ import type {
   TicketCanvasConfig,
   TicketCanvasElement,
   ResolvedTicketLayer,
-} from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
+} from "@/app/edit/tickets/components/TicketDesignStudio/types";
 import { formatLocation } from "../../utils/formatLocation";
 import styles from "./CustomTicketCanvas.module.css";
 
@@ -414,9 +413,9 @@ export function CustomTicketCanvas({
               const isQr = layer.type === "qr";
               const rotation = layer.rotation ?? 0;
               const layerWidth =
-                layer.width || (isQr ? (layer.fontSize || 300) : 320);
+                layer.width || (isQr ? layer.fontSize || 300 : 320);
               const layerHeight =
-                layer.height || (isQr ? (layer.fontSize || 300) : 80);
+                layer.height || (isQr ? layer.fontSize || 300 : 80);
 
               if (isQr) {
                 const isScannable =

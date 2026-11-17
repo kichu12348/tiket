@@ -41,7 +41,7 @@ try {
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { EventInsightsData, CustomInsightWidget } from "@/types/attendee";
 import type { EventHost } from "@/api/events";
-import EditOverviewPage from "@/app/routes/edit.$eventId.overview";
+import EditOverviewPage from "@/app/edit/overview/page";
 
 // --- Mock Data ---
 const mockInsights: EventInsightsData = {

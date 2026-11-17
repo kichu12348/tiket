@@ -358,7 +358,7 @@ mock.module("@/api/emails", () => ({
 }));
 
 // Import page under test
-import EditEmailsPage from "@/app/routes/edit.$eventId.emails";
+import EditEmailsPage from "@/app/edit/emails/page";
 
 describe("EditEmailsPage Component", () => {
   beforeEach(() => {
