@@ -3,7 +3,7 @@
 Event ticketing monorepo competing with Lu.ma and MakeMyPass.
 
 - `tiket-backend/`: Bun + Fastify + Drizzle ORM + PostgreSQL
-- `tiket-frontend/`: Next.js App Router, Radix/shadcn UI, CSS Modules + Tailwind, Zustand
+- `tiket-frontend/`: TanStack Start, Radix/shadcn UI, CSS Modules + Tailwind, Zustand
 
 Deep references (read ONLY when the task needs them):
 
@@ -23,7 +23,7 @@ Deep references (read ONLY when the task needs them):
 
 - Use ONLY `bun` and `bunx` (`bun run`, `bun test`, `bun add`, `bunx --bun`).
 - NEVER use `npm`, `npx`, `yarn`, `pnpm` or `node`.
-- Standard Next.js via `bun --bun next`. Do not use `vinext`.
+- TanStack Start via Vite (`bun run dev`).
 
 ## Quality gate (must all exit 0, run from repo root)
 
@@ -40,7 +40,7 @@ Every new or fixed feature or page needs tests with `bun test`
 
 - No `any`, no `as any`. Define interfaces, aliases or generics.
 - Types are imported with `import type { ... }` (or inline `type` modifiers).
-- Do not "fix" `react-hooks/exhaustive-deps` or `@next/next/no-img-element`; both are off.
+- Do not "fix" `react-hooks/exhaustive-deps`; it is off.
 
 ## Frontend architecture (`tiket-frontend`)
 

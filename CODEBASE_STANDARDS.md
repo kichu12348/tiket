@@ -6,7 +6,7 @@ Welcome to the Tiket codebase! This document outlines the architectural patterns
 
 The project is structured as a monorepo-style split, with clear separation between the frontend and backend applications:
 
-- **`tiket-frontend/`**: The user interface built with Next.js (App Router), using a mix of CSS Modules and Tailwind CSS, and Zustand for state management.
+- **`tiket-frontend/`**: The user interface built with TanStack Start, using a mix of CSS Modules and Tailwind CSS, and Zustand for state management.
 - **`tiket-backend/`**: The REST API server built with Bun, Fastify, and Drizzle ORM, with native JSON schema validation.
 
 ---
@@ -15,7 +15,7 @@ The project is structured as a monorepo-style split, with clear separation betwe
 
 ### Tech Stack
 
-- **Framework:** Next.js (App Router) with heavy use of Client Components (`"use client"`) for interactive pages.
+- **Framework:** TanStack Start and TanStack Router with interactive React components.
 - **Styling:** CSS Modules (`*.module.css`) are the primary styling mechanism for complex components, combined with Tailwind CSS utility classes and `cn` for conditional styling.
 - **State Management:** Zustand (`useEventStore.ts`, `useSidebarStore.ts`).
 - **Notifications:** `sonner` is used globally for toast notifications.
@@ -24,7 +24,7 @@ The project is structured as a monorepo-style split, with clear separation betwe
 
 ### Directory Structure & Responsibilities
 
-- **`app/`**: Next.js App Router directory.
+- **`app/`**: TanStack Start app directory.
   - _Rule:_ Use this for routing, layouts, and assembling page components. Keep page-level CSS in corresponding `.module.css` files.
 - **`components/`**: Reusable React components.
   - Base UI components (e.g., `Dropdown`, `Switch`) and complex domain components (e.g., `LocationPicker`, `DateRangeBlock`).
