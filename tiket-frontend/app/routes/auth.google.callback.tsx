@@ -22,7 +22,7 @@ export const Route = createFileRoute("/auth/google/callback")({
   component: GoogleCallbackPage,
 });
 
-export default function GoogleCallbackPage() {
+function GoogleCallbackPage() {
   const search = (useSearch({ strict: false }) || {}) as z.infer<
     typeof googleCallbackSearchSchema
   >;

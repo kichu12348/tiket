@@ -10,18 +10,18 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, QrCode, Clock } from "lucide-react";
-import OperationsStats from "@/app/edit/[eventId]/operations/components/OperationsStats";
-import DoorScanner from "@/app/edit/[eventId]/operations/components/DoorScanner";
-import CheckInFeed from "@/app/edit/[eventId]/operations/components/CheckInFeed";
-import ApprovalsPanel from "@/app/edit/[eventId]/operations/components/ApprovalsPanel";
-import styles from "@/app/edit/[eventId]/operations/Operations.module.css";
+import OperationsStats from "@/app/edit/operations/components/OperationsStats";
+import DoorScanner from "@/app/edit/operations/components/DoorScanner";
+import CheckInFeed from "@/app/edit/operations/components/CheckInFeed";
+import ApprovalsPanel from "@/app/edit/operations/components/ApprovalsPanel";
+import styles from "@/app/edit/operations/Operations.module.css";
 
 export const Route = createFileRoute("/edit/$eventId/operations")({
   ssr: false,
   component: OperationsPage,
 });
 
-export default function OperationsPage() {
+function OperationsPage() {
   const params = useParams({ strict: false });
   const eventId = (params?.eventId as string) || "";
 

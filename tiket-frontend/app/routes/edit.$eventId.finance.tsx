@@ -13,16 +13,16 @@ import {
   Receipt,
   RotateCcw,
 } from "lucide-react";
-import BankAccountCard from "@/app/edit/[eventId]/finance/components/BankAccountCard";
-import SettlementsTable from "@/app/edit/[eventId]/finance/components/SettlementsTable";
-import styles from "@/app/edit/[eventId]/finance/FinancePage.module.css";
+import BankAccountCard from "@/app/edit/finance/components/BankAccountCard";
+import SettlementsTable from "@/app/edit/finance/components/SettlementsTable";
+import styles from "@/app/edit/finance/FinancePage.module.css";
 
 export const Route = createFileRoute("/edit/$eventId/finance")({
   ssr: false,
   component: FinancePage,
 });
 
-export default function FinancePage() {
+function FinancePage() {
   const routeParams = useParams({ strict: false });
   const eventId = (routeParams?.eventId as string) || "";
 

@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { createFileRoute, useParams } from "@tanstack/react-router";
-import styles from "@/app/edit/[eventId]/team/TeamPage.module.css";
-import MembersTab from "@/app/edit/[eventId]/team/components/MembersTab";
-import RolesTab from "@/app/edit/[eventId]/team/components/RolesTab";
+import styles from "@/app/edit/team/TeamPage.module.css";
+import MembersTab from "@/app/edit/team/components/MembersTab";
+import RolesTab from "@/app/edit/team/components/RolesTab";
 
 export const Route = createFileRoute("/edit/$eventId/team")({
   ssr: false,
   component: TeamPage,
 });
 
-export default function TeamPage() {
+function TeamPage() {
   const params = useParams({ strict: false });
   const eventId = params.eventId as string;
   const [activeTab, setActiveTab] = useState<"members" | "roles">("members");

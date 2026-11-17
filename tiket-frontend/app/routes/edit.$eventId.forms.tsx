@@ -22,24 +22,24 @@ import {
   restrictToParentElement,
 } from "@dnd-kit/modifiers";
 
-import styles from "@/app/edit/[eventId]/forms/Forms.module.css";
-import type { LocalField } from "@/app/edit/[eventId]/forms/types";
+import styles from "@/app/edit/forms/Forms.module.css";
+import type { LocalField } from "@/app/edit/forms/types";
 
-import StandardFieldCard from "@/app/edit/[eventId]/forms/components/StandardFieldCard";
-import SortableFieldCard from "@/app/edit/[eventId]/forms/components/SortableFieldCard";
-import FieldModal from "@/app/edit/[eventId]/forms/components/FieldModal";
-import SkeletonLoader from "@/app/edit/[eventId]/forms/components/SkeletonLoader";
+import StandardFieldCard from "@/app/edit/forms/components/StandardFieldCard";
+import SortableFieldCard from "@/app/edit/forms/components/SortableFieldCard";
+import FieldModal from "@/app/edit/forms/components/FieldModal";
+import SkeletonLoader from "@/app/edit/forms/components/SkeletonLoader";
 
-import { useFormData } from "@/app/edit/[eventId]/forms/hooks/useFormData";
-import { useFormUI } from "@/app/edit/[eventId]/forms/hooks/useFormUI";
-import { getActivePageFields } from "@/app/edit/[eventId]/forms/functions/formHelpers";
+import { useFormData } from "@/app/edit/forms/hooks/useFormData";
+import { useFormUI } from "@/app/edit/forms/hooks/useFormUI";
+import { getActivePageFields } from "@/app/edit/forms/functions/formHelpers";
 
 export const Route = createFileRoute("/edit/$eventId/forms")({
   ssr: false,
   component: EditFormsPage,
 });
 
-export default function EditFormsPage() {
+function EditFormsPage() {
   const { event } = useEventStore();
 
   /* ── Core Data & DB Actions ── */

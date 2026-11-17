@@ -37,7 +37,7 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-export default function HomePage() {
+function HomePage() {
   const { logout } = useToken();
   const [mainTab, setMainTab] = useState<"events" | "tickets">("events");
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");

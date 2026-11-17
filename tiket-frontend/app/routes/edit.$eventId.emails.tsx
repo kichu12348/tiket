@@ -6,18 +6,18 @@ import { useEmailStore } from "@/store/useEmailStore";
 import { useEmailManagement } from "@/hooks/useEmailManagement";
 import type { EmailTemplateType, EmailTemplate } from "@/types/email";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import styles from "@/app/edit/[eventId]/emails/EmailsPage.module.css";
+import styles from "@/app/edit/emails/EmailsPage.module.css";
 
-import TemplateTypeSelector from "@/app/edit/[eventId]/emails/components/TemplateTypeSelector";
-import EmailPaperCanvas from "@/app/edit/[eventId]/emails/components/EmailPaperCanvas";
-import SendTestModal from "@/app/edit/[eventId]/emails/components/SendTestModal";
-import SendBatchModal from "@/app/edit/[eventId]/emails/components/SendBatchModal";
-import MailConnectionModal from "@/app/edit/[eventId]/emails/components/MailConnectionModal";
-import EmailLogsTable from "@/app/edit/[eventId]/emails/components/EmailLogsTable";
+import TemplateTypeSelector from "@/app/edit/emails/components/TemplateTypeSelector";
+import EmailPaperCanvas from "@/app/edit/emails/components/EmailPaperCanvas";
+import SendTestModal from "@/app/edit/emails/components/SendTestModal";
+import SendBatchModal from "@/app/edit/emails/components/SendBatchModal";
+import MailConnectionModal from "@/app/edit/emails/components/MailConnectionModal";
+import EmailLogsTable from "@/app/edit/emails/components/EmailLogsTable";
 import {
   EmailPageSkeleton,
   EmailEditorSkeleton,
-} from "@/app/edit/[eventId]/emails/components/EmailSkeletonLoader";
+} from "@/app/edit/emails/components/EmailSkeletonLoader";
 
 const emailsSearchSchema = z.object({
   tab: z.string().optional(),
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/edit/$eventId/emails")({
   component: EditEmailsPage,
 });
 
-export default function EditEmailsPage() {
+function EditEmailsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
 

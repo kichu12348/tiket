@@ -4,17 +4,17 @@ import { useEventStore } from "@/store/useEventStore";
 import type { TicketType } from "@/types/ticketType";
 import { getCoupons } from "@/api/commerce";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import TicketTypesPanel from "@/app/edit/[eventId]/tickets/components/TicketTypesPanel";
-import TicketDesignStudio from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio";
-import CouponsPanel from "@/app/edit/[eventId]/tickets/components/CouponsPanel";
-import styles from "@/app/edit/[eventId]/tickets/Tickets.module.css";
+import TicketTypesPanel from "@/app/edit/tickets/components/TicketTypesPanel";
+import TicketDesignStudio from "@/app/edit/tickets/components/TicketDesignStudio";
+import CouponsPanel from "@/app/edit/tickets/components/CouponsPanel";
+import styles from "@/app/edit/tickets/Tickets.module.css";
 
 export const Route = createFileRoute("/edit/$eventId/tickets")({
   ssr: false,
   component: EditTicketsPage,
 });
 
-export default function EditTicketsPage() {
+function EditTicketsPage() {
   const { event } = useEventStore();
   const [activeTab, setActiveTab] = useState<"tiers" | "coupons" | "designer">(
     "tiers",

@@ -111,7 +111,7 @@ function EventNotFound() {
   );
 }
 
-export default function EventPage() {
+function EventPage() {
   const data = Route.useLoaderData() as EventPageData;
   const { event, user, hosts, availability } = data;
   const isAssociated = Boolean(event.isAssociated);

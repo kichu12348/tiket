@@ -3,21 +3,21 @@ import { createFileRoute, useParams } from "@tanstack/react-router";
 import { Users, ShieldAlert } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAttendees } from "@/hooks/useAttendees";
-import AttendeeStats from "@/app/edit/[eventId]/attendees/components/AttendeeStats";
-import AttendeeFilters from "@/app/edit/[eventId]/attendees/components/AttendeeFilters";
-import AttendeeTable from "@/app/edit/[eventId]/attendees/components/AttendeeTable";
-import AttendeeDetailModal from "@/app/edit/[eventId]/attendees/components/AttendeeDetailModal";
-import ManualRegisterModal from "@/app/edit/[eventId]/attendees/components/ManualRegisterModal";
-import AttendeeSkeletonLoader from "@/app/edit/[eventId]/attendees/components/SkeletonLoader";
-import BlacklistPanel from "@/app/edit/[eventId]/attendees/components/BlacklistPanel";
-import styles from "@/app/edit/[eventId]/attendees/AttendeesPage.module.css";
+import AttendeeStats from "@/app/edit/attendees/components/AttendeeStats";
+import AttendeeFilters from "@/app/edit/attendees/components/AttendeeFilters";
+import AttendeeTable from "@/app/edit/attendees/components/AttendeeTable";
+import AttendeeDetailModal from "@/app/edit/attendees/components/AttendeeDetailModal";
+import ManualRegisterModal from "@/app/edit/attendees/components/ManualRegisterModal";
+import AttendeeSkeletonLoader from "@/app/edit/attendees/components/SkeletonLoader";
+import BlacklistPanel from "@/app/edit/attendees/components/BlacklistPanel";
+import styles from "@/app/edit/attendees/AttendeesPage.module.css";
 
 export const Route = createFileRoute("/edit/$eventId/attendees")({
   ssr: false,
   component: AttendeesPage,
 });
 
-export default function AttendeesPage() {
+function AttendeesPage() {
   const params = useParams({ strict: false });
   const eventId = params.eventId as string;
   const [activeTab, setActiveTab] = useState<string>("attendees");

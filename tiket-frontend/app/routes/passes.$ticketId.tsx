@@ -18,7 +18,7 @@ export const Route = createFileRoute("/passes/$ticketId")({
   component: TicketPassPage,
 });
 
-export default function TicketPassPage() {
+function TicketPassPage() {
   const params = useParams({ strict: false });
   const ticketId = params?.ticketId as string | undefined;
 

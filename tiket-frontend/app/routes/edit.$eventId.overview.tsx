@@ -26,17 +26,17 @@ import {
   ArrowRight,
   TrendingUp,
 } from "lucide-react";
-import InsightsCharts from "@/app/edit/[eventId]/overview/components/InsightsCharts";
-import CapacityMeter from "@/app/edit/[eventId]/overview/components/CapacityMeter";
-import CustomFormInsights from "@/app/edit/[eventId]/overview/components/CustomFormInsights";
-import styles from "@/app/edit/[eventId]/overview/Overview.module.css";
+import InsightsCharts from "@/app/edit/overview/components/InsightsCharts";
+import CapacityMeter from "@/app/edit/overview/components/CapacityMeter";
+import CustomFormInsights from "@/app/edit/overview/components/CustomFormInsights";
+import styles from "@/app/edit/overview/Overview.module.css";
 
 export const Route = createFileRoute("/edit/$eventId/overview")({
   ssr: false,
   component: EditOverviewPage,
 });
 
-export default function EditOverviewPage() {
+function EditOverviewPage() {
   const { event } = useEventStore();
   const eventId = event?.id || "";
 
