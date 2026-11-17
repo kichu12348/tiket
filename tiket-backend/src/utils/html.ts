@@ -98,7 +98,12 @@ export function sanitizeEmailHtml(html: string): string {
       "em",
       "i",
       "u",
+      "s",
+      "del",
       "br",
+      "blockquote",
+      "code",
+      "mark",
     ],
     allowedAttributes: {
       a: ["href", "title", "target", "rel", "style", "class"],

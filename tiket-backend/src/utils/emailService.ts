@@ -5,36 +5,27 @@ import {
   emailLogs,
   emailTemplates,
   type EmailDocumentJSON,
-  type EmailNodeJSON,
-  type StyleObject,
 } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
+import {
+  compileEmailJsonToHtml,
+  styleObjectToCss,
+  normalizeEmailDocument,
+  normalizeEmailDocumentDoc,
+  flattenInterpolationData,
+  interpolateString,
+  type InterpolationData,
+} from "./emailJsonCompiler";
 
-export interface InterpolationData {
-  event?: {
-    title?: string;
-    startDate?: string;
-    endDate?: string;
-    location?: string;
-    url?: string;
-    passUrl?: string;
-    organizerName?: string;
-  };
-  attendee?: {
-    name?: string;
-    email?: string;
-    type?: string;
-  };
-  ticket?: {
-    qrCode?: string;
-    qrCodeUrl?: string;
-    type?: string;
-    id?: string;
-  };
-  form?: Record<string, string>;
-  custom?: Record<string, string>;
-}
+export {
+  compileEmailJsonToHtml,
+  styleObjectToCss,
+  normalizeEmailDocument,
+  normalizeEmailDocumentDoc,
+  flattenInterpolationData,
+  type InterpolationData,
+};
 
 export function escapeHtml(text: string): string {
   if (!text) return "";
@@ -57,354 +48,36 @@ export function escapeAttribute(value: string): string {
 }
 
 /**
- * Converts camelCase CSS keys into valid kebab-case CSS declarations safely with character escaping.
- */
-export function styleObjectToCss(style?: StyleObject): string {
-  if (!style || typeof style !== "object") return "";
-  const declarations: string[] = [];
-  const unitlessProps = new Set([
-    "fontWeight",
-    "font-weight",
-    "lineHeight",
-    "line-height",
-    "opacity",
-    "zIndex",
-    "z-index",
-    "flex",
-    "flexGrow",
-    "flex-grow",
-    "flexShrink",
-    "flex-shrink",
-    "order",
-  ]);
-
-  for (const [rawKey, rawVal] of Object.entries(style)) {
-    if (rawVal === undefined || rawVal === null || rawVal === "") continue;
-    const kebabKey = rawKey.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
-    if (!/^[a-z0-9-]+$/i.test(kebabKey)) continue;
-
-    let valStr: string;
-    if (typeof rawVal === "number") {
-      valStr =
-        unitlessProps.has(rawKey) || unitlessProps.has(kebabKey)
-          ? String(rawVal)
-          : `${rawVal}px`;
-    } else {
-      valStr = String(rawVal);
-    }
-
-    valStr = valStr.replace(/["';<>]/g, "").trim();
-    if (!valStr) continue;
-
-    declarations.push(`${kebabKey}: ${valStr}`);
-  }
-
-  return declarations.length > 0 ? declarations.join("; ") + ";" : "";
-}
-
-/**
  * Replaces placeholders like {{event.title}}, {{attendee.name}}, {{form.Company Name}} in template text
  */
 export function interpolateTemplate(
   templateStr: string,
-  data: InterpolationData = {},
+  data: InterpolationData | Record<string, string> = {},
 ): string {
   if (!templateStr) return "";
 
-  const qrData = data.ticket?.qrCode || "TKT-SAMPLE-12345";
+  const variablesMap = flattenInterpolationData(data);
   const qrUrl =
-    data.ticket?.qrCodeUrl ||
-    `https://quickchart.io/qr?text=${encodeURIComponent(qrData)}&size=300&margin=1`;
+    variablesMap["ticket.qrCodeUrl"] ||
+    variablesMap["{{ticket.qrCodeUrl}}"] ||
+    "https://quickchart.io/qr?text=TKT-SAMPLE-12345&size=300&margin=1";
   const qrImgTag = `<img src="${qrUrl}" alt="Ticket QR Code" width="160" height="160" style="display:block;margin:12px auto;border-radius:8px;" />`;
 
   const isHtml = /<[a-z][\s\S]*>/i.test(templateStr);
 
   let result = templateStr;
-  // Handle {{ticket.qrCodeUrl}} in src attributes first
   result = result.replace(
     /(src\s*=\s*["']?)\{\{\s*ticket\.qrCodeUrl\s*\}\}(["']?)/gi,
     `$1${qrUrl}$2`,
   );
 
-  // If in HTML text, replace standalone {{ticket.qrCodeUrl}} with an img tag; otherwise with qrUrl
   if (isHtml) {
     result = result.replace(/\{\{\s*ticket\.qrCodeUrl\s*\}\}/gi, qrImgTag);
   } else {
     result = result.replace(/\{\{\s*ticket\.qrCodeUrl\s*\}\}/gi, qrUrl);
   }
 
-  // Replace placeholders including form fields with spaces, hyphens, slashes
-  return result.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, rawPath) => {
-    const path = rawPath.trim();
-    if (path.startsWith("form.")) {
-      const fieldKey = path.slice(5).trim();
-      return data.form?.[fieldKey] ?? match;
-    }
-
-    const parts = path.split(".");
-    if (parts.length === 1) {
-      // Direct root match or custom
-      return data.custom?.[parts[0]] ?? match;
-    }
-
-    const [domain, ...rest] = parts;
-    const key = rest.join(".");
-
-    if (domain === "event" && data.event) {
-      return Reflect.get(data.event, key) ?? match;
-    }
-    if (domain === "attendee" && data.attendee) {
-      return Reflect.get(data.attendee, key) ?? match;
-    }
-    if (domain === "ticket" && data.ticket) {
-      if (key === "qrCodeUrl") {
-        return qrUrl;
-      }
-      return Reflect.get(data.ticket, key) ?? match;
-    }
-    if (domain === "form" && data.form) {
-      return data.form[key] ?? match;
-    }
-
-    return match;
-  });
-}
-
-function compileEmailNode(
-  node: EmailNodeJSON,
-  data: InterpolationData,
-  parentType?: string,
-): string {
-  if (!node) return "";
-
-  if (node.type === "hardBreak") {
-    return "<br />";
-  }
-
-  if (node.type === "text") {
-    const rawText = node.text || "";
-    const interpolated = interpolateTemplate(rawText, data);
-    let text = escapeHtml(interpolated);
-
-    if (node.marks && node.marks.length > 0) {
-      for (const mark of node.marks) {
-        if (mark.type === "bold") {
-          text = `<strong style="font-weight: 700;">${text}</strong>`;
-        } else if (mark.type === "italic") {
-          text = `<em style="font-style: italic;">${text}</em>`;
-        } else if (mark.type === "underline") {
-          text = `<span style="text-decoration: underline;">${text}</span>`;
-        } else if (mark.type === "strike") {
-          text = `<span style="text-decoration: line-through;">${text}</span>`;
-        } else if (mark.type === "code") {
-          text = `<code style="background-color: #f3f4f6; padding: 2px 4px; border-radius: 4px; font-size: 85%; font-family: monospace;">${text}</code>`;
-        } else if (mark.type === "textStyle") {
-          const css = styleObjectToCss(mark.attrs?.style);
-          if (css) {
-            text = `<span style="${escapeAttribute(css)}">${text}</span>`;
-          }
-        } else if (mark.type === "highlight") {
-          const rawAttrs = (mark.attrs && typeof mark.attrs === "object" ? mark.attrs : {}) as Record<string, unknown>;
-          const markStyle = (rawAttrs.style && typeof rawAttrs.style === "object" ? rawAttrs.style : {}) as Record<string, string>;
-          const bg = markStyle.backgroundColor || rawAttrs.color || "#fef08a";
-          const css = styleObjectToCss({
-            backgroundColor: String(bg),
-            padding: "2px 4px",
-            borderRadius: "3px",
-            ...markStyle,
-          });
-          text = `<mark style="${escapeAttribute(css)}">${text}</mark>`;
-        } else if (mark.type === "link") {
-          const rawHref = (mark.attrs?.href as string) || "#";
-          const href = interpolateTemplate(rawHref, data);
-          const customStyle =
-            styleObjectToCss(mark.attrs?.style) ||
-            "color: #2563eb; text-decoration: underline;";
-          const targetAttr = mark.attrs?.target
-            ? ` target="${escapeAttribute(String(mark.attrs.target))}"`
-            : "";
-          text = `<a href="${escapeAttribute(href)}" style="${escapeAttribute(customStyle)}"${targetAttr}>${text}</a>`;
-        }
-      }
-    }
-    return text;
-  }
-
-  if (node.type === "variable") {
-    const rawKey =
-      (node.attrs?.key as string) || (node.attrs?.label as string) || "";
-    const token = rawKey.startsWith("{{") ? rawKey : `{{${rawKey}}}`;
-    const value = interpolateTemplate(token, data);
-    if (value !== token) {
-      return escapeHtml(value);
-    }
-    const fallback =
-      (node.attrs?.label as string) ||
-      (node.attrs?.sample as string) ||
-      token;
-    return escapeHtml(fallback);
-  }
-
-  if (node.type === "buttonBlock" || (node.type as string) === "ctaButton") {
-    const rawHref =
-      (node.attrs?.href as string) || (node.attrs?.url as string) || "#";
-    const href = interpolateTemplate(rawHref, data);
-    const alignment = (node.attrs?.alignment as string) || "center";
-    const label =
-      node.content && node.content.length > 0
-        ? node.content
-            .map((c) => compileEmailNode(c, data, "buttonBlock"))
-            .join("")
-        : escapeHtml(
-            interpolateTemplate(
-              (node.attrs?.label as string) || "Click Here",
-              data,
-            ),
-          );
-
-    const defaultBtnStyle: StyleObject = {
-      backgroundColor: "#000000",
-      color: "#ffffff",
-      padding: "12px 24px",
-      textDecoration: "none",
-      borderRadius: "8px",
-      fontWeight: "600",
-      fontSize: "15px",
-      display: "inline-block",
-    };
-    const nodeStyle = { ...((node.attrs?.style || {}) as StyleObject) };
-    const mt = nodeStyle.marginTop || "16px";
-    const mb = nodeStyle.marginBottom || "16px";
-    delete nodeStyle.marginTop;
-    delete nodeStyle.marginBottom;
-    delete nodeStyle.textAlign;
-
-    const mergedStyle: StyleObject = {
-      ...defaultBtnStyle,
-      ...nodeStyle,
-    };
-    const btnCss = styleObjectToCss(mergedStyle);
-
-    return `
-<div style="text-align: ${escapeAttribute(alignment)}; margin-top: ${escapeAttribute(String(mt))}; margin-bottom: ${escapeAttribute(String(mb))};">
-  <a href="${escapeAttribute(href)}" style="${escapeAttribute(btnCss)}">
-    ${label}
-  </a>
-</div>`.trim();
-  }
-
-  if (node.type === "imageBlock" || (node.type as string) === "image") {
-    const rawSrc = (node.attrs?.src as string) || "";
-    const src = interpolateTemplate(rawSrc, data);
-    const rawAlt = (node.attrs?.alt as string) || "";
-    const alt = interpolateTemplate(rawAlt, data);
-    const alignment = (node.attrs?.alignment as string) || "center";
-    const rawHref = (node.attrs?.href as string) || "";
-    const href = rawHref ? interpolateTemplate(rawHref, data) : undefined;
-
-    const imgStyles = styleObjectToCss(node.attrs?.style);
-    let marginCss = "margin: 0 auto; display: block;";
-    if (alignment === "left") {
-      marginCss = "margin-right: auto; margin-left: 0; display: block;";
-    } else if (alignment === "right") {
-      marginCss = "margin-left: auto; margin-right: 0; display: block;";
-    }
-
-    let imgHtml = `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(alt)}" style="${imgStyles}max-width: 100%; height: auto; ${marginCss}" />`;
-    if (href) {
-      imgHtml = `<a href="${escapeAttribute(href)}" style="display: block; text-decoration: none;">${imgHtml}</a>`;
-    }
-    return `
-<div style="text-align: ${escapeAttribute(alignment)}; margin: 16px 0;">
-  ${imgHtml}
-</div>`.trim();
-  }
-
-  const childrenHtml = node.content
-    ? node.content.map((c) => compileEmailNode(c, data, node.type)).join("")
-    : "";
-
-  const nodeCss = styleObjectToCss(node.attrs?.style);
-  const alignCss = node.attrs?.alignment
-    ? `text-align: ${escapeAttribute(node.attrs.alignment)}; `
-    : "";
-
-  switch (node.type) {
-    case "paragraph": {
-      const margin =
-        parentType === "listItem" ? "margin: 0;" : "margin: 12px 0;";
-      return `<p style="color: #374151; font-size: 15px; line-height: 1.6; ${margin} ${alignCss}${nodeCss}">${childrenHtml || "<br>"}</p>`;
-    }
-    case "heading": {
-      const level = node.attrs?.level || 1;
-      const validLevel = level === 2 ? 2 : level === 3 ? 3 : 1;
-      const fontSize =
-        validLevel === 1 ? "24px" : validLevel === 2 ? "20px" : "18px";
-      return `<h${validLevel} style="color: #111827; font-size: ${fontSize}; font-weight: 700; margin-top: 20px; margin-bottom: 10px; ${alignCss}${nodeCss}">${childrenHtml}</h${validLevel}>`;
-    }
-    case "containerBlock":
-    case "container" as string: {
-      return `<div style="${nodeCss}">${childrenHtml}</div>`;
-    }
-    case "bulletList": {
-      return `<ul style="color: #374151; padding-left: 20px; margin: 12px 0; ${nodeCss}">${childrenHtml}</ul>`;
-    }
-    case "orderedList": {
-      return `<ol style="color: #374151; padding-left: 20px; margin: 12px 0; ${nodeCss}">${childrenHtml}</ol>`;
-    }
-    case "listItem": {
-      return `<li style="margin: 4px 0; line-height: 1.5; ${nodeCss}">${childrenHtml}</li>`;
-    }
-    case "blockquote": {
-      return `<blockquote style="border-left: 3px solid #e5e7eb; padding-left: 14px; color: #6b7280; font-style: italic; margin: 16px 0; ${nodeCss}">${childrenHtml}</blockquote>`;
-    }
-    default:
-      return childrenHtml;
-  }
-}
-
-/**
- * Compiles a canonical EmailDocumentJSON tree into production email-safe HTML with outer canvas wrapper.
- */
-export function compileEmailJsonToHtml(
-  document: EmailDocumentJSON,
-  data: InterpolationData = {},
-): string {
-  if (!document || !document.doc) return "";
-
-  const defaultCanvasStyle: StyleObject = {
-    fontFamily: "Arial, Helvetica, sans-serif",
-    backgroundColor: "#ffffff",
-    color: "#111827",
-    maxWidth: "600px",
-    margin: "0 auto",
-    padding: "32px",
-    borderRadius: "12px",
-    borderColor: "#e5e7eb",
-    borderWidth: "1px",
-    borderStyle: "solid",
-    boxSizing: "border-box",
-  };
-  const canvasStyle = { ...defaultCanvasStyle, ...(document.canvasStyle || {}) };
-  const canvasCss = styleObjectToCss(canvasStyle);
-
-  const innerHtml = document.doc.content
-    ? document.doc.content
-        .map((child) => compileEmailNode(child, data))
-        .join("")
-    : compileEmailNode(document.doc, data);
-
-  const supportEmail = "support@tiket.com";
-
-  return `
-<div data-tiket-wrapper="true" style="${escapeAttribute(canvasCss)}">
-  ${innerHtml}
-  <hr data-tiket-footer="true" style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0 20px 0;" />
-  <div data-tiket-footer="true" style="text-align: center; color: #6b7280; font-size: 13px; line-height: 1.5;">
-    <p style="margin: 0 0 8px 0;">If you have any questions or queries regarding this event, feel free to reply directly to this email or reach out to us at <a href="mailto:${escapeAttribute(supportEmail)}" style="color: #2563eb; text-decoration: underline;">${escapeHtml(supportEmail)}</a>.</p>
-    <p style="margin: 0; font-size: 12px; color: #9ca3af;">Sent via <strong>Tiket Event Platform</strong></p>
-  </div>
-</div>`.trim();
+  return interpolateString(result, variablesMap);
 }
 
 export interface SendEmailOptions {

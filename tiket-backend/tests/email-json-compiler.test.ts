@@ -344,6 +344,8 @@ describe("Email JSON Compiler & Variable Interpolation", () => {
       };
 
       const html = compileEmailJsonToHtml(doc);
+      expect(html).toContain('class="email-canvas-outer"');
+      expect(html).toContain('class="email-canvas-inner"');
       expect(html).toContain('data-tiket-footer="true"');
       expect(html).toContain("support@tiket.com");
       expect(html).toContain("Sent via <strong>Tiket Event Platform</strong>");
@@ -371,7 +373,10 @@ describe("Email JSON Compiler & Variable Interpolation", () => {
           event: { title: "Test Event" },
           attendee: { name: "Bob Smith" },
         });
-        expect(html).toContain("data-tiket-wrapper=\"true\"");
+        expect(html).toContain('data-tiket-wrapper="true"');
+        expect(html).toContain('class="email-canvas-outer"');
+        expect(html).toContain('class="email-canvas-inner"');
+        expect(html).toContain('data-tiket-footer="true"');
         expect(html).toContain("Bob Smith");
         expect(html).toContain("Test Event");
       }

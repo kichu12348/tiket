@@ -7,7 +7,7 @@ import LandingHero from "@/components/LandingHero";
 const routeApi = getRouteApi("/");
 
 export default function LandingPage() {
-  const context = (routeApi.useRouteContext() || {}) as { token?: string };
+  const context = routeApi.useRouteContext();
   const token = context?.token;
 
   return (
