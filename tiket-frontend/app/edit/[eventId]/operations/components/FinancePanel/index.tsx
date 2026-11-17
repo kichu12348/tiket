@@ -1,7 +1,6 @@
-"use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams } from "@tanstack/react-router";
 import type {
   Finance,
   OrganizerBankAccount,
@@ -47,7 +46,7 @@ export default function FinancePanel({
   disabled,
   onRefund,
 }: FinancePanelProps) {
-  const params = useParams<{ eventId?: string }>();
+  const params = useParams({ strict: false });
   const eventId = params?.eventId || "";
 
   const [customFinance, setCustomFinance] = useState<Finance | null>(null);

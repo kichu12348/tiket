@@ -1,7 +1,6 @@
-"use client";
 
 import React, { useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 import Modal from "@/components/Modal";
 import { getSignedUrl, uploadToCDN } from "@/api/events";
@@ -36,7 +35,7 @@ export default function ImageModal({
   handleInsertImage,
   eventId: propEventId,
 }: ImageModalProps) {
-  const params = useParams();
+  const params = useParams({ strict: false });
   const resolvedEventId =
     propEventId || (params?.eventId as string | undefined);
   const [isUploading, setIsUploading] = useState(false);

@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React from "react";
 import type { TicketDesignerLayer } from "../../types";
 import type { FormField } from "@/types/form";

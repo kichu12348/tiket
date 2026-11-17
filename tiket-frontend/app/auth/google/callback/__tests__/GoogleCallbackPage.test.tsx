@@ -3,16 +3,15 @@ import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
 import React from "react";
 import { render, waitFor } from "@testing-library/react";
 
-let mockSearchParams = new URLSearchParams();
-const mockRouter = {
-  replace: mock(),
-  push: mock(),
-};
+import { testRouterState } from "@/testing-library";
 
-mock.module("next/navigation", () => ({
-  useRouter: () => mockRouter,
-  useSearchParams: () => mockSearchParams,
-}));
+let mockSearch: {
+  token?: string;
+  redirect?: string;
+  mode?: string;
+  error?: string;
+} = {};
+const mockNavigate = mock();
 
 // Mock api/auth syncSessionToken
 mock.module("@/api/auth", () => ({
@@ -20,13 +19,17 @@ mock.module("@/api/auth", () => ({
   getGoogleOAuthUrl: mock(() => "http://localhost:5000/api/auth/google"),
 }));
 
-import GoogleCallbackPage from "../page";
+import GoogleCallbackPage from "@/app/routes/auth.google.callback";
 
 describe("GoogleCallbackPage", () => {
   beforeEach(() => {
-    mockSearchParams = new URLSearchParams();
-    mockRouter.replace.mockClear();
-    mockRouter.push.mockClear();
+    mockSearch = {};
+    Object.defineProperty(testRouterState, "search", {
+      get: () => mockSearch,
+      configurable: true,
+    });
+    testRouterState.navigate = mockNavigate;
+    mockNavigate.mockClear();
   });
 
   afterEach(() => {
@@ -38,9 +41,11 @@ describe("GoogleCallbackPage", () => {
   });
 
   test("in popup mode with window.opener, posts message and closes window", async () => {
-    mockSearchParams.set("token", "jwt-mock-token-xyz");
-    mockSearchParams.set("mode", "popup");
-    mockSearchParams.set("redirect", "/dashboard");
+    mockSearch = {
+      token: "jwt-mock-token-xyz",
+      mode: "popup",
+      redirect: "/dashboard",
+    };
 
     const postMessageMock = mock();
     const closeMock = mock();
@@ -67,26 +72,36 @@ describe("GoogleCallbackPage", () => {
   });
 
   test("in redirect mode, navigates to safe redirect url", async () => {
-    mockSearchParams.set("token", "jwt-mock-token-abc");
-    mockSearchParams.set("mode", "redirect");
-    mockSearchParams.set("redirect", "/events/hackathon");
+    mockSearch = {
+      token: "jwt-mock-token-abc",
+      mode: "redirect",
+      redirect: "/events/hackathon",
+    };
 
     render(<GoogleCallbackPage />);
 
     await waitFor(() => {
-      expect(mockRouter.replace).toHaveBeenCalledWith("/events/hackathon");
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/events/hackathon",
+        replace: true,
+      });
     });
   });
 
   test("sanitizes unsafe open redirects and falls back to /home", async () => {
-    mockSearchParams.set("token", "jwt-mock-token-abc");
-    mockSearchParams.set("mode", "redirect");
-    mockSearchParams.set("redirect", "https://malicious-site.com");
+    mockSearch = {
+      token: "jwt-mock-token-abc",
+      mode: "redirect",
+      redirect: "https://malicious-site.com",
+    };
 
     render(<GoogleCallbackPage />);
 
     await waitFor(() => {
-      expect(mockRouter.replace).toHaveBeenCalledWith("/home");
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/home",
+        replace: true,
+      });
     });
   });
 });

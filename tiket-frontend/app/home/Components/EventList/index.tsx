@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState } from "react";
 import { useInView } from "react-intersection-observer";
 import type { Event } from "@/types/event";

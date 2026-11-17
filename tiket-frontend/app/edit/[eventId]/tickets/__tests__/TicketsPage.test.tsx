@@ -41,7 +41,7 @@ try {
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { TicketType, CreateTicketTypePayload } from "@/types/ticketType";
 import type { Event } from "@/types/event";
-import EditTicketsPage from "../page";
+import EditTicketsPage from "@/app/routes/edit.$eventId.tickets";
 
 // --- Mock Data ---
 const mockEvent: Event = {

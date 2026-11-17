@@ -1,5 +1,4 @@
-"use client";
-import { useState } from "react";
+﻿import { useState } from "react";
 import { beginUpload, completeUpload } from "@/api/commerce";
 import { getErrorMessage } from "@/lib/errors";
 

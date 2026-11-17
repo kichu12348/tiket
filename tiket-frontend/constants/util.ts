@@ -14,8 +14,6 @@ export const getFullImageUrl = (src?: string | null): string => {
   }
   const base = (
     CDN_URL ||
-    process.env.NEXT_PUBLIC_CDN_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
     ""
   ).replace(/\/+$/, "");
   return base ? `${base}/${src.replace(/^\/+/, "")}` : `/${src.replace(/^\/+/, "")}`;

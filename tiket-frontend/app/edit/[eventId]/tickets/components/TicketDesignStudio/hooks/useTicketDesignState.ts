@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { getImageUrl } from "@/constants/config";
 import type { TicketType, TicketLayoutLayer } from "@/types/ticketType";

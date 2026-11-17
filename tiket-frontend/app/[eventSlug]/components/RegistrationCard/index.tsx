@@ -9,7 +9,7 @@ import {
   FaBan,
   FaTicketAlt,
 } from "react-icons/fa";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { formatFriendlyDate } from "../../utils/formatters";
 
 interface RegistrationCardProps {
@@ -155,7 +155,8 @@ export default function RegistrationCard({
               </div>
             </div>
             <Link
-              href={`/edit/${event.id}/overview`}
+              to="/edit/$eventId/overview"
+              params={{ eventId: event.id }}
               className={styles.joinBtn}
               style={{
                 textAlign: "center",
@@ -231,7 +232,8 @@ export default function RegistrationCard({
               </div>
             </div>
             <Link
-              href={`/${event.slug}/form`}
+              to="/$eventSlug/form"
+              params={{ eventSlug: event.slug }}
               className={styles.joinBtn}
               style={{
                 textAlign: "center",
@@ -260,7 +262,8 @@ export default function RegistrationCard({
                 )}
             </div>
             <Link
-              href={`/signin?redirect=/${event.slug}/form`}
+              to="/signin"
+              search={{ redirect: `/${event.slug}/form` }}
               className={styles.joinBtn}
               style={{ textAlign: "center" }}
             >

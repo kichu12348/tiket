@@ -1,7 +1,5 @@
-"use client";
-
 import { useState, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearch } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FiAlertCircle, FiLoader } from "react-icons/fi";
@@ -42,8 +40,8 @@ export default function RegistrationForm({
   const checkout = useCheckout(event.id, user);
   const [code, setCode] = useState("");
   const availability = useAvailability(event.id, code);
-  const searchParams = useSearchParams();
-  const ticketIdParam = searchParams.get("ticket_id");
+  const search = useSearch({ strict: false }) as Record<string, string | undefined>;
+  const ticketIdParam = search.ticket_id;
   const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<
     string | null
   >(null);

@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React, { useState } from "react";
 import { Globe, CalendarIcon, Clock, Copy, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";

@@ -1,7 +1,6 @@
-"use client";
 
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { format, parseISO, subDays } from "date-fns";
 import type {
   DailySeriesItem,
@@ -175,7 +174,9 @@ export default function InsightsCharts({
             </span>
           </div>
           <Link
-            href={`/edit/${eventId}/attendees?status=pending_approval`}
+            to="/edit/$eventId/attendees"
+            params={{ eventId }}
+            search={{ status: "pending_approval" }}
             className={styles.alertLink}
           >
             Review Approvals

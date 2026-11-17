@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";

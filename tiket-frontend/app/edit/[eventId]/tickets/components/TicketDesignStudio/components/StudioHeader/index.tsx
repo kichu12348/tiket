@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React from "react";
 import { ChevronLeft, Palette, Settings2, Sparkles } from "lucide-react";
 import {

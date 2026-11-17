@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React, { useState } from "react";
 import Modal from "@/components/Modal";
 import { Checkbox } from "@/components/ui/checkbox";

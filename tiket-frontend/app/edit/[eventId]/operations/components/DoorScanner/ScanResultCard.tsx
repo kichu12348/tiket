@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState } from "react";
 import { CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

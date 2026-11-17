@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React from "react";
 import type { AvailableVariables, VariableItem } from "@/types/email";
 import { Tag, Sparkles } from "lucide-react";

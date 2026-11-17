@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import styles from "./LandingHero.module.css";
 
 export interface LandingHeroProps {
@@ -22,7 +20,7 @@ export default function LandingHero({
 
       <div className={styles.ctaGroup}>
         <Link
-          href={isAuthenticated ? "/create" : "/signin"}
+          to={isAuthenticated ? "/create" : "/signin"}
           className={styles.primaryBtn}
         >
           Create event

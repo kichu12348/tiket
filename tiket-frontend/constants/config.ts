@@ -1,9 +1,11 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL!;
-export const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL!;
+import { getEnv } from "@/lib/env";
+
+export const API_URL = getEnv("API_URL", "NEXT_PUBLIC_API_URL") || "http://localhost:5000";
+export const CDN_URL = getEnv("CDN_URL", "NEXT_PUBLIC_CDN_URL") || "http://localhost:5000";
 
 //MAPS
-export const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
-export const MAP_ID = process.env.NEXT_PUBLIC_MAP_ID!;
+export const GOOGLE_MAPS_API_KEY = getEnv("GOOGLE_MAPS_API_KEY", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
+export const MAP_ID = getEnv("MAP_ID", "NEXT_PUBLIC_MAP_ID");
 
 //constants
 export const TOKEN_KEY = "authToken";
@@ -182,8 +184,8 @@ export const getImageUrl = (filename: string, options?: ImageSrcOptions) => {
     return filename;
   }
   const base = (
-    process.env.NEXT_PUBLIC_CDN_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
+    CDN_URL ||
+    API_URL ||
     "http://localhost:5000"
   ).replace(/\/$/, "");
 

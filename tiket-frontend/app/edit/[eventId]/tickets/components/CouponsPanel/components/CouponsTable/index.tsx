@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React from "react";
 import type { Coupon } from "@/types/commerce";
 import { Plus, Trash2, Edit2, TicketPercent } from "lucide-react";

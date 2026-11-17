@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState } from "react";
 import type { Order, PriceLine } from "@/types/order";
 import type { PayoutRequest } from "@/types/commerce";

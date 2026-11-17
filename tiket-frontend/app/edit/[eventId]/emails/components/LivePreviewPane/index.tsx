@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React from "react";
 import type { AvailableVariables, EmailDocumentJSON } from "@/types/email";
 import { compileEmailJsonToHtml } from "@/utils/emailJsonCompiler";

@@ -41,7 +41,7 @@ try {
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { Coupon } from "@/types/commerce";
 import CouponsPanel from "../components/CouponsPanel";
-import EditTicketsPage from "../page";
+import EditTicketsPage from "@/app/routes/edit.$eventId.tickets";
 
 const mockCoupons: Coupon[] = [
   {

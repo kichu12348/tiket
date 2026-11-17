@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState } from "react";
 import { upsertBankAccount } from "@/api/commerce";
 import type { OrganizerBankAccount } from "@/types/commerce";

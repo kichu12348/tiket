@@ -1,5 +1,6 @@
-import api, { frontendApi } from "@/lib/api";
+import api from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/config";
+import { syncSessionTokenServer } from "./authServer";
 
 export interface AuthenticatedUserProfile {
   id: string;
@@ -13,7 +14,7 @@ export interface AuthenticatedUserProfile {
 }
 
 export async function syncSessionToken(token: string): Promise<void> {
-  await frontendApi.post(API_ENDPOINTS.FRONTEND.AUTH.SESSION, { token });
+  await syncSessionTokenServer({ data: { token } });
 }
 
 export async function getMe(): Promise<AuthenticatedUserProfile | null> {

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Check, ChevronLeft } from "lucide-react";
 import type { SuccessCardProps } from "../types";
 import styles from "./SuccessCard.module.css";
@@ -28,13 +28,18 @@ export default function SuccessCard({
       <div className={styles.successActions}>
         {createdTicketId && !isApproval && (
           <Link
-            href={`/passes/${createdTicketId}`}
+            to="/passes/$ticketId"
+            params={{ ticketId: createdTicketId }}
             className={styles.btnPrimary}
           >
             View My Ticket
           </Link>
         )}
-        <Link href={`/${event.slug}`} className={styles.btnSecondary}>
+        <Link
+          to="/$eventSlug"
+          params={{ eventSlug: event.slug }}
+          className={styles.btnSecondary}
+        >
           <ChevronLeft size={18} />
           <span>Back to Event</span>
         </Link>

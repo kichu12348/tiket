@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { Search } from "lucide-react";
 import {
   Select,

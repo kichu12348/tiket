@@ -42,13 +42,7 @@ import { render, fireEvent, waitFor, act } from "@testing-library/react";
 import type { Finance } from "@/types/commerce";
 import BankAccountCard from "../components/BankAccountCard";
 import SettlementsTable, { type SettlementOrder } from "../components/SettlementsTable";
-import FinancePage from "../page";
-
-// --- Mock Navigation ---
-mock.module("next/navigation", () => ({
-  useParams: () => ({ eventId: "evt-test-101" }),
-  useRouter: () => ({ push: mock() }),
-}));
+import FinancePage from "@/app/routes/edit.$eventId.finance";
 
 // --- Mock Sonner ---
 mock.module("sonner", () => ({

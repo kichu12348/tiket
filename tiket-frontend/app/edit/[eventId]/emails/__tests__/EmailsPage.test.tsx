@@ -328,10 +328,16 @@ const fnResendEmailLog = mock(async (_evtId: string, logId: string) => ({
   sentAt: "2026-11-01T12:00:00.000Z",
 }));
 
-mock.module("next/navigation", () => ({
-  useParams: () => ({ eventId: "evt-test-101" }),
-  useRouter: () => ({ push: mock() }),
-  useSearchParams: () => new URLSearchParams(),
+const fnGetMailConnection = mock(async () => ({
+  custom: false,
+  defaultProvider: "system",
+}));
+const fnSaveMailConnection = mock(async () => ({
+  custom: true,
+  defaultProvider: "smtp",
+}));
+const fnDeleteMailConnection = mock(async () => ({
+  success: true,
 }));
 
 mock.module("@/api/emails", () => ({
@@ -346,10 +352,13 @@ mock.module("@/api/emails", () => ({
   createCustomEmailTemplate: fnCreateCustomEmailTemplate,
   deleteCustomEmailTemplate: fnDeleteCustomEmailTemplate,
   resendEmailLog: fnResendEmailLog,
+  getMailConnection: fnGetMailConnection,
+  saveMailConnection: fnSaveMailConnection,
+  deleteMailConnection: fnDeleteMailConnection,
 }));
 
 // Import page under test
-import EditEmailsPage from "../page";
+import EditEmailsPage from "@/app/routes/edit.$eventId.emails";
 
 describe("EditEmailsPage Component", () => {
   beforeEach(() => {

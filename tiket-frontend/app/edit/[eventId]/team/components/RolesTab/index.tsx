@@ -1,5 +1,4 @@
-"use client";
-import { getErrorMessage } from "@/lib/errors";
+﻿import { getErrorMessage } from "@/lib/errors";
 
 import { useState, useEffect, useCallback } from "react";
 import { getRoles, createRole, updateRole, deleteRole } from "@/api/team";

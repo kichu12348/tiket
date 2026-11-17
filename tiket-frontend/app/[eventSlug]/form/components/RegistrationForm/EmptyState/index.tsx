@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Ticket, ChevronLeft } from "lucide-react";
 import type { EmptyStateProps } from "../types";
 import styles from "./EmptyState.module.css";
@@ -11,7 +11,11 @@ export default function EmptyState({ slug }: EmptyStateProps) {
       <p className={styles.emptyDesc}>
         Ticket sales for this event are not currently open.
       </p>
-      <Link href={`/${slug}`} className={styles.backBtn}>
+      <Link
+        to="/$eventSlug"
+        params={{ eventSlug: slug }}
+        className={styles.backBtn}
+      >
         <ChevronLeft size={18} />
         <span>Back to Event</span>
       </Link>

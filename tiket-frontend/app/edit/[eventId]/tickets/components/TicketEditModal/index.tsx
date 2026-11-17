@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState, useEffect } from "react";
 import { createTicketType, updateTicketType } from "@/api/tickets";
 import { getBankAccount } from "@/api/commerce";

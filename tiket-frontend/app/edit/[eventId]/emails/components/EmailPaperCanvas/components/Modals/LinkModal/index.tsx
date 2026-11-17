@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React, { useState } from "react";
 import { Globe, Mail, Unlink } from "lucide-react";
 import Modal from "@/components/Modal";

@@ -1,8 +1,8 @@
-import { usePathname } from "next/navigation";
+import { useLocation } from "@tanstack/react-router";
 import styles from "./SkeletonLoader.module.css";
 
 export default function SkeletonLoader() {
-  const pathname = usePathname();
+  const pathname = useLocation({ select: (l) => l.pathname });
   const isDetailsPage = pathname?.endsWith("/details");
 
   if (isDetailsPage) {

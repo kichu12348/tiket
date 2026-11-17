@@ -1,23 +1,25 @@
-import { getErrorMessage, getErrorStatus } from "@/lib/errors";
 import { useState } from "react";
-import type { AxiosError } from "axios";
-import axios from "axios";
-import { API_ENDPOINTS } from "@/constants/config";
 import {
   setClientToken,
   hydrateClientToken,
   clearClientToken,
 } from "@/lib/api";
+import {
+  otpSendServer,
+  otpVerifyServer,
+  passwordLoginServer,
+  logoutServer,
+} from "@/api/authServer";
+import type { AuthSuccessPayload } from "@/api/authServer";
 
-interface AuthErrorResponse {
-  error?: string;
-  needsName?: boolean;
-}
-
-interface AuthSuccessResponse {
-  token?: string;
+interface AuthErrorPayload {
+  status?: number;
+  data?: {
+    needsName?: boolean;
+    error?: string;
+    message?: string;
+  };
   message?: string;
-  user?: unknown;
 }
 
 export function useAuth() {
@@ -28,26 +30,20 @@ export function useAuth() {
     setIsLoading(true);
     setError("");
     try {
-      const response = await axios.post<AuthSuccessResponse>(
-        API_ENDPOINTS.FRONTEND.AUTH.OTP_VERIFY,
-        {
-          email,
-          otp,
-        },
-      );
-      if (response.data?.token) {
-        setClientToken(response.data.token);
+      const data = (await otpVerifyServer({
+        data: { email, otp },
+      })) as AuthSuccessPayload;
+      if (data?.token) {
+        setClientToken(data.token);
       } else {
         await hydrateClientToken();
       }
       return { success: true };
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<AuthErrorResponse>;
-        setError(getErrorMessage(axiosError) || "Invalid OTP. Try again.");
-      } else {
-        setError("An unexpected error occurred. Please try again.");
-      }
+      const authErr = err as AuthErrorPayload;
+      const msg =
+        authErr.data?.error || authErr.data?.message || authErr.message || "Invalid OTP. Try again.";
+      setError(msg);
       return { success: false };
     } finally {
       setIsLoading(false);
@@ -58,26 +54,16 @@ export function useAuth() {
     setIsLoading(true);
     setError("");
     try {
-      await axios.post(API_ENDPOINTS.FRONTEND.AUTH.OTP_SEND, {
-        email,
-        name,
-      });
+      await otpSendServer({ data: { email, name } });
       return { success: true };
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<AuthErrorResponse>;
-        if (
-          getErrorStatus(axiosError) === 404 &&
-          axiosError.response?.data?.needsName
-        ) {
-          return { success: false, needsName: true };
-        }
-        setError(
-          getErrorMessage(axiosError) || "Failed to send OTP. Try again.",
-        );
-      } else {
-        setError("An unexpected error occurred. Please try again.");
+      const authErr = err as AuthErrorPayload;
+      if (authErr.status === 404 && authErr.data?.needsName) {
+        return { success: false, needsName: true };
       }
+      const msg =
+        authErr.data?.error || authErr.data?.message || authErr.message || "Failed to send OTP. Try again.";
+      setError(msg);
       return { success: false };
     } finally {
       setIsLoading(false);
@@ -92,35 +78,26 @@ export function useAuth() {
     setIsLoading(true);
     setError("");
     try {
-      const response = await axios.post<AuthSuccessResponse>(
-        API_ENDPOINTS.FRONTEND.AUTH.PASSWORD,
-        {
-          email,
-          password,
-          name,
-        },
-      );
-      if (response.data?.token) {
-        setClientToken(response.data.token);
+      const data = (await passwordLoginServer({
+        data: { email, password, name },
+      })) as AuthSuccessPayload;
+      if (data?.token) {
+        setClientToken(data.token);
       } else {
         await hydrateClientToken();
       }
       return { success: true };
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<AuthErrorResponse>;
-        if (
-          getErrorStatus(axiosError) === 404 &&
-          axiosError.response?.data?.needsName
-        ) {
-          return { success: false, needsName: true };
-        }
-        setError(
-          getErrorMessage(axiosError) || "Invalid credentials. Try again.",
-        );
-      } else {
-        setError("An unexpected error occurred. Please try again.");
+      const authErr = err as AuthErrorPayload;
+      if (authErr.status === 404 && authErr.data?.needsName) {
+        return { success: false, needsName: true };
       }
+      const msg =
+        authErr.data?.error ||
+        authErr.data?.message ||
+        authErr.message ||
+        "Invalid credentials. Try again.";
+      setError(msg);
       return { success: false };
     } finally {
       setIsLoading(false);
@@ -130,7 +107,7 @@ export function useAuth() {
   const logout = async () => {
     clearClientToken();
     try {
-      await axios.post(API_ENDPOINTS.FRONTEND.AUTH.LOGOUT);
+      await logoutServer();
     } catch (err: unknown) {
       console.error("Logout error:", err);
     }

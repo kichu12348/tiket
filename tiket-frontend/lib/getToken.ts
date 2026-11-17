@@ -1,9 +1,11 @@
-"use server";
-
-import { cookies } from "next/headers";
+import { createServerFn } from "@tanstack/react-start";
+import { getCookie } from "@tanstack/react-start/server";
 import { TOKEN_KEY } from "@/constants/config";
 
-export async function getToken(): Promise<string | undefined> {
-  const cookieStore = await cookies();
-  return cookieStore.get(TOKEN_KEY)?.value;
-}
+export const getToken = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    return getCookie(TOKEN_KEY);
+  } catch {
+    return undefined;
+  }
+});

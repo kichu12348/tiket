@@ -1,6 +1,4 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
 import tseslint from "typescript-eslint";
 
 export default defineConfig([
@@ -9,6 +7,8 @@ export default defineConfig([
     "**/node_modules/**",
     ".next/**",
     "**/.next/**",
+    ".output/**",
+    "**/.output/**",
     "dist/**",
     "**/dist/**",
     "build/**",
@@ -16,31 +16,18 @@ export default defineConfig([
     "out/**",
     "**/out/**",
     "**/*.d.ts",
-    "**/next-env.d.ts",
+    "tiket-frontend/app/routeTree.gen.ts",
     "tiket-backend/drizzle/**",
+    "tiket-backend/tests/**",
   ]),
-  // Frontend Next.js configs
-  ...nextVitals.map((config) => ({
-    ...config,
-    files: ["tiket-frontend/**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
-  })),
-  ...nextTs.map((config) => ({
-    ...config,
-    files: ["tiket-frontend/**/*.{ts,tsx,mts,cts}"],
-  })),
-  // Backend config
   {
-    files: ["tiket-backend/src/**/*.ts"],
+    files: ["tiket-backend/src/**/*.ts", "tiket-frontend/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tseslint.parser,
     },
     plugins: {
       "@typescript-eslint": tseslint.plugin,
     },
-  },
-  // Common rule configuration across both
-  {
-    files: ["tiket-backend/src/**/*.ts", "tiket-frontend/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/consistent-type-imports": [
@@ -51,8 +38,6 @@ export default defineConfig([
         },
       ],
       "react-hooks/exhaustive-deps": "off",
-      "@next/next/no-img-element": "off",
-      "@next/next/no-html-link-for-pages": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {

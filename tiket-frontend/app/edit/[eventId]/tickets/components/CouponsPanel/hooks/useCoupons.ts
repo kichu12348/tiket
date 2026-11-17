@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState, useEffect, useCallback } from "react";
 import type { Coupon } from "@/types/commerce";
 import type { TicketType } from "@/types/ticketType";

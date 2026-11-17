@@ -1,7 +1,5 @@
-"use client";
-
 import { removeTokenServer } from "@/actions/removeToken";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { getClientToken, setClientToken, clearClientToken } from "@/lib/api";
 
@@ -24,7 +22,7 @@ export interface UseTokenReturn {
 }
 
 export function useToken(): UseTokenReturn {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   async function getAuthToken(): Promise<string | undefined> {
     const token = await getClientToken();
@@ -39,7 +37,7 @@ export function useToken(): UseTokenReturn {
     try {
       clearClientToken();
       await removeToken();
-      router.push("/signin");
+      navigate({ to: "/signin" });
     } catch (error) {
       console.error("Error removing token:", error);
       toast.error("Error removing token");

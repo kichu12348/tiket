@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import type { CreateOrderResponse } from "@/types/order";
 import { Button } from "@/components/ui/button";
 import styles from "./CheckoutReview.module.css";
@@ -116,7 +116,11 @@ export default function CheckoutReview({
       {error && <p role="alert">{error}</p>}
       {confirmed ? (
         tickets.map((ticket) => (
-          <Link key={ticket.id} href={`/passes/${ticket.id}`}>
+          <Link
+            key={ticket.id}
+            to="/passes/$ticketId"
+            params={{ ticketId: ticket.id }}
+          >
             View{" "}
             {order.registrationStatus === "pending_approval"
               ? "registration"

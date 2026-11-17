@@ -3,16 +3,11 @@ import { describe, expect, test, mock, afterEach } from "bun:test";
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-// Mock next/navigation
-const mockRouter = {
-  push: mock(),
-  replace: mock(),
-};
+import { testRouterState } from "@/testing-library";
 
-mock.module("next/navigation", () => ({
-  useRouter: () => mockRouter,
-  useSearchParams: () => new URLSearchParams(),
-}));
+// Mock @tanstack/react-router
+const mockNavigate = mock();
+testRouterState.navigate = mockNavigate;
 
 import { GoogleSignInButton } from "../GoogleSignInButton";
 

@@ -3,7 +3,7 @@ import type { Event } from "@/types/event";
 import styles from "./EventCard.module.css";
 import { getImageUrl } from "@/constants/config";
 import Image from "@/components/Image";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 
 const timeFormatter = new Intl.DateTimeFormat("en", {
   hour: "numeric",
@@ -27,7 +27,11 @@ export default function EventCard({ event }: EventCardProps) {
   const isLive = now >= start && now <= end;
 
   return (
-    <Link href={`/edit/${event.id}/overview`} className={styles.card}>
+    <Link
+      to="/edit/$eventId/overview"
+      params={{ eventId: event.id }}
+      className={styles.card}
+    >
       {/* 1. Core Info (Left Column) */}
       <div className={styles.infoColumn}>
         {/* Kicker: Live status and time */}

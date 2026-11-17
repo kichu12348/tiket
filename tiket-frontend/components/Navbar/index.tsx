@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import styles from "./Navbar.module.css";
 
 export default function Navbar({
@@ -29,14 +29,14 @@ export default function Navbar({
     <header
       className={`${styles.header} ${borderBottom ? styles.borderBottom : ""} ${noHorizontalPadding ? styles.headerNoPadding : ""}`}
     >
-      <Link href="/" className={styles.logo}>
+      <Link to="/" className={styles.logo}>
         Tiket<span className={styles.dot}>.</span>
       </Link>
 
       {isAuthenticated ? (
         <div className={styles.authContainer}>
           <Link
-            href="/home"
+            to="/home"
             className={styles.avatarBtn}
             aria-label="Go to Home"
           >
@@ -62,7 +62,7 @@ export default function Navbar({
           )}
         </div>
       ) : (
-        <Link href="/signin" className={styles.signInBtn}>
+        <Link to="/signin" className={styles.signInBtn}>
           Sign In
         </Link>
       )}

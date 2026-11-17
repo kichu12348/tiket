@@ -1,0 +1,179 @@
+import React from "react";
+import { createFileRoute, useParams } from "@tanstack/react-router";
+import { motion } from "framer-motion";
+import { useTicketPass } from "@/app/passes/[ticketId]/hooks/useTicketPass";
+import { PassHeader } from "@/app/passes/[ticketId]/components/PassHeader";
+import { PassDetails } from "@/app/passes/[ticketId]/components/PassDetails";
+import { PassQRCode } from "@/app/passes/[ticketId]/components/PassQRCode";
+import { PassActions } from "@/app/passes/[ticketId]/components/PassActions";
+import { PassError } from "@/app/passes/[ticketId]/components/PassError";
+import { PassSkeleton } from "@/app/passes/[ticketId]/components/PassSkeleton";
+import { TornEdge } from "@/app/passes/[ticketId]/components/TornEdge";
+import { CustomTicketCanvas } from "@/app/passes/[ticketId]/components/CustomTicketCanvas";
+import styles from "@/app/passes/[ticketId]/Pass.module.css";
+import { downloadImg } from "@/app/passes/[ticketId]/utils/downloadImage";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/passes/$ticketId")({
+  component: TicketPassPage,
+});
+
+export default function TicketPassPage() {
+  const params = useParams({ strict: false });
+  const ticketId = params?.ticketId as string | undefined;
+
+  const { ticket, isLoading, error, statusCode, refetch } =
+    useTicketPass(ticketId);
+
+  const ticketRef = React.useRef<HTMLDivElement>(null);
+
+  const hasPerTicketDesign = Boolean(
+    (ticket?.ticketType?.templateConfig?.layers &&
+      ticket.ticketType.templateConfig.layers.length > 0) ||
+    ticket?.ticketType?.templateImageUrl,
+  );
+  const hasCustomDesign = Boolean(
+    hasPerTicketDesign ||
+    (ticket?.template && ticket?.template?.backgroundImageUrl),
+  );
+
+  return (
+    <div className={styles.pageWrapper}>
+      <div className={styles.glowTopRight} />
+      <div className={styles.glowBottomLeft} />
+
+      <div
+        className={cn(
+          styles.machineWrapper,
+          hasCustomDesign && styles.machineWrapperCustom,
+        )}
+      >
+        {/* 3D Machine Opening Slot Assembly */}
+        <div className={styles.slotContainer}>
+          {/* Top Metallic Lip (Overlaps the top of the emerging ticket) */}
+          <div className={styles.slotTopLip} />
+
+          {/* Dark Inner Slot Mouth Cavity */}
+          <div className={styles.slotCavity} />
+
+          {/* Bottom Metallic Lip (Behind emerging ticket) */}
+          <div className={styles.slotBottomLip} />
+
+          {/* Viewport clipping ticket dispense motion */}
+          <div className={styles.ticketViewport}>
+            {isLoading ? (
+              <PassSkeleton />
+            ) : error ? (
+              <PassError message={error} statusCode={statusCode} />
+            ) : ticket ? (
+              <motion.div
+                className={styles.ticketWrapper}
+                initial={{ y: "-100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 85,
+                  damping: 15,
+                  mass: 0.9,
+                }}
+                ref={ticketRef}
+              >
+                {hasCustomDesign ? (
+                  <div className={styles.customPassWrapper}>
+                    <CustomTicketCanvas
+                      pass={ticket}
+                      template={ticket.template ?? undefined}
+                    />
+                    <div className={styles.customPassDetailsCard}>
+                      <PassDetails
+                        attendee={ticket.attendee}
+                        event={ticket.event}
+                        responses={ticket.responses}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className={styles.passCard}>
+                      {/* Event Title & Ticket Type Pill */}
+                      <PassHeader
+                        eventTitle={ticket.event.title}
+                        ticketTypeName={ticket.ticketType.name}
+                      />
+
+                      {/* Attendee, Date & Time, Location Details, Form Responses */}
+                      <PassDetails
+                        attendee={ticket.attendee}
+                        event={ticket.event}
+                        responses={ticket.responses}
+                      />
+
+                      {/* Horizontal Perforation Divider with Inward SVG Bite Cutout Notches */}
+                      <div className={styles.perforationWrapper}>
+                        <svg
+                          width="12"
+                          height="24"
+                          viewBox="0 0 12 24"
+                          className={styles.notchLeftSvg}
+                        >
+                          <path
+                            d="M 0 0 A 12 12 0 0 1 0 24 Z"
+                            fill="var(--color-bg-base, #121316)"
+                          />
+                        </svg>
+
+                        <div className={styles.dashedLine} />
+
+                        <svg
+                          width="12"
+                          height="24"
+                          viewBox="0 0 12 24"
+                          className={styles.notchRightSvg}
+                        >
+                          <path
+                            d="M 12 0 A 12 12 0 0 0 12 24 Z"
+                            fill="var(--color-bg-base, #121316)"
+                          />
+                        </svg>
+                      </div>
+
+                      {/* QR Code Section below Perforation */}
+                      <PassQRCode
+                        ticketId={ticket.id}
+                        qrCode={ticket.qrCode}
+                        status={ticket.status}
+                      />
+                    </div>
+
+                    {/* Serrated / Torn Paper Triangle Bottom Edge */}
+                    <TornEdge />
+                  </>
+                )}
+              </motion.div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Download Pass & Transfer Actions */}
+        {!isLoading && ticket && (
+          <PassActions
+            handleDownload={() => {
+              downloadImg(
+                ticketRef.current,
+                ticket.event.title,
+                ticket.template,
+                ticket,
+              );
+            }}
+            ticketId={ticket.id}
+            isTransferable={ticket.ticketType?.isTransferable}
+            status={ticket.status}
+            onTransferSuccess={() => {
+              refetch();
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

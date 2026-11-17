@@ -42,12 +42,6 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { Finance } from "@/types/commerce";
 import FinancePanel from "../components/FinancePanel";
 
-// Mock next/navigation
-mock.module("next/navigation", () => ({
-  useParams: () => ({ eventId: "evt-test-101" }),
-  useRouter: () => ({ push: mock() }),
-}));
-
 // Mock sonner
 mock.module("sonner", () => ({
   toast: {

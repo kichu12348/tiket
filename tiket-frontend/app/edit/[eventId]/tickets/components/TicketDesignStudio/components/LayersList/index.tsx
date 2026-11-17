@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React from "react";
 import { Plus, QrCode, Type, Trash2 } from "lucide-react";
 import type { TicketDesignerLayer } from "../../types";

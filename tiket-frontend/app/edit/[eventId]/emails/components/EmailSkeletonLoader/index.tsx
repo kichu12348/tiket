@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import styles from "./EmailSkeletonLoader.module.css";
 
 export function TemplateSelectorSkeleton() {

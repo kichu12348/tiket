@@ -1,7 +1,5 @@
-"use client";
-
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { setClientToken } from "@/lib/api";
 import { syncSessionToken, getGoogleOAuthUrl } from "@/api/auth";
@@ -57,7 +55,7 @@ export function GoogleSignInButton({
   children,
   disabled = false,
 }: GoogleSignInButtonProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const popupRef = useRef<Window | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -128,7 +126,7 @@ export function GoogleSignInButton({
         if (onSuccess) {
           onSuccess(token);
         } else {
-          router.replace(redirect || "/home");
+          navigate({ to: redirect || "/home", replace: true });
         }
       } else if (
         event.data?.type === "TIKET_GOOGLE_AUTH_ERROR" &&

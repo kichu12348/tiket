@@ -57,17 +57,15 @@ import {
   getElementText,
 } from "../components/CustomTicketCanvas";
 import type { TicketCanvasElement } from "@/app/edit/[eventId]/tickets/components/TicketDesignStudio/types";
-import TicketPassPage from "../page";
+import { testRouterState } from "@/testing-library";
+import TicketPassPage from "@/app/routes/passes.$ticketId";
 
-// Mock next/navigation
+// Mock @tanstack/react-router
 let mockParams = { ticketId: "ticket-active-1" };
-mock.module("next/navigation", () => ({
-  useParams: () => mockParams,
-  useRouter: () => ({
-    push: mock(),
-    replace: mock(),
-  }),
-}));
+Object.defineProperty(testRouterState, "params", {
+  get: () => ({ eventId: "evt-test-101", ...mockParams }),
+  configurable: true,
+});
 
 // Mock framer-motion to simplify DOM testing
 mock.module("framer-motion", () => ({

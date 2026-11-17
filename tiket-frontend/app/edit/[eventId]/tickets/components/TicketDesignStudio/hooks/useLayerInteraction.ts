@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useCallback } from "react";
 import type { TicketDesignerLayer } from "../types";
 import type { StudioMode } from "../types";

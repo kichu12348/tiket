@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState, useEffect, useMemo } from "react";
 import type { OperationsAttendee } from "@/types/operations";
 import { fetchOperationsAttendees, toggleManualCheckIn } from "@/api/operations";

@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState, useCallback } from "react";
 import type { TicketType } from "@/types/ticketType";
 import type { VisibilityConditionsConfig } from "@/types/form";

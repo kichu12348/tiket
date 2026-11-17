@@ -47,7 +47,7 @@ import type {
   GetAttendeesResponse,
 } from "@/types/attendee";
 import type { TicketType } from "@/types/ticketType";
-import AttendeesPage from "../page";
+import AttendeesPage from "@/app/routes/edit.$eventId.attendees";
 
 // --- Mock Data ---
 const mockTicketTypes: TicketType[] = [
@@ -236,11 +236,7 @@ const mockFormResponses: AttendeeFormResponsesResponse = {
   ],
 };
 
-// --- Mock Navigation ---
-mock.module("next/navigation", () => ({
-  useParams: () => ({ eventId: "evt-test-101" }),
-  useRouter: () => ({ push: mock() }),
-}));
+// --- Mock Hooks ---
 
 mock.module("@/hooks/useLiveEvent", () => ({
   useLiveEvent: mock(),

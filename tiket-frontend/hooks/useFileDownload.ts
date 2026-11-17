@@ -1,5 +1,4 @@
-"use client";
-import { getUpload } from "@/api/commerce";
+﻿import { getUpload } from "@/api/commerce";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 export function useFileDownload() {

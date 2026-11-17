@@ -1,14 +1,14 @@
-"use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cancelOrder, createOrder, getOrder, resumeOrder } from "@/api/orders";
 import type { CreateOrderPayload, CreateOrderResponse } from "@/types/order";
 import { openRazorpay } from "@/lib/razorpay";
 import { getErrorMessage } from "@/lib/errors";
 import { useLiveStore } from "@/store/useLiveStore";
+type UUID = `${string}-${string}-${string}-${string}-${string}`;
 interface Attempt {
-  key: string;
+  key: UUID;
   hash: string;
-  orderId?: string;
+  orderId?: UUID;
 }
 export function useCheckout(
   eventId: string,
@@ -92,7 +92,7 @@ export function useCheckout(
         attempt.current = { key: crypto.randomUUID(), hash };
       sessionStorage.setItem(storageKey, JSON.stringify(attempt.current));
       const data = await createOrder(payload, attempt.current.key);
-      attempt.current.orderId = data.order.id;
+      attempt.current.orderId = data.order.id as UUID;
       sessionStorage.setItem(storageKey, JSON.stringify(attempt.current));
       accept(data);
     } catch (err) {

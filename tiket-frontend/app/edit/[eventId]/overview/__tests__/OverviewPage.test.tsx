@@ -41,7 +41,7 @@ try {
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { EventInsightsData, CustomInsightWidget } from "@/types/attendee";
 import type { EventHost } from "@/api/events";
-import EditOverviewPage from "../page";
+import EditOverviewPage from "@/app/routes/edit.$eventId.overview";
 
 // --- Mock Data ---
 const mockInsights: EventInsightsData = {
@@ -384,11 +384,6 @@ const mockEvent = {
 };
 
 // --- Mocks ---
-mock.module("next/navigation", () => ({
-  useParams: () => ({ eventId: "evt-test-101" }),
-  useRouter: () => ({ push: mock() }),
-}));
-
 mock.module("@/hooks/useLiveEvent", () => ({
   useLiveEvent: mock(),
   useEventRevision: () => 0,

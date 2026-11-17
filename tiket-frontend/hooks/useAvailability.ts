@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useEffect, useState } from "react";
 import { getAvailability } from "@/api/commerce";
 import type { Availability } from "@/types/commerce";

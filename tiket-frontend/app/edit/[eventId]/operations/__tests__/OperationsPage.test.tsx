@@ -39,13 +39,7 @@ try {
 }
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import OperationsPage from "../page";
-
-// --- Mock Navigation ---
-mock.module("next/navigation", () => ({
-  useParams: () => ({ eventId: "evt-test-101" }),
-  useRouter: () => ({ push: mock() }),
-}));
+import OperationsPage from "@/app/routes/edit.$eventId.operations";
 
 // --- Mock Live Event Hook ---
 mock.module("@/hooks/useLiveEvent", () => ({

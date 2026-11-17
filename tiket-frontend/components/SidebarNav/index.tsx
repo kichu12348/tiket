@@ -1,7 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Ticket,
@@ -21,27 +18,64 @@ interface SidebarNavProps {
 }
 
 export default function SidebarNav({ eventId }: SidebarNavProps) {
-  const pathname = usePathname();
+  const pathname = useLocation({ select: (l) => l.pathname });
   const { isCollapsed, setIsCollapsed } = useSidebarStore();
 
   const links = [
     {
-      href: `/edit/${eventId}/overview`,
+      to: "/edit/$eventId/overview" as const,
+      path: `/edit/${eventId}/overview`,
       label: "Overview",
       icon: LayoutDashboard,
     },
     {
-      href: `/edit/${eventId}/details`,
+      to: "/edit/$eventId/details" as const,
+      path: `/edit/${eventId}/details`,
       label: "Details",
       icon: AppWindowMac,
     },
-    { href: `/edit/${eventId}/tickets`, label: "Tickets", icon: Ticket },
-    { href: `/edit/${eventId}/attendees`, label: "Attendees", icon: Users },
-    { href: `/edit/${eventId}/operations`, label: "Operations", icon: Ticket },
-    { href: `/edit/${eventId}/forms`, label: "Forms", icon: ClipboardList },
-    { href: `/edit/${eventId}/emails`, label: "Emails", icon: Mail },
-    { href: `/edit/${eventId}/team`, label: "Team", icon: UsersRound },
-    { href: `/edit/${eventId}/settings`, label: "Settings", icon: Settings },
+    {
+      to: "/edit/$eventId/tickets" as const,
+      path: `/edit/${eventId}/tickets`,
+      label: "Tickets",
+      icon: Ticket,
+    },
+    {
+      to: "/edit/$eventId/attendees" as const,
+      path: `/edit/${eventId}/attendees`,
+      label: "Attendees",
+      icon: Users,
+    },
+    {
+      to: "/edit/$eventId/operations" as const,
+      path: `/edit/${eventId}/operations`,
+      label: "Operations",
+      icon: Ticket,
+    },
+    {
+      to: "/edit/$eventId/forms" as const,
+      path: `/edit/${eventId}/forms`,
+      label: "Forms",
+      icon: ClipboardList,
+    },
+    {
+      to: "/edit/$eventId/emails" as const,
+      path: `/edit/${eventId}/emails`,
+      label: "Emails",
+      icon: Mail,
+    },
+    {
+      to: "/edit/$eventId/team" as const,
+      path: `/edit/${eventId}/team`,
+      label: "Team",
+      icon: UsersRound,
+    },
+    {
+      to: "/edit/$eventId/settings" as const,
+      path: `/edit/${eventId}/settings`,
+      label: "Settings",
+      icon: Settings,
+    },
   ];
 
   return (
@@ -65,13 +99,14 @@ export default function SidebarNav({ eventId }: SidebarNavProps) {
         <div className={styles.menuInner}>
           <ul className={styles.navList}>
             {links.map((link) => {
-              const isActive = pathname === link.href;
+              const isActive = pathname === link.path;
               const Icon = link.icon;
 
               return (
-                <li key={link.href} className={styles.navItemWrapper}>
+                <li key={link.to} className={styles.navItemWrapper}>
                   <Link
-                    href={link.href}
+                    to={link.to}
+                    params={{ eventId }}
                     className={`${styles.navItem} ${isActive ? styles.active : ""}`}
                     title={link.label}
                   >
@@ -89,7 +124,7 @@ export default function SidebarNav({ eventId }: SidebarNavProps) {
 
           <div className={styles.footer}>
             <Link
-              href="/home"
+              to="/home"
               className={styles.backToDashboard}
               title="Back to Dashboard"
             >

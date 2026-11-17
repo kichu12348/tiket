@@ -46,44 +46,48 @@ import api, {
 } from "@/lib/api";
 import * as getTokenModule from "@/lib/getToken";
 import * as removeTokenModule from "@/actions/removeToken";
-import * as nextNavigation from "next/navigation";
+import * as routerModule from "@tanstack/react-router";
 import { useToken } from "@/hooks/useToken";
 import type { InternalAxiosRequestConfig, AxiosResponse } from "axios";
 import { AxiosError, AxiosHeaders } from "axios";
 
+interface MockSpy<T> {
+  mockImplementation: (fn: T) => void;
+  mockRestore: () => void;
+}
+
 describe("API In-Memory Token Cache & Deduplication", () => {
   let getTokenCalls = 0;
-  let getTokenSpy: ReturnType<typeof jest.spyOn>;
-  let removeTokenSpy: ReturnType<typeof jest.spyOn>;
+  let getTokenSpy: MockSpy<() => Promise<string>>;
+  let removeTokenSpy: MockSpy<() => Promise<void>>;
   let routerSpy: ReturnType<typeof jest.spyOn>;
-  const mockPush = jest.fn();
+  const mockNavigate = jest.fn();
   const originalAdapter = api.defaults.adapter;
 
   beforeEach(() => {
     getTokenCalls = 0;
-    mockPush.mockClear();
+    mockNavigate.mockClear();
     resetClientTokenCache();
 
-    routerSpy = jest.spyOn(nextNavigation, "useRouter").mockReturnValue({
-      push: mockPush,
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-      back: jest.fn(),
-      forward: jest.fn(),
-      refresh: jest.fn(),
+    routerSpy = jest
+      .spyOn(routerModule, "useNavigate")
+      .mockReturnValue(mockNavigate);
+
+    getTokenSpy = jest.spyOn(
+      getTokenModule,
+      "getToken",
+    ) as unknown as MockSpy<() => Promise<string>>;
+    getTokenSpy.mockImplementation(async () => {
+      getTokenCalls++;
+      await new Promise((r) => setTimeout(r, 10));
+      return "mock-jwt-token-xyz";
     });
 
-    getTokenSpy = jest
-      .spyOn(getTokenModule, "getToken")
-      .mockImplementation(async () => {
-        getTokenCalls++;
-        await new Promise((r) => setTimeout(r, 10));
-        return "mock-jwt-token-xyz";
-      });
-
-    removeTokenSpy = jest
-      .spyOn(removeTokenModule, "removeTokenServer")
-      .mockImplementation(async () => {});
+    removeTokenSpy = jest.spyOn(
+      removeTokenModule,
+      "removeTokenServer",
+    ) as unknown as MockSpy<() => Promise<void>>;
+    removeTokenSpy.mockImplementation(async () => {});
 
     api.defaults.adapter = async (
       config: InternalAxiosRequestConfig,
@@ -212,6 +216,6 @@ describe("API In-Memory Token Cache & Deduplication", () => {
     expect(api.defaults.headers.common["Authorization"]).toBeUndefined();
     const clearedToken = await getClientToken();
     expect(clearedToken).toBeNull();
-    expect(mockPush).toHaveBeenCalledWith("/signin");
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/signin" });
   });
 });

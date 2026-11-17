@@ -1,5 +1,5 @@
 import React from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { AlertCircle, Lock, KeyRound, HelpCircle, LogIn } from "lucide-react";
 import styles from "./PassError.module.css";
 
@@ -65,7 +65,8 @@ export function PassError({ title, message, statusCode }: PassErrorProps) {
 
       {isUnauthorized && (
         <Link
-          href={`/signin?redirect=${redirectPath}`}
+          to="/signin"
+          search={{ redirect: redirectPath }}
           style={{
             display: "inline-flex",
             alignItems: "center",

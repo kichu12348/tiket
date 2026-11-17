@@ -40,13 +40,7 @@ try {
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { TeamMember, EventRole } from "@/types/team";
-import TeamPage from "../page";
-
-// --- Mock Navigation ---
-mock.module("next/navigation", () => ({
-  useParams: () => ({ eventId: "evt-test-101" }),
-  useRouter: () => ({ push: mock() }),
-}));
+import TeamPage from "@/app/routes/edit.$eventId.team";
 
 // --- Mock API Layer ---
 let mockRoles: EventRole[] = [];

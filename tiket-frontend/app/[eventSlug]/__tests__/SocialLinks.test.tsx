@@ -9,19 +9,7 @@ import {
 } from "@/lib/validators/event";
 import type { Event, EventSocialLinks } from "@/types/event";
 
-// Mock next/headers
-mock.module("next/headers", () => ({
-  cookies: async () => ({
-    get: () => undefined,
-  }),
-}));
-
-// Mock next/navigation
-mock.module("next/navigation", () => ({
-  notFound: () => {
-    throw new Error("NEXT_NOT_FOUND");
-  },
-}));
+import { testRouterState } from "@/testing-library";
 
 // Mock child components that might need Google Maps or complex contexts
 mock.module("../components/RegistrationCard", () => ({
@@ -35,15 +23,8 @@ mock.module("../components/EventLocation", () => ({
 let mockEventData: Event | null = null;
 let mockHostsData: unknown[] = [];
 
-mock.module("../api/eventApi", () => ({
-  getEventBySlug: async () => mockEventData,
-  getMe: async () => null,
-  getEventHosts: async () => mockHostsData,
-  getEventAvailability: async () => ({ available: true, tiers: [] }),
-}));
-
-// Import the async server component page
-import EventPage from "../page";
+// Import the component page
+import EventPage from "@/app/routes/$eventSlug.index";
 
 describe("Social Media & Community Links", () => {
   describe("lib/validators/event - URL & Handle Normalization / Validation", () => {
@@ -133,20 +114,22 @@ describe("Social Media & Community Links", () => {
 
     it("normalizeSocialLinks converts all present fields and drops empty ones", () => {
       const normalized = normalizeSocialLinks({
-        website: "example.org",
-        instagram: "@instacreator",
-        twitter: "xcreator",
-        linkedin: "linkedin.com/in/prof",
-        youtube: "@ytcreator",
-        community: "discord.gg/xyz",
+        website: "myevent.com",
+        instagram: "@alice",
+        twitter: "bob",
+        youtube: "coolchannel",
+        linkedin: "charlie",
+        community: "discord.gg/awesome",
       });
 
-      expect(normalized.website).toBe("https://example.org/");
-      expect(normalized.instagram).toBe("https://instagram.com/instacreator");
-      expect(normalized.twitter).toBe("https://x.com/xcreator");
-      expect(normalized.linkedin).toBe("https://linkedin.com/in/prof");
-      expect(normalized.youtube).toBe("https://youtube.com/@ytcreator");
-      expect(normalized.community).toBe("https://discord.gg/xyz");
+      expect(normalized).toEqual({
+        website: "https://myevent.com/",
+        instagram: "https://instagram.com/alice",
+        twitter: "https://x.com/bob",
+        youtube: "https://youtube.com/@coolchannel",
+        linkedin: "https://linkedin.com/in/charlie",
+        community: "https://discord.gg/awesome",
+      });
     });
 
     it("validateEventPayload rejects invalid social links", () => {
@@ -208,7 +191,7 @@ describe("Social Media & Community Links", () => {
       updatedAt: "2026-11-01T00:00:00.000Z",
     });
 
-    it("renders all configured social links with rel='noopener noreferrer' and target='_blank'", async () => {
+    it("renders all configured social links with rel='noopener noreferrer' and target='_blank'", () => {
       mockEventData = createBaseEvent({
         website: "https://mysummit.io",
         instagram: "https://instagram.com/mysummit",
@@ -217,13 +200,18 @@ describe("Social Media & Community Links", () => {
         youtube: "https://youtube.com/@mysummit",
         community: "https://discord.gg/mysummit",
       });
-      mockHostsData = [{ id: "host-1", name: "Host Team", role: "Organizer", isCreator: true }];
+      mockHostsData = [
+        { id: "host-1", name: "Host Team", role: "Organizer", isCreator: true },
+      ];
 
-      const pageJsx = await EventPage({
-        params: Promise.resolve({ eventSlug: "tech-summit-2026" }),
-      });
+      testRouterState.loaderData = {
+        event: mockEventData,
+        user: null,
+        hosts: mockHostsData,
+        availability: { available: true, tiers: [] },
+      };
 
-      render(pageJsx);
+      render(<EventPage />);
 
       const socialContainer = screen.getByTestId("event-social-links");
       expect(socialContainer).toBeDefined();
@@ -235,7 +223,9 @@ describe("Social Media & Community Links", () => {
       expect(websiteLink.getAttribute("aria-label")).toBe("Website");
 
       const instagramLink = screen.getByTestId("social-link-instagram");
-      expect(instagramLink.getAttribute("href")).toBe("https://instagram.com/mysummit");
+      expect(instagramLink.getAttribute("href")).toBe(
+        "https://instagram.com/mysummit",
+      );
       expect(instagramLink.getAttribute("target")).toBe("_blank");
       expect(instagramLink.getAttribute("rel")).toBe("noopener noreferrer");
 
@@ -245,34 +235,42 @@ describe("Social Media & Community Links", () => {
       expect(twitterLink.getAttribute("rel")).toBe("noopener noreferrer");
 
       const linkedinLink = screen.getByTestId("social-link-linkedin");
-      expect(linkedinLink.getAttribute("href")).toBe("https://linkedin.com/company/mysummit");
+      expect(linkedinLink.getAttribute("href")).toBe(
+        "https://linkedin.com/company/mysummit",
+      );
       expect(linkedinLink.getAttribute("target")).toBe("_blank");
       expect(linkedinLink.getAttribute("rel")).toBe("noopener noreferrer");
 
       const youtubeLink = screen.getByTestId("social-link-youtube");
-      expect(youtubeLink.getAttribute("href")).toBe("https://youtube.com/@mysummit");
+      expect(youtubeLink.getAttribute("href")).toBe(
+        "https://youtube.com/@mysummit",
+      );
       expect(youtubeLink.getAttribute("target")).toBe("_blank");
       expect(youtubeLink.getAttribute("rel")).toBe("noopener noreferrer");
 
       const communityLink = screen.getByTestId("social-link-community");
-      expect(communityLink.getAttribute("href")).toBe("https://discord.gg/mysummit");
+      expect(communityLink.getAttribute("href")).toBe(
+        "https://discord.gg/mysummit",
+      );
       expect(communityLink.getAttribute("target")).toBe("_blank");
       expect(communityLink.getAttribute("rel")).toBe("noopener noreferrer");
     });
 
-    it("hides social links section when no links are configured", async () => {
+    it("hides social links section when no links are configured", () => {
       mockEventData = createBaseEvent(null);
+      testRouterState.loaderData = {
+        event: mockEventData,
+        user: null,
+        hosts: [],
+        availability: { available: true, tiers: [] },
+      };
 
-      const pageJsx = await EventPage({
-        params: Promise.resolve({ eventSlug: "tech-summit-2026" }),
-      });
-
-      render(pageJsx);
+      render(<EventPage />);
 
       expect(screen.queryByTestId("event-social-links")).toBeNull();
     });
 
-    it("only renders provided links and hides empty/null fields", async () => {
+    it("only renders provided links and hides empty/null fields", () => {
       mockEventData = createBaseEvent({
         website: "https://mysummit.io",
         instagram: "https://instagram.com/mysummit",
@@ -282,11 +280,14 @@ describe("Social Media & Community Links", () => {
         community: "   ",
       });
 
-      const pageJsx = await EventPage({
-        params: Promise.resolve({ eventSlug: "tech-summit-2026" }),
-      });
+      testRouterState.loaderData = {
+        event: mockEventData,
+        user: null,
+        hosts: [],
+        availability: { available: true, tiers: [] },
+      };
 
-      render(pageJsx);
+      render(<EventPage />);
 
       expect(screen.getByTestId("event-social-links")).toBeDefined();
       expect(screen.getByTestId("social-link-website")).toBeDefined();

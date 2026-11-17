@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { createPortal } from "react-dom";
 import { X, Send, Trash2 } from "lucide-react";
 import Switch from "@/components/Switch";

@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React, { useState } from "react";
 import type { TicketType } from "@/types/ticketType";
 import { Ticket, ChevronsUpDown, X } from "lucide-react";

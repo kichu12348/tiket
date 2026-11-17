@@ -1,4 +1,3 @@
-"use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -109,7 +108,8 @@ export function useOperations(eventId: string) {
         typeof window !== "undefined" &&
         typeof window.sessionStorage !== "undefined"
       ) {
-        key = window.sessionStorage.getItem(storage) || key;
+        key =
+          (window.sessionStorage.getItem(storage) as typeof key) || key;
         window.sessionStorage.setItem(storage, key);
       }
       await refundOrder(eventId, orderId, amount, reason, key);

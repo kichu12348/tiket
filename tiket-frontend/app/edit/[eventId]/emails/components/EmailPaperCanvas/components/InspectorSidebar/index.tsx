@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React from "react";
 import type { Editor } from "@tiptap/react";
 import Dropdown from "@/components/Dropdown";

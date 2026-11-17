@@ -1,6 +1,6 @@
 import { useFileDownload } from "@/hooks/useFileDownload";
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import {
   Mail,
   Ticket,
@@ -455,7 +455,8 @@ export default function AttendeeDetailModal({
               /* Footer Action Row */
               <div className={styles.footerActions}>
                 <Link
-                  href={`/passes/${detail.attendee.id}`}
+                  to="/passes/$ticketId"
+                  params={{ ticketId: detail.attendee.id }}
                   target="_blank"
                   className={styles.passLinkBtn}
                 >

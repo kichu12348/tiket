@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useEffect } from "react";
 import api, { getClientToken } from "@/lib/api";
 import { API_ENDPOINTS, API_URL } from "@/constants/config";

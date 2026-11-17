@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React from "react";
 import type { EmailAnalytics } from "@/types/email";
 import {

@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import { useState } from "react";
 import { X, Loader2, ShieldAlert } from "lucide-react";
 import { Switch } from "@/components/ui/switch";

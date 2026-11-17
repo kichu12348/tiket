@@ -1,5 +1,4 @@
-"use client";
-
+﻿
 import React, { useState, useMemo } from "react";
 import type { EmailLog, EmailAnalytics } from "@/types/email";
 import { History } from "lucide-react";
