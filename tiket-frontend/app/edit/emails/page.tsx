@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, getRouteApi } from "@tanstack/react-router";
 import { useEventStore } from "@/store/useEventStore";
 import { useEmailStore } from "@/store/useEmailStore";
@@ -8,15 +8,27 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import styles from "@/app/edit/emails/EmailsPage.module.css";
 
 import TemplateTypeSelector from "@/app/edit/emails/components/TemplateTypeSelector";
-import EmailPaperCanvas from "@/app/edit/emails/components/EmailPaperCanvas";
-import SendTestModal from "@/app/edit/emails/components/SendTestModal";
-import SendBatchModal from "@/app/edit/emails/components/SendBatchModal";
-import MailConnectionModal from "@/app/edit/emails/components/MailConnectionModal";
-import EmailLogsTable from "@/app/edit/emails/components/EmailLogsTable";
 import {
   EmailPageSkeleton,
   EmailEditorSkeleton,
+  EmailLogsSkeleton,
 } from "@/app/edit/emails/components/EmailSkeletonLoader";
+
+const EmailPaperCanvas = lazy(
+  () => import("@/app/edit/emails/components/EmailPaperCanvas"),
+);
+const SendTestModal = lazy(
+  () => import("@/app/edit/emails/components/SendTestModal"),
+);
+const SendBatchModal = lazy(
+  () => import("@/app/edit/emails/components/SendBatchModal"),
+);
+const MailConnectionModal = lazy(
+  () => import("@/app/edit/emails/components/MailConnectionModal"),
+);
+const EmailLogsTable = lazy(
+  () => import("@/app/edit/emails/components/EmailLogsTable"),
+);
 
 const routeApi = getRouteApi("/edit/$eventId/emails");
 
@@ -207,17 +219,19 @@ export default function EditEmailsPage() {
             {isTemplateLoading ? (
               <EmailEditorSkeleton />
             ) : currentTemplate ? (
-              <EmailPaperCanvas
-                key={currentTemplate.id}
-                template={currentTemplate}
-                variables={variables}
-                onSave={handleSaveTemplate}
-                onReset={handleResetTemplate}
-                onOpenSendTest={() => setIsTestModalOpen(true)}
-                onOpenSendBatch={() => setIsBatchModalOpen(true)}
-                isSaving={isSaving}
-                eventId={event?.id}
-              />
+              <Suspense fallback={<EmailEditorSkeleton />}>
+                <EmailPaperCanvas
+                  key={currentTemplate.id}
+                  template={currentTemplate}
+                  variables={variables}
+                  onSave={handleSaveTemplate}
+                  onReset={handleResetTemplate}
+                  onOpenSendTest={() => setIsTestModalOpen(true)}
+                  onOpenSendBatch={() => setIsBatchModalOpen(true)}
+                  isSaving={isSaving}
+                  eventId={event?.id}
+                />
+              </Suspense>
             ) : (
               <div className={styles.loadingCard}>
                 <p className={styles.loadingText}>
@@ -229,20 +243,22 @@ export default function EditEmailsPage() {
 
           <TabsContent value="logs" className={styles.tabContent}>
             <div className={styles.logsSection}>
-              <EmailLogsTable
-                logs={logs}
-                analytics={analytics}
-                isLoading={isLogsLoading}
-                onResend={handleResendEmail}
-                eventId={event?.id}
-              />
+              <Suspense fallback={<EmailLogsSkeleton />}>
+                <EmailLogsTable
+                  logs={logs}
+                  analytics={analytics}
+                  isLoading={isLogsLoading}
+                  onResend={handleResendEmail}
+                  eventId={event?.id}
+                />
+              </Suspense>
             </div>
           </TabsContent>
         </Tabs>
       )}
 
       {currentTemplate && (
-        <>
+        <Suspense fallback={null}>
           <SendTestModal
             isOpen={isTestModalOpen}
             onClose={() => setIsTestModalOpen(false)}
@@ -256,20 +272,22 @@ export default function EditEmailsPage() {
             onSendBatch={handleSendBatch}
             templateName={currentTemplate.name}
           />
-        </>
+        </Suspense>
       )}
 
       {event?.id && (
-        <MailConnectionModal
-          isOpen={isMailModalOpen}
-          onClose={() => setIsMailModalOpen(false)}
-          eventId={event.id}
-          isCustom={isCustomSmtp}
-          initialConfig={smtpStatus?.config}
-          onStatusChange={() => {
-            if (event?.id) loadInitialData(event.id);
-          }}
-        />
+        <Suspense fallback={null}>
+          <MailConnectionModal
+            isOpen={isMailModalOpen}
+            onClose={() => setIsMailModalOpen(false)}
+            eventId={event.id}
+            isCustom={isCustomSmtp}
+            initialConfig={smtpStatus?.config}
+            onStatusChange={() => {
+              if (event?.id) loadInitialData(event.id);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );
