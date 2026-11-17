@@ -333,6 +333,7 @@ export default function EventPage() {
                   <span>Add to Google Calendar</span>
                 </a>
                 <a
+                  suppressHydrationWarning
                   href={`data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`}
                   download={`${event.slug || "event"}.ics`}
                   data-testid="download-ics-btn"
