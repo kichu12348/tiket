@@ -51,13 +51,13 @@ export function setTestRedisSubClient(client: RedisClient | null): void {
   persistentSubClient = client;
 }
 
-export async function closeRedisClient(): Promise<void> {
+export function closeRedisClient(): void {
   if (persistentClient) {
     const client = persistentClient;
     persistentClient = null;
     try {
       if (typeof client.close === "function") {
-        await client.close();
+        client.close();
       }
     } catch {
       // Ignore already closed
@@ -68,7 +68,7 @@ export async function closeRedisClient(): Promise<void> {
     persistentSubClient = null;
     try {
       if (typeof sub.close === "function") {
-        await sub.close();
+        sub.close();
       }
     } catch {
       // Ignore already closed

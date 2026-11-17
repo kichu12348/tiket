@@ -1,6 +1,6 @@
 import { startJobs } from "./services/jobs.service";
 import { buildApp } from "./app";
-import { connectRedis } from "./utils";
+import { connectRedis, closeRedisClient } from "./utils";
 
 const app = buildApp();
 
@@ -20,6 +20,7 @@ const start = async () => {
 
 const graceFullShutdown = async () => {
   await app.close();
+  closeRedisClient();
   process.exit(0);
 };
 
