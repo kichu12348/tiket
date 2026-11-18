@@ -139,7 +139,7 @@ export const orderItems = pgTable(
   {
     id: uuid("id").primaryKey().$defaultFn(uuidv7),
     orderId: uuid("order_id")
-      .references(() => orders.id)
+      .references(() => orders.id, { onDelete: "cascade" })
       .notNull(),
     ticketId: uuid("ticket_id")
       .references(() => tickets.id)
@@ -296,4 +296,3 @@ export const payoutRequests = pgTable("payout_requests", {
     .defaultNow()
     .notNull(),
 });
-

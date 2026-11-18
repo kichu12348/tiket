@@ -20,12 +20,11 @@ import { buildGoogleCalendarUrl, buildIcsContent } from "@/lib/calendar";
 import RegistrationCard from "./components/RegistrationCard";
 import EventLocation from "./components/EventLocation";
 import { TRANSPARENT_BG } from "@/constants/util";
-import type { EventPageData } from "./api/eventPageServer";
 
 const routeApi = getRouteApi("/$eventSlug/");
 
 export default function EventPage() {
-  const data = routeApi.useLoaderData() as EventPageData;
+  const data = routeApi.useLoaderData();
   const { event, user, hosts, availability } = data;
   const isAssociated = Boolean(event.isAssociated);
 
