@@ -8,13 +8,13 @@ import {
   eventTeamMembers,
   orders,
   orderItems,
-  organizerBankAccounts,
   paymentAttempts,
   payoutRequests,
   refunds,
   tickets,
   ticketTypes,
   users,
+  type EventBankAccount,
 } from "@db/schema";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { HttpError } from "../utils/errors";
@@ -183,9 +183,10 @@ export async function calculateFinanceSummary(
   }
 
   let totalRefundedPaise = 0;
+  let refundedOrdersCount = 0;
   if (paidOrderIds.length > 0) {
     const activeRefunds = await executor
-      .select({ amountPaise: refunds.amountPaise })
+      .select({ amountPaise: refunds.amountPaise, orderId: refunds.orderId })
       .from(refunds)
       .where(
         and(
@@ -202,6 +203,7 @@ export async function calculateFinanceSummary(
       (sum, r) => sum + r.amountPaise,
       0,
     );
+    refundedOrdersCount = new Set(activeRefunds.map((r) => r.orderId)).size;
   }
 
   const activePayouts = await executor
@@ -236,6 +238,10 @@ export async function calculateFinanceSummary(
     netEarningsPaise,
     withdrawnOrPendingPaise,
     availableToWithdrawPaise,
+    grossRevenuePaise: grossSalesPaise,
+    netOrganizerRevenuePaise: totalOrganizerNetPaise,
+    paidOrdersCount: paidOrderIds.length,
+    refundedOrdersCount,
   };
 }
 
@@ -271,19 +277,8 @@ export async function getFinance(request: EventRequest) {
     db,
   );
 
-  const [bankRecord] = await db
-    .select()
-    .from(organizerBankAccounts)
-    .where(eq(organizerBankAccounts.userId, event.organizationId));
+  const bankRecord = event.bankAccount || null;
   const isOwner = event.organizationId === actor;
-  const bankAccount = bankRecord
-    ? {
-        ...bankRecord,
-        accountNumber: isOwner
-          ? bankRecord.accountNumber
-          : maskAccountNumber(bankRecord.accountNumber),
-      }
-    : null;
 
   const payouts = await db
     .select()
@@ -291,25 +286,301 @@ export async function getFinance(request: EventRequest) {
     .where(eq(payoutRequests.eventId, request.params.eventId))
     .orderBy(desc(payoutRequests.createdAt));
 
+  const items = ids.length
+    ? await db
+        .select()
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, ids))
+    : [];
+
+  const orderRefunds = ids.length
+    ? await db
+        .select()
+        .from(refunds)
+        .where(inArray(refunds.orderId, ids))
+    : [];
+
+  // Tiers for breakdown
+  const tiers = await db
+    .select({
+      id: ticketTypes.id,
+      name: ticketTypes.name,
+    })
+    .from(ticketTypes)
+    .where(eq(ticketTypes.eventId, request.params.eventId))
+    .orderBy(ticketTypes.sortOrder);
+
+  // Coupons for transfer labeling
+  const eventCoupons = await db
+    .select({
+      id: coupons.id,
+      code: coupons.code,
+    })
+    .from(coupons)
+    .where(eq(coupons.eventId, request.params.eventId));
+  const couponMap = new Map(eventCoupons.map((c) => [c.id, c.code]));
+
+  // Settled balance from paid payouts
+  const settledBalancePaise = payouts
+    .filter((p) => p.status === "paid")
+    .reduce((sum, p) => sum + p.amountPaise, 0);
+
+  // Time-Series (dailyRevenueSeries)
+  const dailyMap = new Map<
+    string,
+    {
+      date: string;
+      grossPaise: number;
+      netPaise: number;
+      refundsPaise: number;
+      ordersCount: number;
+    }
+  >();
+
+  // Process paid orders into daily buckets
+  for (const item of list) {
+    const o = item.order;
+    const isPaid =
+      o.paymentStatus === "success" ||
+      o.paymentStatus === "partially_refunded" ||
+      o.paymentStatus === "refunded";
+
+    if (isPaid && o.createdAt) {
+      const dateKey = o.createdAt.toISOString().slice(0, 10);
+      const ordItems = items.filter((it) => it.orderId === o.id);
+      const ordGross = ordItems.length
+        ? ordItems.reduce((sum, it) => sum + it.unitPricePaise, 0)
+        : o.totalPaise;
+      const ordNet = ordItems.length
+        ? ordItems.reduce(
+            (sum, it) =>
+              sum +
+              (it.organizerNetPaise !== undefined && !Number.isNaN(it.organizerNetPaise)
+                ? it.organizerNetPaise
+                : it.unitPricePaise - it.discountPaise),
+            0,
+          )
+        : o.totalPaise;
+
+      const existing = dailyMap.get(dateKey) || {
+        date: dateKey,
+        grossPaise: 0,
+        netPaise: 0,
+        refundsPaise: 0,
+        ordersCount: 0,
+      };
+      existing.grossPaise += ordGross;
+      existing.netPaise += ordNet;
+      existing.ordersCount += 1;
+      dailyMap.set(dateKey, existing);
+    }
+  }
+
+  // Process refunds into daily buckets
+  for (const r of orderRefunds) {
+    if (r.createdAt && ["processed", "processing", "requested", "uncertain"].includes(r.status)) {
+      const dateKey = r.createdAt.toISOString().slice(0, 10);
+      const existing = dailyMap.get(dateKey) || {
+        date: dateKey,
+        grossPaise: 0,
+        netPaise: 0,
+        refundsPaise: 0,
+        ordersCount: 0,
+      };
+      existing.refundsPaise += r.amountPaise;
+      dailyMap.set(dateKey, existing);
+    }
+  }
+
+  const dailyRevenueSeries = Array.from(dailyMap.values()).sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+
+  // Tier Breakdown (revenueByTier)
+  const tierStatsMap = new Map<
+    string,
+    {
+      ticketTypeId: string;
+      ticketTypeName: string;
+      ticketsSold: number;
+      grossPaise: number;
+      netPaise: number;
+    }
+  >();
+
+  for (const t of tiers) {
+    tierStatsMap.set(t.id, {
+      ticketTypeId: t.id,
+      ticketTypeName: t.name,
+      ticketsSold: 0,
+      grossPaise: 0,
+      netPaise: 0,
+    });
+  }
+
+  const paidOrderIdsSet = new Set(
+    list
+      .filter((l) =>
+        ["success", "partially_refunded", "refunded"].includes(
+          l.order.paymentStatus,
+        ),
+      )
+      .map((l) => l.order.id),
+  );
+
+  for (const it of items) {
+    if (paidOrderIdsSet.has(it.orderId)) {
+      const stats = tierStatsMap.get(it.ticketTypeId) || {
+        ticketTypeId: it.ticketTypeId,
+        ticketTypeName: it.name,
+        ticketsSold: 0,
+        grossPaise: 0,
+        netPaise: 0,
+      };
+      stats.ticketsSold += 1;
+      stats.grossPaise += it.unitPricePaise;
+      stats.netPaise +=
+        it.organizerNetPaise !== undefined && !Number.isNaN(it.organizerNetPaise)
+          ? it.organizerNetPaise
+          : it.unitPricePaise - it.discountPaise;
+      tierStatsMap.set(it.ticketTypeId, stats);
+    }
+  }
+
+  const revenueByTier = Array.from(tierStatsMap.values());
+
+  // Transfers ledger
+  const transfers = list.map((row) => {
+    const o = row.order;
+    const ordItems = items.filter((it) => it.orderId === o.id);
+    const ticketTypeName =
+      ordItems.map((it) => it.name).filter(Boolean).join(", ") ||
+      "Standard Ticket";
+    const grossPaise = ordItems.length
+      ? ordItems.reduce((sum, it) => sum + it.unitPricePaise, 0)
+      : o.totalPaise;
+    const discountPaise = ordItems.reduce(
+      (sum, it) => sum + (it.discountPaise || 0),
+      0,
+    );
+    const feePaise = ordItems.reduce(
+      (sum, it) =>
+        sum + (it.platformFeePaise || 0) + (it.feeTaxPaise || 0),
+      0,
+    );
+    const netPaise = ordItems.length
+      ? ordItems.reduce(
+          (sum, it) =>
+            sum +
+            (it.organizerNetPaise !== undefined && !Number.isNaN(it.organizerNetPaise)
+              ? it.organizerNetPaise
+              : it.unitPricePaise - it.discountPaise),
+          0,
+        )
+      : o.totalPaise;
+
+    let status: "pending" | "in_cycle" | "settled" | "reversed" = "pending";
+    if (
+      o.paymentStatus === "refunded" ||
+      o.paymentStatus === "partially_refunded" ||
+      o.transferStatus === "reversed"
+    ) {
+      status = "reversed";
+    } else if (o.transferStatus === "settled" || o.transferReleased) {
+      status = "settled";
+    } else if (o.transferStatus === "processed") {
+      status = "in_cycle";
+    } else {
+      status = "pending";
+    }
+
+    return {
+      orderId: o.id,
+      buyerName: row.attendee.name || "Guest",
+      buyerEmail: row.attendee.email || "—",
+      ticketTypeName,
+      couponCode: o.couponId ? couponMap.get(o.couponId) || null : null,
+      grossPaise,
+      discountPaise,
+      feePaise,
+      netPaise,
+      transferId: o.gatewayTransferId || null,
+      status,
+      createdAt: o.createdAt.toISOString(),
+    };
+  });
+
+  // Settlements ledger
+  const settlements = payouts.map((p) => {
+    let status: "settled" | "processing" | "failed" = "processing";
+    if (p.status === "paid") status = "settled";
+    else if (p.status === "rejected") status = "failed";
+    else status = "processing";
+
+    const settlementId =
+      p.gatewaySettlementId || p.gatewayPayoutId || p.id;
+
+    return {
+      id: p.id,
+      settlementId,
+      utr: p.referenceNumber || null,
+      referenceNumber: p.referenceNumber || null,
+      amountPaise: p.amountPaise,
+      status,
+      settledAt: (p.processedAt || p.createdAt).toISOString(),
+    };
+  });
+
+  // Bank account summary
+  const bankAccount = bankRecord
+    ? {
+        ...bankRecord,
+        configured: true,
+        accountHolderName: bankRecord.accountHolderName,
+        accountType:
+          (bankRecord.accountType as "current" | "saving") || "current",
+        bankName: bankRecord.bankName,
+        maskedAccountNumber: maskAccountNumber(bankRecord.accountNumber),
+        accountNumber: isOwner
+          ? bankRecord.accountNumber
+          : maskAccountNumber(bankRecord.accountNumber),
+        ifscCode: bankRecord.ifscCode,
+        phone: bankRecord.phone,
+        gatewayAccountId: bankRecord.gatewayAccountId || undefined,
+        status:
+          bankRecord.onboardingStatus === "active"
+            ? ("active" as const)
+            : bankRecord.onboardingStatus === "needs_clarification"
+              ? ("needs_clarification" as const)
+              : ("under_review" as const),
+      }
+    : null;
+
   return {
     orders: list,
     capturedPaise: attempts
       .filter((attempt) => attempt.status === "captured")
       .reduce((sum, attempt) => sum + attempt.amountPaise, 0),
-    refunds: ids.length
-      ? await db.select().from(refunds).where(inArray(refunds.orderId, ids))
-      : [],
-    items: ids.length
-      ? await db
-          .select()
-          .from(orderItems)
-          .where(inArray(orderItems.orderId, ids))
-      : [],
+    refunds: orderRefunds,
+    items,
     summary: {
       ...summary,
       unsettledBalancePaise,
+      settledBalancePaise,
     },
+    grossRevenuePaise: summary.grossRevenuePaise,
+    totalDiscountsPaise: summary.totalDiscountsPaise,
+    platformFeesPaise: summary.platformFeesPaise,
+    netOrganizerRevenuePaise: summary.netOrganizerRevenuePaise,
     unsettledBalancePaise,
+    settledBalancePaise,
+    totalRefundedPaise: summary.totalRefundedPaise,
+    refundedOrdersCount: summary.refundedOrdersCount,
+    paidOrdersCount: summary.paidOrdersCount,
+    dailyRevenueSeries,
+    revenueByTier,
+    transfers,
+    settlements,
     bankAccount,
     payouts,
   };
@@ -322,20 +593,21 @@ export async function getBankAccount(request: EventRequest) {
     "view_payments",
   );
   const [event] = await db
-    .select({ organizationId: events.organizationId })
+    .select({
+      organizationId: events.organizationId,
+      bankAccount: events.bankAccount,
+    })
     .from(events)
     .where(eq(events.id, request.params.eventId));
   if (!event) throw new HttpError(404, "Event not found.");
 
-  const [bankRecord] = await db
-    .select()
-    .from(organizerBankAccounts)
-    .where(eq(organizerBankAccounts.userId, event.organizationId));
-
   const isOwner = event.organizationId === actor;
+  const bankRecord = event.bankAccount;
   const bankAccount = bankRecord
     ? {
         ...bankRecord,
+        accountType:
+          (bankRecord.accountType as "current" | "saving") || "current",
         accountNumber: isOwner
           ? bankRecord.accountNumber
           : maskAccountNumber(bankRecord.accountNumber),
@@ -354,6 +626,7 @@ export async function updateBankAccount(
       accountNumber: string;
       ifscCode: string;
       bankName: string;
+      accountType?: "current" | "saving";
       upiId?: string | null;
     };
   }>,
@@ -387,18 +660,16 @@ export async function updateBankAccount(
     throw new HttpError(400, "Account number must be 6 to 20 digits.");
   }
 
+  const accountType: "current" | "saving" =
+    request.body.accountType === "saving" ? "saving" : "current";
+
   const [user] = await db
     .select({ email: users.email })
     .from(users)
     .where(eq(users.id, actor));
 
-  const [existingAccount] = await db
-    .select({ gatewayAccountId: organizerBankAccounts.gatewayAccountId })
-    .from(organizerBankAccounts)
-    .where(eq(organizerBankAccounts.userId, actor));
-
   let gatewayAccountId: string | null =
-    existingAccount?.gatewayAccountId || null;
+    event.bankAccount?.gatewayAccountId || null;
   let onboardingStatus = "active";
 
   try {
@@ -410,8 +681,9 @@ export async function updateBankAccount(
       accountNumber,
       ifscCode: ifsc,
       bankName: request.body.bankName.trim(),
+      accountType,
       upiId: request.body.upiId?.trim() || null,
-      existingAccountId: existingAccount?.gatewayAccountId || null,
+      existingAccountId: event.bankAccount?.gatewayAccountId || null,
     });
     gatewayAccountId = subAccount.gatewayAccountId;
     onboardingStatus = subAccount.status || "active";
@@ -419,37 +691,28 @@ export async function updateBankAccount(
     request.log.error(err, "Sub-merchant onboarding warning");
   }
 
-  const [saved] = await db
-    .insert(organizerBankAccounts)
-    .values({
-      userId: actor,
-      accountHolderName: request.body.accountHolderName.trim(),
-      phone,
-      accountNumber,
-      ifscCode: ifsc,
-      bankName: request.body.bankName.trim(),
-      upiId: request.body.upiId?.trim() || null,
-      gatewayAccountId,
-      onboardingStatus,
+  const bankAccountData: EventBankAccount = {
+    accountHolderName: request.body.accountHolderName.trim(),
+    phone,
+    accountNumber,
+    ifscCode: ifsc,
+    bankName: request.body.bankName.trim(),
+    accountType,
+    upiId: request.body.upiId?.trim() || null,
+    gatewayAccountId,
+    onboardingStatus,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await db
+    .update(events)
+    .set({
+      bankAccount: bankAccountData,
       updatedAt: new Date(),
     })
-    .onConflictDoUpdate({
-      target: organizerBankAccounts.userId,
-      set: {
-        accountHolderName: request.body.accountHolderName.trim(),
-        phone,
-        accountNumber,
-        ifscCode: ifsc,
-        bankName: request.body.bankName.trim(),
-        upiId: request.body.upiId?.trim() || null,
-        gatewayAccountId,
-        onboardingStatus,
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
+    .where(eq(events.id, request.params.eventId));
 
-  return { success: true, bankAccount: saved };
+  return { success: true, bankAccount: bankAccountData };
 }
 
 export async function requestPayout(
@@ -474,10 +737,7 @@ export async function requestPayout(
       );
     }
 
-    const [bankAccount] = await tx
-      .select()
-      .from(organizerBankAccounts)
-      .where(eq(organizerBankAccounts.userId, actor));
+    const bankAccount = event.bankAccount;
     if (!bankAccount) {
       throw new HttpError(
         400,

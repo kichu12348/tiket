@@ -62,6 +62,10 @@ export interface Order {
     "pending" | "success" | "failed" | "refunded" | "partially_refunded";
   paymentProvider: string | null;
   paymentIntentId: string | null;
+  gatewayTransferId?: string | null;
+  transferStatus?: string | null;
+  transferReleased?: boolean | null;
+  organizerNetPaise?: number;
   createdAt: string;
   updatedAt: string;
 }

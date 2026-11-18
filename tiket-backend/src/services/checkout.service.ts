@@ -4,7 +4,6 @@ import {
   eventTeamMembers,
   orderItems,
   orders,
-  organizerBankAccounts,
   tickets,
   ticketTypes,
   forms,
@@ -551,7 +550,7 @@ export async function initializeGatewayOrder(orderId: string) {
   if (!claimed) return;
   try {
     const [eventRow] = await db
-      .select({ organizationId: events.organizationId })
+      .select({ bankAccount: events.bankAccount })
       .from(events)
       .where(eq(events.id, claimed.eventId));
 
@@ -565,10 +564,7 @@ export async function initializeGatewayOrder(orderId: string) {
     let linkedAccountId: string | null = null;
 
     if (eventRow) {
-      const [bankAccount] = await db
-        .select()
-        .from(organizerBankAccounts)
-        .where(eq(organizerBankAccounts.userId, eventRow.organizationId));
+      const bankAccount = eventRow.bankAccount;
 
       if (claimed.totalPaise > 0 && !bankAccount?.gatewayAccountId) {
         throw new Error("Organizer bank account is not configured for paid order.");

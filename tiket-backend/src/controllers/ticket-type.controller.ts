@@ -18,7 +18,6 @@ import {
   ticketTypes,
   events,
   tickets,
-  organizerBankAccounts,
   type TicketLayoutConfig,
 } from "@db/schema";
 import { eq, and, asc, max } from "drizzle-orm";
@@ -89,17 +88,12 @@ export const createTicketType = async (
 
     if (pricePaise > 0) {
       const [event] = await db
-        .select({ organizationId: events.organizationId })
+        .select({ bankAccount: events.bankAccount })
         .from(events)
         .where(eq(events.id, eventId));
       if (!event) throw new HttpError(404, "Event not found.");
 
-      const [bankAccount] = await db
-        .select()
-        .from(organizerBankAccounts)
-        .where(eq(organizerBankAccounts.userId, event.organizationId));
-
-      if (!bankAccount?.gatewayAccountId) {
+      if (!event.bankAccount?.gatewayAccountId) {
         throw new HttpError(
           400,
           "You must add a payout bank account in Finance settings before creating paid tickets.",
@@ -263,17 +257,12 @@ export const updateTicketType = async (
       const pricePaise = toPaise(String(body.price));
       if (pricePaise > 0) {
         const [event] = await db
-          .select({ organizationId: events.organizationId })
+          .select({ bankAccount: events.bankAccount })
           .from(events)
           .where(eq(events.id, eventId));
         if (!event) throw new HttpError(404, "Event not found.");
 
-        const [bankAccount] = await db
-          .select()
-          .from(organizerBankAccounts)
-          .where(eq(organizerBankAccounts.userId, event.organizationId));
-
-        if (!bankAccount?.gatewayAccountId) {
+        if (!event.bankAccount?.gatewayAccountId) {
           throw new HttpError(
             400,
             "You must add a payout bank account in Finance settings before creating paid tickets.",

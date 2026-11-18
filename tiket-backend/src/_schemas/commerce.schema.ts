@@ -136,6 +136,7 @@ export const bankAccountSchema = {
         accountNumber: { type: "string", pattern: "^[0-9]{6,20}$" },
         ifscCode: { type: "string", pattern: "^[A-Za-z]{4}0[A-Za-z0-9]{6}$" },
         bankName: { type: "string", minLength: 1, maxLength: 255 },
+        accountType: { type: "string", enum: ["current", "saving"] },
         upiId: { type: ["string", "null"], maxLength: 255 },
       },
     },

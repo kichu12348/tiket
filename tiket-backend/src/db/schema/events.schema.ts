@@ -32,6 +32,19 @@ export interface CustomInsightWidget {
   filterStatus?: "all" | "checked_in" | "active";
 }
 
+export interface EventBankAccount {
+  accountHolderName: string;
+  accountType?: "current" | "saving";
+  phone: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName: string;
+  upiId?: string | null;
+  gatewayAccountId?: string | null;
+  onboardingStatus?: string;
+  updatedAt?: string;
+}
+
 export const events = pgTable("events", {
   id: uuid("id").primaryKey().$defaultFn(uuidv7),
   title: varchar("title", { length: 255 }).notNull(),
@@ -60,6 +73,7 @@ export const events = pgTable("events", {
   customInsightsConfig: jsonb("custom_insights_config")
     .$type<CustomInsightWidget[]>()
     .default([]),
+  bankAccount: jsonb("bank_account").$type<EventBankAccount>(),
   organizationId: uuid("organization_id")
     .references(() => users.id)
     .notNull(),

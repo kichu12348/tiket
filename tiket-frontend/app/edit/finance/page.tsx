@@ -1,10 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
 import { useParams } from "@tanstack/react-router";
-import { getEventFinance } from "@/api/commerce";
-import type { Finance } from "@/types/commerce";
+import {
+  useFinanceManagement,
+  type DateRangeOption,
+} from "@/hooks/useFinanceManagement";
 import { formatMoney } from "@/lib/money";
-import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/errors";
 import { Card } from "@/components/ui/card";
 import {
   CircleDollarSign,
@@ -12,8 +11,12 @@ import {
   Landmark,
   Receipt,
   RotateCcw,
+  Download,
+  Settings,
 } from "lucide-react";
 import BankAccountCard from "@/app/edit/finance/components/BankAccountCard";
+import BankAccountModal from "@/app/edit/finance/components/BankAccountModal";
+import FinanceCharts from "@/app/edit/finance/components/FinanceCharts";
 import SettlementsTable from "@/app/edit/finance/components/SettlementsTable";
 import styles from "@/app/edit/finance/FinancePage.module.css";
 
@@ -21,80 +24,50 @@ export default function FinancePage() {
   const routeParams = useParams({ strict: false });
   const eventId = (routeParams?.eventId as string) || "";
 
-  const [finance, setFinance] = useState<Finance | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(Boolean(eventId));
-  const [refreshKey, setRefreshKey] = useState<number>(0);
+  const {
+    summary,
+    bankAccount,
+    revenueByTier,
+    dailyRevenueSeries,
+    transfers,
+    settlements,
+    isLoading,
+    isSavingBank,
+    isBankModalOpen,
+    openBankModal,
+    closeBankModal,
+    dateRangeFilter,
+    setDateRangeFilter,
+    ledgerTab,
+    setLedgerTab,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    isLiveConnected,
+    refresh,
+    saveBankAccount,
+    exportLedgerCsv,
+  } = useFinanceManagement(eventId);
 
-  useEffect(() => {
-    let mounted = true;
-    if (!eventId) return;
-
-    getEventFinance(eventId)
-      .then((data) => {
-        if (mounted) {
-          setFinance(data);
-          setIsLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (mounted) {
-          toast.error(getErrorMessage(err) || "Failed to load finance details");
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [eventId, refreshKey]);
-
-  const handleRefresh = useCallback(() => {
-    setIsLoading(true);
-    setRefreshKey((k) => k + 1);
-  }, []);
-
-  const summary = finance?.summary || {
-    grossSalesPaise: finance?.capturedPaise || 0,
-    totalDiscountsPaise: 0,
-    platformFeesPaise: 0,
-    taxesPaise: 0,
-    totalRefundedPaise: 0,
-    netEarningsPaise: 0,
-    withdrawnOrPendingPaise: 0,
-    availableToWithdrawPaise: 0,
-    unsettledBalancePaise: 0,
-  };
-
-  const netEarnings =
-    summary.netEarningsPaise ||
-    (finance?.capturedPaise
-      ? finance.capturedPaise - (summary.platformFeesPaise || 0)
-      : 0);
-
-  const unsettledBalancePaise =
-    finance?.unsettledBalancePaise ?? summary.unsettledBalancePaise ?? 0;
-
-  const payouts = finance?.payouts || [];
-  const settledPaise = payouts
-    .filter((p) => p.status === "paid")
-    .reduce((sum, p) => sum + p.amountPaise, 0);
-
-  const orders = finance?.orders || [];
-  const paidOrdersCount = orders.filter(
-    (item) =>
-      item.order.paymentStatus === "success" ||
-      item.order.registrationStatus === "confirmed" ||
-      (item.order.totalPaise > 0 &&
-        item.order.paymentStatus !== "failed" &&
-        item.order.paymentStatus !== "pending"),
-  ).length;
+  const subtextNetRevenue = `Gross ${formatMoney(summary.grossRevenuePaise)} · Fees ${formatMoney(summary.platformFeesPaise)} · Discounts ${formatMoney(summary.totalDiscountsPaise)}`;
+  const subtextSettled = `${settlements.length} bank ${settlements.length === 1 ? "settlement" : "settlements"} disbursed`;
+  const subtextOrders = `${summary.refundedOrdersCount} refunds (${formatMoney(summary.totalRefundedPaise)} refunded)`;
 
   return (
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerContent}>
-          <h1 className={styles.title}>Event Finance</h1>
+          <div className={styles.titleRow}>
+            <h1 className={styles.title}>Finance & Payouts</h1>
+            {isLiveConnected && (
+              <span className={styles.liveBadge}>
+                <span className={styles.liveDot} />
+                Live Sync
+              </span>
+            )}
+          </div>
           <p className={styles.subtitle}>
             Overview of revenue, automated Razorpay Route payouts, and linked
             bank details.
@@ -102,46 +75,85 @@ export default function FinancePage() {
         </div>
 
         <div className={styles.headerActions}>
+          {/* Date Range Selector */}
+          <select
+            value={dateRangeFilter}
+            onChange={(e) =>
+              setDateRangeFilter(e.target.value as DateRangeOption)
+            }
+            className={styles.dateFilterSelect}
+            aria-label="Filter date range"
+          >
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+            <option value="all">All Time</option>
+          </select>
+
+          {/* Export CSV */}
           <button
             type="button"
-            onClick={handleRefresh}
+            onClick={() => exportLedgerCsv(ledgerTab)}
+            className={styles.actionButton}
+            aria-label="Export current ledger to CSV"
+            data-testid="export-csv-btn"
+          >
+            <Download size={14} />
+            <span>Export CSV</span>
+          </button>
+
+          {/* Bank Settings */}
+          <button
+            type="button"
+            onClick={openBankModal}
+            className={styles.actionButton}
+            aria-label="Configure bank account settings"
+            data-testid="bank-settings-btn"
+          >
+            <Settings size={14} />
+            <span>Bank Settings</span>
+          </button>
+
+          {/* Refresh */}
+          <button
+            type="button"
+            onClick={() => void refresh()}
             disabled={isLoading}
-            className={styles.refreshButton}
+            className={styles.actionButton}
             aria-label="Refresh financial data"
           >
-            <RotateCcw size={15} className={isLoading ? styles.spinning : ""} />
+            <RotateCcw size={14} className={isLoading ? styles.spinning : ""} />
             <span>Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* 4-Card KPI Summary Grid */}
-      <div className={styles.metricsGrid}>
+      {/* 4-Card KPI Telemetry Grid */}
+      <div className={styles.metricsGrid} data-testid="kpi-metrics-grid">
         {/* 1. Net Organizer Revenue */}
         <Card className={styles.metricCard}>
           <div className={styles.metricHeader}>
             <span className={styles.metricLabel}>Net Organizer Revenue</span>
             <CircleDollarSign size={18} className={styles.metricIcon} />
           </div>
-          <span className={styles.metricValue}>{formatMoney(netEarnings)}</span>
-          <span className={styles.metricDesc}>
-            Net earnings after platform fees
+          <span className={styles.metricValue}>
+            {formatMoney(summary.netOrganizerRevenuePaise)}
           </span>
+          <span className={styles.metricDesc}>{subtextNetRevenue}</span>
         </Card>
 
-        {/* 2. Unsettled Balance (Available for Refunds) */}
+        {/* 2. Unsettled Balance (Refund Pool) */}
         <Card className={styles.metricCard}>
           <div className={styles.metricHeader}>
             <span className={styles.metricLabel}>
-              Unsettled Balance (Available for Refunds)
+              Unsettled Balance (Refund Pool)
             </span>
             <Wallet size={18} className={styles.metricIcon} />
           </div>
           <span className={styles.metricValue}>
-            {formatMoney(unsettledBalancePaise)}
+            {formatMoney(summary.unsettledBalancePaise)}
           </span>
           <span className={styles.metricDesc}>
-            Available in live Route cycle for attendee refunds
+            Available for pre-event attendee refunds before settling to bank.
           </span>
         </Card>
 
@@ -152,42 +164,64 @@ export default function FinancePage() {
             <Landmark size={18} className={styles.metricIcon} />
           </div>
           <span className={styles.metricValue}>
-            {formatMoney(settledPaise)}
+            {formatMoney(summary.settledBalancePaise)}
           </span>
-          <span className={styles.metricDesc}>
-            Disbursed directly to your connected bank account
-          </span>
+          <span className={styles.metricDesc}>{subtextSettled}</span>
         </Card>
 
-        {/* 4. Paid Orders count */}
+        {/* 4. Paid Orders & Refunds */}
         <Card className={styles.metricCard}>
           <div className={styles.metricHeader}>
-            <span className={styles.metricLabel}>Paid Orders</span>
+            <span className={styles.metricLabel}>Paid Orders & Refunds</span>
             <Receipt size={18} className={styles.metricIcon} />
           </div>
           <span className={styles.metricValue}>
-            {paidOrdersCount.toLocaleString()}
+            {summary.paidOrdersCount.toLocaleString()} Paid
           </span>
-          <span className={styles.metricDesc}>Completed ticket orders</span>
+          <span className={styles.metricDesc}>{subtextOrders}</span>
         </Card>
       </div>
 
       {/* Main Content Grid */}
       <div className={styles.mainGrid}>
-        {/* Bank Account Connection Card */}
+        {/* Bank Account Connection Banner / Card */}
         <BankAccountCard
           eventId={eventId}
-          initialAccount={finance?.bankAccount || null}
-          onUpdated={handleRefresh}
+          bankAccount={bankAccount}
+          onOpenModal={openBankModal}
         />
 
-        {/* Settlements and Transfers Table */}
+        {/* Visual Analytics Grid */}
+        <FinanceCharts
+          dailyRevenueSeries={dailyRevenueSeries}
+          revenueByTier={revenueByTier}
+          grossRevenuePaise={summary.grossRevenuePaise}
+          netOrganizerRevenuePaise={summary.netOrganizerRevenuePaise}
+          platformFeesPaise={summary.platformFeesPaise}
+          totalDiscountsPaise={summary.totalDiscountsPaise}
+        />
+
+        {/* Dual Ledger (Transfers & Bank Settlements) */}
         <SettlementsTable
-          orders={orders}
-          payouts={payouts}
-          items={finance?.items || []}
+          transfers={transfers}
+          settlements={settlements}
+          activeTab={ledgerTab}
+          onTabChange={setLedgerTab}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
         />
       </div>
+
+      {/* Bank Account Configuration Modal */}
+      <BankAccountModal
+        isOpen={isBankModalOpen}
+        initialAccount={bankAccount}
+        isSubmitting={isSavingBank}
+        onClose={closeBankModal}
+        onSave={saveBankAccount}
+      />
     </div>
   );
 }

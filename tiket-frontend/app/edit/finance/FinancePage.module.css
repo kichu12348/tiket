@@ -18,7 +18,13 @@
 .headerContent {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .title {
@@ -28,8 +34,41 @@
   margin: 0;
 }
 
+.liveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border: none;
+  border-radius: 9999px;
+  font-size: 0.725rem;
+  font-weight: 500;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-success);
+  box-shadow: 0 0 8px var(--status-success);
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
 .subtitle {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   margin: 0;
 }
@@ -37,10 +76,33 @@
 .headerActions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.refreshButton {
+.dateFilterSelect {
+  height: 36px;
+  padding: 0 0.75rem;
+  font-size: 0.825rem;
+  background: var(--color-soft-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dateFilterSelect:hover {
+  background: var(--color-item-hover);
+}
+
+.dateFilterSelect option {
+  background: var(--surface-base);
+  color: var(--text-primary);
+}
+
+.actionButton {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
@@ -48,21 +110,44 @@
   color: var(--text-secondary);
   border: none;
   border-radius: var(--radius-sm);
-  padding: 0.45rem 0.85rem;
-  font-size: 0.85rem;
+  padding: 0 0.85rem;
+  height: 36px;
+  font-size: 0.825rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.refreshButton:hover:not(:disabled) {
-  background: var(--color-soft-bg-hover);
+.actionButton:hover:not(:disabled) {
+  background: var(--color-item-hover);
   color: var(--text-primary);
 }
 
-.refreshButton:disabled {
+.actionButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.primaryActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0 0.95rem;
+  height: 36px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.primaryActionButton:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 .metricsGrid {
@@ -89,7 +174,7 @@
 }
 
 .metricLabel {
-  font-size: 0.825rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -99,15 +184,17 @@
 }
 
 .metricValue {
-  font-size: 1.65rem;
+  font-size: 1.55rem;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.02em;
+  font-family: var(--font-mono);
 }
 
 .metricDesc {
-  font-size: 0.775rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
+  line-height: 1.35;
 }
 
 .mainGrid {

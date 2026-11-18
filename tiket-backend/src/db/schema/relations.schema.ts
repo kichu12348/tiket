@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { users, organizerBankAccounts } from "./users.schema";
+import { users } from "./users.schema";
 import { events, eventRoles, eventTeamMembers, eventBlacklist } from "./events.schema";
 import { ticketTypes, tickets, ticketTransfers, checkIns } from "./tickets.schema";
 import { orders, refundRequests, payoutRequests } from "./commerce.schema";
@@ -190,16 +190,6 @@ export const eventBlacklistRelations = relations(eventBlacklist, ({ one }) => ({
     references: [users.id],
   }),
 }));
-
-export const organizerBankAccountsRelations = relations(
-  organizerBankAccounts,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [organizerBankAccounts.userId],
-      references: [users.id],
-    }),
-  }),
-);
 
 export const payoutRequestsRelations = relations(payoutRequests, ({ one }) => ({
   event: one(events, {

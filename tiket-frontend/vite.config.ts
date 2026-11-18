@@ -27,6 +27,10 @@ export default defineConfig({
         routesDirectory: "routes",
         generatedRouteTree: "routeTree.gen.ts",
       },
+      prerender: {
+        enabled: true,
+        crawlLinks: true,
+      },
     }),
     viteReact(),
   ],

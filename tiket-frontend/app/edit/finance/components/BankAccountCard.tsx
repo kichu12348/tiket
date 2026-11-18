@@ -1,265 +1,144 @@
-﻿
-import { useState } from "react";
-import { upsertBankAccount } from "@/api/commerce";
 import type { OrganizerBankAccount } from "@/types/commerce";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Landmark, ShieldCheck, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/errors";
+import { Landmark, ShieldCheck, AlertCircle, Plus, Edit2 } from "lucide-react";
 import styles from "./BankAccountCard.module.css";
 
 export interface BankAccountCardProps {
-  eventId: string;
+  eventId?: string;
+  bankAccount?: OrganizerBankAccount | null;
   initialAccount?: OrganizerBankAccount | null;
+  onOpenModal?: () => void;
   onUpdated?: () => void;
 }
 
-export default function BankAccountCard({
-  eventId,
-  initialAccount,
-  onUpdated,
-}: BankAccountCardProps) {
-  const [prevAccount, setPrevAccount] = useState<
-    OrganizerBankAccount | null | undefined
-  >(initialAccount);
-  const [accountHolderName, setAccountHolderName] = useState(
-    initialAccount?.accountHolderName || "",
-  );
-  const [phone, setPhone] = useState(initialAccount?.phone || "");
-  const [accountNumber, setAccountNumber] = useState(
-    initialAccount?.accountNumber || "",
-  );
-  const [ifscCode, setIfscCode] = useState(initialAccount?.ifscCode || "");
-  const [bankName, setBankName] = useState(initialAccount?.bankName || "");
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+function maskAccountNumber(acc: string): string {
+  const trimmed = acc.trim();
+  if (trimmed.length <= 4) return trimmed;
+  const last4 = trimmed.slice(-4);
+  return `•••• •••• ${last4}`;
+}
 
-  if (initialAccount !== prevAccount) {
-    setPrevAccount(initialAccount);
-    setAccountHolderName(initialAccount?.accountHolderName || "");
-    setPhone(initialAccount?.phone || "");
-    setAccountNumber(initialAccount?.accountNumber || "");
-    setIfscCode(initialAccount?.ifscCode || "");
-    setBankName(initialAccount?.bankName || "");
+export default function BankAccountCard({
+  bankAccount,
+  initialAccount,
+  onOpenModal,
+}: BankAccountCardProps) {
+  const account = bankAccount || initialAccount || null;
+  const isConnected = Boolean(
+    account?.accountHolderName &&
+      (account?.configured || account?.accountNumber),
+  );
+
+  if (!isConnected) {
+    return (
+      <div className={styles.card} data-testid="bank-unconnected-card">
+        <div className={styles.unconnectedWrapper}>
+          <div className={styles.unconnectedInfo}>
+            <div className={styles.warningIconWrapper}>
+              <AlertCircle size={20} />
+            </div>
+            <div className={styles.unconnectedText}>
+              <h3 className={styles.unconnectedTitle}>Bank Account Required</h3>
+              <p className={styles.unconnectedDesc}>
+                A verified bank account is required before launching paid ticket
+                tiers. Ticket earnings will automatically settle directly to this
+                account via Razorpay Route.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            onClick={onOpenModal}
+            data-testid="add-bank-btn"
+          >
+            <Plus size={15} />
+            <span>Add Bank Account</span>
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  const isGatewayActive = Boolean(
-    initialAccount?.gatewayAccountId &&
-      initialAccount?.onboardingStatus !== "suspended" &&
-      initialAccount?.onboardingStatus !== "failed",
-  );
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const trimmedName = accountHolderName.trim();
-    if (!trimmedName) {
-      setErrorMessage("Account holder name is required.");
-      return;
-    }
-
-    const cleanPhone = phone.replace(/[^0-9]/g, "");
-    if (cleanPhone.length < 10 || cleanPhone.length > 20) {
-      setErrorMessage("Please enter a valid 10-digit mobile number for bank KYC.");
-      return;
-    }
-
-    const trimmedAccount = accountNumber.trim();
-    if (trimmedAccount.length < 9 || trimmedAccount.length > 34) {
-      setErrorMessage("Bank account number must be between 9 and 34 characters.");
-      return;
-    }
-
-    const cleanIfsc = ifscCode.trim().toUpperCase();
-    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanIfsc)) {
-      setErrorMessage("Invalid IFSC code format (e.g. HDFC0001234).");
-      return;
-    }
-
-    const trimmedBankName = bankName.trim();
-    if (!trimmedBankName) {
-      setErrorMessage("Bank name is required.");
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      setErrorMessage(null);
-
-      await upsertBankAccount(eventId, {
-        accountHolderName: trimmedName,
-        phone: cleanPhone,
-        accountNumber: trimmedAccount,
-        ifscCode: cleanIfsc,
-        bankName: trimmedBankName,
-      });
-
-      toast.success("Bank account details saved successfully.");
-      onUpdated?.();
-    } catch (err) {
-      const msg = getErrorMessage(err) || "Failed to save bank account details.";
-      setErrorMessage(msg);
-      toast.error(msg);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const maskedNumber =
+    account?.maskedAccountNumber ||
+    (account?.accountNumber ? maskAccountNumber(account.accountNumber) : "•••• •••• —");
 
   return (
-    <Card className={styles.card}>
-      <CardHeader className={styles.cardHeader}>
-        <div className={styles.headerTitleRow}>
-          <div className={styles.titleWithIcon}>
-            <div className={styles.iconWrapper}>
-              <Landmark size={18} />
-            </div>
-            <div>
-              <CardTitle className={styles.cardTitle}>Payout Bank Account</CardTitle>
-              <CardDescription className={styles.cardDescription}>
-                Direct settlements via Razorpay Route require verified KYC details.
-              </CardDescription>
-            </div>
+    <div className={styles.card} data-testid="bank-connected-card">
+      <div className={styles.headerRow}>
+        <div className={styles.titleGroup}>
+          <div className={styles.iconWrapper}>
+            <Landmark size={18} />
           </div>
-          {isGatewayActive && (
-            <Badge variant="secondary" className={styles.connectedBadge}>
-              <ShieldCheck size={14} />
-              Connected · Automatic Razorpay Settlement
-            </Badge>
-          )}
+          <div className={styles.titleText}>
+            <h3 className={styles.cardTitle}>Payout Bank Account</h3>
+            <p className={styles.cardSubtitle}>
+              Direct settlements via Razorpay Route (T+2 cycle)
+            </p>
+          </div>
         </div>
-      </CardHeader>
 
-      <CardContent className={styles.cardContent}>
-        {!isGatewayActive && (
-          <Alert className={styles.alertWarning}>
-            <AlertCircle size={16} />
-            <AlertTitle className={styles.alertTitle}>Bank Account Required</AlertTitle>
-            <AlertDescription className={styles.alertDescription}>
-              A verified bank account is required before creating paid tickets to receive automatic settlements.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {errorMessage && (
-          <Alert className={styles.alertDestructive}>
-            <AlertCircle size={16} />
-            <AlertTitle className={styles.alertTitle}>Error</AlertTitle>
-            <AlertDescription className={styles.alertDescription}>
-              {errorMessage}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handleSubmit} className={styles.formGrid}>
-          <div className={styles.inputGroup}>
-            <Label htmlFor="accountHolderName" className={styles.label}>
-              Account Holder Name <span className={styles.required}>*</span>
-            </Label>
-            <Input
-              id="accountHolderName"
-              name="accountHolderName"
-              placeholder="As registered with your bank"
-              value={accountHolderName}
-              onChange={(e) => setAccountHolderName(e.target.value)}
-              disabled={isSaving}
-              required
-              className={styles.input}
-            />
+        <div className={styles.headerActions}>
+          <div className={styles.statusBadge}>
+            <span className={styles.statusDot} />
+            <ShieldCheck size={13} />
+            <span>Connected · Automatic Razorpay Settlement</span>
           </div>
 
-          <div className={styles.inputGroup}>
-            <Label htmlFor="phone" className={styles.label}>
-              Phone Number (for KYC) <span className={styles.required}>*</span>
-            </Label>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              placeholder="10-digit mobile number"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              disabled={isSaving}
-              required
-              className={styles.input}
-            />
-          </div>
+          {account?.gatewayAccountId && (
+            <span className={styles.accountIdBadge}>
+              {account.gatewayAccountId}
+            </span>
+          )}
 
-          <div className={styles.inputGroupFull}>
-            <Label htmlFor="bankName" className={styles.label}>
-              Bank Name <span className={styles.required}>*</span>
-            </Label>
-            <Input
-              id="bankName"
-              name="bankName"
-              placeholder="e.g. HDFC Bank, ICICI Bank, State Bank of India"
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
-              disabled={isSaving}
-              required
-              className={styles.input}
-            />
-          </div>
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            onClick={onOpenModal}
+            data-testid="edit-bank-btn"
+          >
+            <Edit2 size={13} />
+            <span>Update Bank Details</span>
+          </button>
+        </div>
+      </div>
 
-          <div className={styles.inputGroup}>
-            <Label htmlFor="accountNumber" className={styles.label}>
-              Bank Account Number <span className={styles.required}>*</span>
-            </Label>
-            <Input
-              id="accountNumber"
-              name="accountNumber"
-              type="text"
-              placeholder="Enter bank account number"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              disabled={isSaving}
-              required
-              className={styles.input}
-            />
-          </div>
+      <div className={styles.detailsGrid}>
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Account Holder</span>
+          <span className={styles.detailValue}>
+            {account?.accountHolderName || "—"}
+          </span>
+        </div>
 
-          <div className={styles.inputGroup}>
-            <Label htmlFor="ifscCode" className={styles.label}>
-              IFSC Code <span className={styles.required}>*</span>
-            </Label>
-            <Input
-              id="ifscCode"
-              name="ifscCode"
-              placeholder="e.g. HDFC0001234"
-              value={ifscCode}
-              onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
-              disabled={isSaving}
-              required
-              maxLength={11}
-              className={`${styles.input} ${styles.fontMonoUppercase}`}
-            />
-          </div>
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Account Type</span>
+          <span className={styles.detailValue}>
+            {account?.accountType === "saving" ? "Savings" : "Current"}
+          </span>
+        </div>
 
-          <div className={styles.submitRow}>
-            <Button
-              type="submit"
-              disabled={isSaving}
-              className={styles.btnPrimary}
-            >
-              {isSaving
-                ? "Saving..."
-                : initialAccount
-                  ? "Update Bank Account"
-                  : "Save Bank Account"}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Bank Name</span>
+          <span className={styles.detailValue}>
+            {account?.bankName || "—"}
+          </span>
+        </div>
+
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>Account Number</span>
+          <span className={`${styles.detailValue} ${styles.fontMono}`}>
+            {maskedNumber}
+          </span>
+        </div>
+
+        <div className={styles.detailItem}>
+          <span className={styles.detailLabel}>IFSC Code</span>
+          <span className={`${styles.detailValue} ${styles.fontMono}`}>
+            {account?.ifscCode || "—"}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

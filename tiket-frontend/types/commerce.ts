@@ -14,6 +14,7 @@ export interface PriceLine {
   platformFeePaise: number;
   feeTaxPaise: number;
   totalPaise: number;
+  organizerNetPaise?: number;
 }
 export interface Quote {
   totalPaise: number;
@@ -33,16 +34,33 @@ export interface Refund {
 }
 
 export interface OrganizerBankAccount {
-  userId: string;
+  userId?: string;
   accountHolderName: string;
+  accountType?: "current" | "saving";
   phone?: string;
   accountNumber: string;
+  maskedAccountNumber?: string;
   ifscCode: string;
   bankName: string;
   upiId?: string | null;
   gatewayAccountId?: string | null;
   onboardingStatus?: string;
-  updatedAt: string;
+  configured?: boolean;
+  status?: "active" | "under_review" | "needs_clarification";
+  updatedAt?: string;
+}
+
+export interface BankAccountSummary {
+  configured: boolean;
+  accountHolderName?: string;
+  accountType?: "current" | "saving";
+  bankName?: string;
+  maskedAccountNumber?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  phone?: string;
+  gatewayAccountId?: string;
+  status?: "active" | "under_review" | "needs_clarification";
 }
 
 export interface PayoutRequest {
@@ -67,6 +85,47 @@ export interface PayoutRequest {
   updatedAt: string;
 }
 
+export interface DailyRevenuePoint {
+  date: string;
+  grossPaise: number;
+  netPaise: number;
+  refundsPaise: number;
+  ordersCount: number;
+}
+
+export interface TierRevenueSummary {
+  ticketTypeId: string;
+  ticketTypeName: string;
+  ticketsSold: number;
+  grossPaise: number;
+  netPaise: number;
+}
+
+export interface TransferRecord {
+  orderId: string;
+  buyerName: string;
+  buyerEmail: string;
+  ticketTypeName: string;
+  couponCode: string | null;
+  grossPaise: number;
+  discountPaise: number;
+  feePaise: number;
+  netPaise: number;
+  transferId: string | null;
+  status: "pending" | "in_cycle" | "settled" | "reversed";
+  createdAt: string;
+}
+
+export interface SettlementRecord {
+  id: string;
+  settlementId: string;
+  utr: string | null;
+  referenceNumber: string | null;
+  amountPaise: number;
+  status: "settled" | "processing" | "failed";
+  settledAt: string;
+}
+
 export interface FinanceSummary {
   grossSalesPaise: number;
   totalDiscountsPaise: number;
@@ -77,6 +136,11 @@ export interface FinanceSummary {
   withdrawnOrPendingPaise: number;
   availableToWithdrawPaise: number;
   unsettledBalancePaise?: number;
+  settledBalancePaise?: number;
+  grossRevenuePaise?: number;
+  netOrganizerRevenuePaise?: number;
+  paidOrdersCount?: number;
+  refundedOrdersCount?: number;
 }
 
 export interface Finance {
@@ -90,13 +154,26 @@ export interface Finance {
     ticketId: string;
   })[];
   summary?: FinanceSummary;
+  grossRevenuePaise?: number;
+  totalDiscountsPaise?: number;
+  platformFeesPaise?: number;
+  netOrganizerRevenuePaise?: number;
   unsettledBalancePaise?: number;
+  settledBalancePaise?: number;
+  totalRefundedPaise?: number;
+  refundedOrdersCount?: number;
+  paidOrdersCount?: number;
+  dailyRevenueSeries?: DailyRevenuePoint[];
+  revenueByTier?: TierRevenueSummary[];
+  transfers?: TransferRecord[];
+  settlements?: SettlementRecord[];
   bankAccount?: OrganizerBankAccount | null;
   payouts?: PayoutRequest[];
 }
 
 export interface SaveBankAccountPayload {
   accountHolderName: string;
+  accountType?: "current" | "saving";
   phone?: string;
   accountNumber: string;
   ifscCode: string;

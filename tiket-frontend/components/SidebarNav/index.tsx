@@ -9,6 +9,8 @@ import {
   UsersRound,
   Users,
   Mail,
+  IndianRupeeIcon,
+  SquareKanban,
 } from "lucide-react";
 import styles from "./SidebarNav.module.css";
 import { useSidebarStore } from "@/store/useSidebarStore";
@@ -50,8 +52,15 @@ export default function SidebarNav({ eventId }: SidebarNavProps) {
       to: "/edit/$eventId/operations" as const,
       path: `/edit/${eventId}/operations`,
       label: "Operations",
-      icon: Ticket,
+      icon: SquareKanban,
     },
+    {
+      to: "/edit/$eventId/finance" as const,
+      path: `/edit/${eventId}/finance`,
+      label: "Finance",
+      icon: IndianRupeeIcon,
+    },
+
     {
       to: "/edit/$eventId/forms" as const,
       path: `/edit/${eventId}/forms`,

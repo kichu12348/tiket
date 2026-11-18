@@ -2,20 +2,15 @@ import db from "@db";
 import {
   events,
   orders,
-  organizerBankAccounts,
   paymentAttempts,
   payoutRequests,
   tickets,
   webhookInbox,
 } from "@db/schema";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Transaction } from "../db/types";
 import { HttpError } from "../utils/errors";
-import {
-  emitEvent,
-  lockEvent,
-  releaseHold,
-} from "./inventory.service";
+import { emitEvent, lockEvent, releaseHold } from "./inventory.service";
 import {
   gateway,
   type GatewayPayment,
@@ -339,43 +334,42 @@ export async function processInbox() {
           }
         } else if (normalized.kind === "settlement") {
           const remote = normalized.settlement;
-          const [bankAccount] = await tx
-            .select()
-            .from(organizerBankAccounts)
-            .where(eq(organizerBankAccounts.gatewayAccountId, remote.accountId));
+          const [targetEvent] = await tx
+            .select({
+              id: events.id,
+              organizationId: events.organizationId,
+              bankAccount: events.bankAccount,
+            })
+            .from(events)
+            .where(
+              sql`${events.bankAccount}->>'gatewayAccountId' = ${remote.accountId}`,
+            )
+            .limit(1);
 
-          if (bankAccount) {
-            const [orgEvent] = await tx
-              .select({ id: events.id })
-              .from(events)
-              .where(eq(events.organizationId, bankAccount.userId))
-              .orderBy(desc(events.createdAt))
-              .limit(1);
+          if (targetEvent && targetEvent.bankAccount) {
+            const bankAccount = targetEvent.bankAccount;
+            const maskedAccountNumber =
+              bankAccount.accountNumber.length > 4
+                ? `••••${bankAccount.accountNumber.slice(-4)}`
+                : bankAccount.accountNumber;
 
-            if (orgEvent) {
-              const maskedAccountNumber =
-                bankAccount.accountNumber.length > 4
-                  ? `••••${bankAccount.accountNumber.slice(-4)}`
-                  : bankAccount.accountNumber;
-
-              await tx.insert(payoutRequests).values({
-                eventId: orgEvent.id,
-                requestedBy: bankAccount.userId,
-                amountPaise: remote.amount,
-                status: "paid",
-                gatewaySettlementId: remote.id,
-                referenceNumber: remote.utr ?? null,
-                bankSnapshot: {
-                  accountHolderName: bankAccount.accountHolderName,
-                  maskedAccountNumber,
-                  ifscCode: bankAccount.ifscCode,
-                  bankName: bankAccount.bankName,
-                  upiId: bankAccount.upiId || null,
-                },
-                processedAt: new Date(),
-                notes: "Automatic Razorpay settlement cycle",
-              });
-            }
+            await tx.insert(payoutRequests).values({
+              eventId: targetEvent.id,
+              requestedBy: targetEvent.organizationId,
+              amountPaise: remote.amount,
+              status: "paid",
+              gatewaySettlementId: remote.id,
+              referenceNumber: remote.utr ?? null,
+              bankSnapshot: {
+                accountHolderName: bankAccount.accountHolderName,
+                maskedAccountNumber,
+                ifscCode: bankAccount.ifscCode,
+                bankName: bankAccount.bankName,
+                upiId: bankAccount.upiId || null,
+              },
+              processedAt: new Date(),
+              notes: "Automatic Razorpay settlement cycle",
+            });
 
             await tx
               .update(orders)

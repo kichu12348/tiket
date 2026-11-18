@@ -95,6 +95,7 @@ export interface PaymentGateway {
     accountNumber: string;
     ifscCode: string;
     bankName: string;
+    accountType?: "current" | "saving" | string;
     upiId?: string | null;
     existingAccountId?: string | null;
   }): Promise<{ gatewayAccountId: string; status: string }>;
@@ -426,6 +427,7 @@ export class RazorpayGatewayAdapter implements PaymentGateway {
     accountNumber: string;
     ifscCode: string;
     bankName: string;
+    accountType?: "current" | "saving" | string;
     upiId?: string | null;
     existingAccountId?: string | null;
   }): Promise<{ gatewayAccountId: string; status: string }> {
@@ -743,6 +745,7 @@ export interface ActiveGateway extends PaymentGateway {
     accountNumber: string;
     ifscCode: string;
     bankName: string;
+    accountType?: "current" | "saving" | string;
     upiId?: string | null;
     existingAccountId?: string | null;
   }): Promise<{ gatewayAccountId: string; status: string }>;

@@ -119,6 +119,7 @@ describe("Automated Organizer Payouts & Order Splits", () => {
         accountNumber: "123456789012",
         ifscCode: "HDFC0001234",
         bankName: "HDFC Bank",
+        accountType: "saving",
         upiId: "janedoe@okaxis",
       });
 
@@ -131,6 +132,7 @@ describe("Automated Organizer Payouts & Order Splits", () => {
         accountNumber: "123456789012",
         ifscCode: "HDFC0001234",
         bankName: "HDFC Bank",
+        accountType: "saving",
       });
     });
 
