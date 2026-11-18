@@ -61,14 +61,29 @@ export function TicketSelector({
 
               <div className={styles.cardRight}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                  <span className={styles.ticketPrice}>
-                    {formatPrice(tt.price)}
-                  </span>
-                  {Number(tt.price) > 0 && (
+                  {tt.discountedPrice && parseFloat(tt.discountedPrice) < parseFloat(tt.price) ? (
+                    <>
+                      <span className={styles.ticketPrice}>
+                        {formatPrice(tt.discountedPrice)}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", textDecoration: "line-through", color: "var(--text-muted, #a1a1aa)" }}>
+                        {formatPrice(tt.price)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className={styles.ticketPrice}>
+                      {formatPrice(tt.price)}
+                    </span>
+                  )}
+                  {tt.isSoldOut ? (
+                    <span style={{ fontSize: "0.72rem", color: "var(--status-danger, #ff5050)", fontWeight: 600 }}>
+                      Sold Out
+                    </span>
+                  ) : Number(tt.price) > 0 ? (
                     <span style={{ fontSize: "0.7rem", color: "var(--text-muted, #a1a1aa)" }}>
                       {tt.passFeeToCustomer === false ? "Fee included" : "+ fee"}
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <div
                   className={`${styles.radioCheck} ${

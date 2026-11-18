@@ -1,5 +1,6 @@
 import type { CreateOrderResponse } from "@/types/order";
 import { verifyPayment } from "@/api/payments";
+import { cancelOrder } from "@/api/orders";
 
 export interface GatewayCheckoutConfig {
   provider: string;
@@ -14,56 +15,83 @@ export type OrderWithGateway = CreateOrderResponse & {
   gatewayCheckout?: GatewayCheckoutConfig | null;
 };
 
-interface Result {
+export interface RazorpayPaymentResult {
   razorpay_payment_id: string;
   razorpay_order_id: string;
   razorpay_signature: string;
 }
 
-interface Options {
+export interface RazorpayCheckoutOptions {
   key: string;
   amount: number;
   currency: string;
   name: string;
   order_id: string;
-  prefill: { name: string; email: string };
-  handler: (result: Result) => void;
-  modal: { ondismiss: () => void };
+  prefill: { name: string; email: string; contact?: string };
+  handler: (result: RazorpayPaymentResult) => void | Promise<void>;
+  modal: { ondismiss: () => void | Promise<void> };
 }
 
-interface Checkout {
+export interface RazorpayInstance {
   open: () => void;
   on: (event: "payment.failed", callback: () => void) => void;
 }
 
 declare global {
   interface Window {
-    Razorpay?: new (options: Options) => Checkout;
+    Razorpay?: new (options: RazorpayCheckoutOptions) => RazorpayInstance;
   }
 }
 
-let loading: Promise<void> | undefined;
+export async function cancelPendingOrder(orderId: string): Promise<void> {
+  if (!orderId) return;
+  try {
+    await cancelOrder(orderId);
+  } catch {
+    // Best-effort cleanup on abandonment
+  }
+}
 
-function loadScript() {
+let scriptLoadingPromise: Promise<void> | undefined;
+
+export function loadRazorpayScript(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
   if (window.Razorpay) return Promise.resolve();
-  loading ??= new Promise<void>((resolve, reject) => {
+  scriptLoadingPromise ??= new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () =>
+        reject(new Error("Could not load checkout. Please try again.")),
+      );
+      return;
+    }
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
     script.onload = () => resolve();
     script.onerror = () => {
-      loading = undefined;
+      scriptLoadingPromise = undefined;
       reject(new Error("Could not load checkout. Please try again."));
     };
     document.body.appendChild(script);
   });
-  return loading;
+  return scriptLoadingPromise;
 }
 
 export async function openRazorpay(
   order: CreateOrderResponse | OrderWithGateway,
-  user: { name: string; email: string },
+  user: { name: string; email: string; phone?: string },
+  customRazorpay?: new (options: RazorpayCheckoutOptions) => RazorpayInstance,
 ): Promise<"submitted" | "abandoned"> {
-  await loadScript();
+  const RazorpayCtor = customRazorpay || window.Razorpay;
+  if (!RazorpayCtor) {
+    await loadRazorpayScript();
+  }
+
+  const ActiveCtor = customRazorpay || window.Razorpay;
   const gatewayConfig = (order as OrderWithGateway).gatewayCheckout;
   const keyId = gatewayConfig?.publicKey ?? order.razorpayOrder?.keyId;
   const orderId = gatewayConfig?.orderId ?? order.razorpayOrder?.id;
@@ -75,7 +103,7 @@ export async function openRazorpay(
     !orderId ||
     amount === undefined ||
     !currency ||
-    !window.Razorpay
+    !ActiveCtor
   ) {
     throw new Error(
       "Payment initialization is pending. Refresh the order status shortly.",
@@ -84,13 +112,17 @@ export async function openRazorpay(
 
   return new Promise((resolve, reject) => {
     let submitted = false;
-    const checkout = new window.Razorpay!({
+    const checkout = new ActiveCtor({
       key: keyId,
       amount,
       currency,
       name: "Tiket",
       order_id: orderId,
-      prefill: user,
+      prefill: {
+        name: user.name,
+        email: user.email,
+        contact: user.phone || "",
+      },
       handler: (result) => {
         submitted = true;
         void verifyPayment({
@@ -107,12 +139,18 @@ export async function openRazorpay(
       },
       modal: {
         ondismiss: () => {
-          if (!submitted) resolve("abandoned");
+          if (!submitted) {
+            void cancelPendingOrder(order.order.id);
+            resolve("abandoned");
+          }
         },
       },
     });
     checkout.on("payment.failed", () => {
-      if (!submitted) resolve("abandoned");
+      if (!submitted) {
+        void cancelPendingOrder(order.order.id);
+        resolve("abandoned");
+      }
     });
     checkout.open();
   });

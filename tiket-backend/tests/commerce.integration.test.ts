@@ -814,7 +814,7 @@ integration("commerce against PostgreSQL", () => {
       method: "POST",
       url: "/api/check-ins/scan",
       headers: token(owner),
-      payload: { eventId: f.event.id, qrCode: state.tickets[0]!.qrCode },
+      payload: { eventId: f.event.id, qrCode: pass.json().qrCode },
     });
     expect(scan.statusCode).toBe(201);
     expect(scan.json().ticket.status).toBe("used");

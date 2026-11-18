@@ -56,6 +56,10 @@ export default function RegistrationCard({
   const effectiveSoldOut = isSoldOut || allTiersExhausted;
   const isOpen = !isNotStarted && !isEnded && !effectiveSoldOut;
 
+  const availableTiers = availability?.tiers || [];
+  const selectedTicket =
+    availableTiers.find((t) => !t.isSoldOut) || availableTiers[0];
+
   return (
     <div className={styles.registrationCard}>
       <div className={styles.regHeader}>
@@ -234,6 +238,7 @@ export default function RegistrationCard({
             <Link
               to="/$eventSlug/form"
               params={{ eventSlug: event.slug }}
+              search={selectedTicket ? { t: selectedTicket.id } : undefined}
               className={styles.joinBtn}
               style={{
                 textAlign: "center",

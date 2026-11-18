@@ -4,6 +4,7 @@ import {
   domainEvents,
   events,
   eventBlacklist,
+  orderItems,
   orders,
   tickets,
 } from "@db/schema";
@@ -41,6 +42,15 @@ export async function releaseHold(
   status: "expired" | "cancelled" = "cancelled",
 ) {
   if (order.reservationState !== "held") return;
+
+  if (order.paymentStatus === "pending") {
+    await tx.delete(orderItems).where(eq(orderItems.orderId, order.id));
+    await tx.delete(tickets).where(eq(tickets.orderId, order.id));
+    await tx.delete(orders).where(eq(orders.id, order.id));
+    await emitEvent(tx, order.eventId, "availability.changed");
+    return;
+  }
+
   await tx
     .update(orders)
     .set({

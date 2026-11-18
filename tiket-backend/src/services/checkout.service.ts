@@ -422,7 +422,7 @@ export async function createCheckout(
       process.env.NODE_ENV !== "test" &&
       (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)
     )
-      throw new HttpError(503, "Paid registration is not configured yet.");
+      throw new HttpError(500, "Payment gateway failed to initialize");
     const requireApproval = !complimentary && result.event.requireApproval;
     const [order] = await tx
       .insert(orders)
@@ -620,12 +620,14 @@ export async function initializeGatewayOrder(orderId: string) {
         updatedAt: new Date(),
       })
       .where(eq(orders.id, claimed.id));
-  } catch {
+  } catch (err) {
     // A request may have reached the gateway even if its response was lost. Never create another blindly.
     await db
       .update(orders)
       .set({ initializationState: "uncertain", updatedAt: new Date() })
       .where(eq(orders.id, claimed.id));
+    if (err instanceof HttpError) throw err;
+    throw new HttpError(500, "Payment gateway failed to initialize");
   }
 }
 export async function checkoutStatus(orderId: string, userId: string) {
@@ -647,9 +649,22 @@ export async function checkoutStatus(orderId: string, userId: string) {
     .select()
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
+
+  const sanitizedTickets = issued.map((t) => ({
+    id: t.id,
+    orderId: t.orderId,
+    ticketTypeId: t.ticketTypeId,
+    userId: t.userId,
+    eventId: t.eventId,
+    status: t.status,
+    transferCount: t.transferCount,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  }));
+
   return {
     order,
-    tickets: issued,
+    tickets: sanitizedTickets,
     items,
     serverTime: new Date().toISOString(),
     razorpayOrder:
@@ -685,5 +700,5 @@ export async function cancelCheckout(orderId: string, userId: string) {
       .where(eq(orders.id, orderId));
     if (order) await releaseHold(tx, order);
   });
-  return checkoutStatus(orderId, userId);
+  return { success: true, cancelled: true };
 }

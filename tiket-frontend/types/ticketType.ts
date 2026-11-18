@@ -38,6 +38,11 @@ export interface TicketType {
   name: string;
   description: string | null;
   price: string;
+  discountedPrice?: string | null;
+  availableCount?: number | null;
+  remaining?: number | null;
+  isSoldOut?: boolean;
+  requiresApproval?: boolean;
   templateImageUrl?: string | null;
   templateConfig?: TicketLayoutConfig | null;
   passFeeToCustomer?: boolean;

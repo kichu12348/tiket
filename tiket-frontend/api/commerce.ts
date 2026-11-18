@@ -18,9 +18,10 @@ export async function getAvailability(
   eventId: string,
   code?: string,
 ): Promise<Availability> {
+  const trimmed = code?.trim();
   return (
     await api.get(API_ENDPOINTS.COMMERCE.AVAILABILITY(eventId), {
-      params: { code },
+      params: trimmed ? { code: trimmed } : undefined,
     })
   ).data;
 }

@@ -93,11 +93,20 @@ export interface RazorpayOrderData {
   keyId: string;
 }
 
+export interface OrderSummary {
+  id: string;
+  eventId: string;
+  status: "pending" | "completed" | "pending_approval";
+  totalAmount: string;
+  discountAmount?: string;
+}
+
 export interface CreateOrderResponse {
-  order: Order;
-  serverTime: string;
-  items: PriceLine[];
-  tickets: Ticket[];
+  order: OrderSummary & Partial<Order>;
+  ticketId?: string | null;
+  serverTime?: string;
+  items?: PriceLine[];
+  tickets?: Ticket[];
   razorpayOrder?: RazorpayOrderData | null;
 }
 

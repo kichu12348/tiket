@@ -12,12 +12,29 @@ export const createOrder = async (
   return response.data;
 };
 
+export interface EventOrderStatusResponse {
+  hasActiveOrder: boolean;
+  order: {
+    id: string;
+    status: "pending" | "completed" | "pending_approval";
+    totalAmount: string;
+    ticketId: string | null;
+    ticketTypeName: string | null;
+  } | null;
+}
+
+export async function getEventOrderStatus(
+  eventId: string,
+): Promise<EventOrderStatusResponse> {
+  return (await api.get(API_ENDPOINTS.ORDERS.GET(eventId))).data;
+}
+
 export async function getOrder(id: string): Promise<CreateOrderResponse> {
   return (await api.get(API_ENDPOINTS.ORDERS.GET(id))).data;
 }
 export async function resumeOrder(key: string): Promise<CreateOrderResponse> {
   return (await api.get(API_ENDPOINTS.ORDERS.RESUME(key))).data;
 }
-export async function cancelOrder(id: string): Promise<CreateOrderResponse> {
+export async function cancelOrder(id: string): Promise<{ success: boolean; cancelled?: boolean }> {
   return (await api.post(API_ENDPOINTS.ORDERS.CANCEL(id))).data;
 }

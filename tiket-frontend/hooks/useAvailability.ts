@@ -1,53 +1,59 @@
-﻿
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAvailability } from "@/api/commerce";
 import type { Availability } from "@/types/commerce";
-import { useLiveStore } from "@/store/useLiveStore";
+import type { TicketType } from "@/types/ticketType";
 import { useEventRevision } from "./useLiveEvent";
 
-export function useAvailability(eventId: string, code = "") {
+export interface UseAvailabilityResult {
+  availability: Availability | null;
+  refreshAvailability: (couponCode?: string) => Promise<Availability | null>;
+  remaining: number | null;
+  version: number;
+  tiers: (TicketType & { remaining: number | null })[];
+  serverTime: string;
+}
+
+export function useAvailability(
+  eventId: string,
+  initialCode = "",
+): UseAvailabilityResult {
   const [availability, setAvailability] = useState<Availability | null>(null);
   const version = useEventRevision(eventId);
-  const connected = useLiveStore((state) => state.connected);
+
+  const fetchAvailability = useCallback(
+    async (codeToUse?: string): Promise<Availability | null> => {
+      if (!eventId) return null;
+      try {
+        const cleanCode = (
+          codeToUse !== undefined ? codeToUse : initialCode
+        )?.trim();
+        const data = await getAvailability(eventId, cleanCode || undefined);
+        setAvailability(data);
+        return data;
+      } catch {
+        return null;
+      }
+    },
+    [eventId, initialCode],
+  );
 
   useEffect(() => {
-    if (!eventId) return;
-    let active = true;
+    void fetchAvailability();
+  }, [fetchAvailability, version]);
 
-    const refresh = () => {
-      void getAvailability(eventId, code)
-        .then((data) => {
-          if (!active) return;
-          setAvailability((prev) => {
-            if (!prev) return data;
-            if (
-              prev.version === data.version &&
-              prev.remaining === data.remaining
-            ) {
-              return prev;
-            }
-            return data;
-          });
-        })
-        .catch(() => {});
-    };
+  const refreshAvailability = useCallback(
+    async (couponCode?: string): Promise<Availability | null> => {
+      return fetchAvailability(couponCode);
+    },
+    [fetchAvailability],
+  );
 
-    refresh();
-
-    // When connected via WebSocket on the dashboard, rely strictly on version changes without interval polling
-    if (connected) {
-      return () => {
-        active = false;
-      };
-    }
-
-    // On public event pages without WebSocket, poll fallback every 15s
-    const timer = setInterval(refresh, 15000);
-    return () => {
-      active = false;
-      clearInterval(timer);
-    };
-  }, [eventId, code, version, connected]);
-
-  return availability;
+  return {
+    availability,
+    refreshAvailability,
+    remaining: availability?.remaining ?? null,
+    version: availability?.version ?? 0,
+    tiers: availability?.tiers ?? [],
+    serverTime: availability?.serverTime ?? "",
+  };
 }

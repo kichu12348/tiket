@@ -147,7 +147,7 @@ export function setTestSdk(custom: unknown) {
 function sdk(): Razorpay {
   if (testSdk) return testSdk as Razorpay;
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)
-    throw new Error("Platform Razorpay credentials are not configured.");
+    throw new HttpError(500, "Payment gateway failed to initialize");
   return new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -499,22 +499,40 @@ export class RazorpayGatewayAdapter implements PaymentGateway {
       ];
     }
 
-    const order = await (
-      sdk().orders.create as unknown as (
-        params: Record<string, unknown>,
-      ) => Promise<{
+    let order: {
+      id: string;
+      amount: number | string;
+      currency: string;
+      receipt?: string | null;
+      transfers?: {
         id: string;
+        recipient?: string;
+        account?: string;
         amount: number | string;
-        currency: string;
-        receipt?: string | null;
-        transfers?: {
+      }[];
+    };
+
+    try {
+      order = await (
+        sdk().orders.create as unknown as (
+          params: Record<string, unknown>,
+        ) => Promise<{
           id: string;
-          recipient?: string;
-          account?: string;
           amount: number | string;
-        }[];
-      }>
-    )(orderOptions);
+          currency: string;
+          receipt?: string | null;
+          transfers?: {
+            id: string;
+            recipient?: string;
+            account?: string;
+            amount: number | string;
+          }[];
+        }>
+      )(orderOptions);
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      throw new HttpError(500, "Payment gateway failed to initialize");
+    }
 
     const transfers = Array.isArray(order.transfers)
       ? order.transfers.map((t) => ({

@@ -38,6 +38,7 @@ import {
 } from "../services/refund.service";
 import { enqueueOrderEmail } from "../services/notifications.service";
 import { gateway } from "../services/gateway.service";
+import { fromPaise, toPaise } from "../utils/money";
 
 type EventRequest = FastifyRequest<{ Params: { eventId: string } }>;
 export async function getPermissions(request: EventRequest) {
@@ -871,14 +872,15 @@ export async function getAvailability(
       .from(ticketTypes)
       .where(eq(ticketTypes.eventId, event.id))
       .orderBy(ticketTypes.sortOrder);
-    const codes = request.query.code
+    const codeQuery = request.query.code?.trim();
+    const codes = codeQuery
       ? await tx
           .select()
           .from(coupons)
           .where(
             and(
               eq(coupons.eventId, event.id),
-              eq(coupons.code, request.query.code.trim().toUpperCase()),
+              eq(coupons.code, codeQuery.toUpperCase()),
               eq(coupons.isActive, true),
             ),
           )
@@ -947,10 +949,51 @@ export async function getAvailability(
             poolRemainingVal,
             tierRemainingVal,
           );
+          const remainingStock =
+            minRemaining === Infinity ? null : minRemaining;
+          const isSoldOut =
+            (remainingStock !== null && remainingStock <= 0) ||
+            Boolean(tier.isClosed);
+
+          let computedDiscountedPrice: string | null = null;
+          if (
+            access &&
+            (!access.ticketTypeIds.length ||
+              access.ticketTypeIds.includes(tier.id))
+          ) {
+            const unitPricePaise = toPaise(tier.price);
+            if (access.kind === "percent") {
+              const discountPaise = Math.floor(
+                (unitPricePaise * access.value) / 10000,
+              );
+              computedDiscountedPrice = fromPaise(
+                Math.max(0, unitPricePaise - discountPaise),
+              );
+            } else if (access.kind === "fixed") {
+              const discountPaise = Math.min(unitPricePaise, access.value);
+              computedDiscountedPrice = fromPaise(
+                Math.max(0, unitPricePaise - discountPaise),
+              );
+            } else {
+              computedDiscountedPrice = tier.price;
+            }
+          }
 
           return {
-            ...tier,
-            remaining: minRemaining === Infinity ? null : minRemaining,
+            id: tier.id,
+            name: tier.name,
+            description: tier.description,
+            price: tier.price,
+            discountedPrice: computedDiscountedPrice,
+            currency: "INR",
+            availableCount: remainingStock,
+            remaining: remainingStock,
+            isSoldOut,
+            requiresApproval: event.requireApproval ?? false,
+            allowRefunds: tier.allowRefunds ?? tier.isRefundable ?? false,
+            salesStart: tier.saleStart ? tier.saleStart.toISOString() : null,
+            salesEnd: tier.saleEnd ? tier.saleEnd.toISOString() : null,
+            passFeeToCustomer: tier.passFeeToCustomer ?? true,
           };
         }),
     };
