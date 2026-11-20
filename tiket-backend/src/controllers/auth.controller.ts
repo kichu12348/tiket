@@ -5,6 +5,8 @@ import { users } from "@db/schema";
 import { eq, or } from "drizzle-orm";
 import crypto from "crypto";
 
+const OTP_HASH_SECRET = process.env.OTP_HASH_SECERT!;
+
 interface OAuthStatePayload {
   nonce: string;
   redirect: string;
@@ -19,6 +21,22 @@ function signOAuthState(payload: OAuthStatePayload, secret: string): string {
     .update(data)
     .digest("base64url");
   return `${data}.${signature}`;
+}
+
+function hashOtp(otp: string, email: string) {
+  const hsh = crypto
+    .createHmac("sha256", OTP_HASH_SECRET)
+    .update(`${email}:${otp}`);
+  return hsh.digest("base64");
+}
+
+function verifyOtpHash(otp: string, email: string, otpHash: string): boolean {
+  const hash = hashOtp(otp, email);
+
+  const a = Buffer.from(hash);
+  const b = Buffer.from(otpHash);
+
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 function verifyOAuthState(
@@ -79,7 +97,10 @@ export const passwordAuth = async (
       }
 
       // Create new user
-      const passwordHash = await Bun.password.hash(password);
+      const passwordHash = await Bun.password.hash(password, {
+        algorithm: "bcrypt",
+        cost: 10,
+      });
       const slug = crypto.randomBytes(8).toString("hex");
 
       const newUser = await db
@@ -185,7 +206,7 @@ export const sendOtp = async (
 
     // Generate 6-digit OTP
     const otp = crypto.randomInt(100000, 1000000).toString();
-    const otpHash = await Bun.password.hash(otp);
+    const otpHash = hashOtp(otp, user.email);
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
     await db
@@ -232,7 +253,7 @@ export const verifyOtp = async (
       return reply.status(401).send({ error: "OTP expired" });
     }
 
-    const isMatch = await Bun.password.verify(otp, user.otpHash);
+    const isMatch = verifyOtpHash(otp, email, user.otpHash);
     if (!isMatch) {
       return reply.status(401).send({ error: "Invalid OTP" });
     }
@@ -374,7 +395,10 @@ export const handleGoogleOAuthCallback = async (
   const { code, state, error } = request.query;
 
   if (!state) {
-    return reply.redirect(`${frontendUrl}/login?error=oauth_state_invalid`, 302);
+    return reply.redirect(
+      `${frontendUrl}/login?error=oauth_state_invalid`,
+      302,
+    );
   }
 
   const statePayload = verifyOAuthState(
@@ -383,7 +407,10 @@ export const handleGoogleOAuthCallback = async (
   );
 
   if (!statePayload) {
-    return reply.redirect(`${frontendUrl}/login?error=oauth_state_invalid`, 302);
+    return reply.redirect(
+      `${frontendUrl}/login?error=oauth_state_invalid`,
+      302,
+    );
   }
 
   if (error || !code) {
@@ -468,10 +495,7 @@ export const handleGoogleOAuthCallback = async (
       .select()
       .from(users)
       .where(
-        or(
-          eq(users.googleId, profile.sub),
-          eq(users.email, normalizedEmail),
-        ),
+        or(eq(users.googleId, profile.sub), eq(users.email, normalizedEmail)),
       );
 
     let user = existingUsers[0];
